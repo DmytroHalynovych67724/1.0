@@ -1,4 +1,5 @@
 const loginBtn = document.getElementById('login');
+const registerBtn = document.getElementById('registerBtn');
 const controls = document.getElementById('controls');
 const adForm = document.getElementById('adForm');
 let token = null;
@@ -7,11 +8,23 @@ loginBtn.addEventListener('click', async ()=>{
   const username = document.getElementById('username').value;
   const password = document.getElementById('password').value;
   const res = await fetch('/api/auth/login', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({username,password}) });
-  if (!res.ok) { alert('Login failed'); return; }
+  if (!res.ok) { alert('Logowanie nieudane'); return; }
   const body = await res.json();
   token = body.token;
   controls.style.display='block';
   loadProducts();
+});
+
+registerBtn.addEventListener('click', async ()=>{
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const res = await fetch('/api/auth/register', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({username,password}) });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    alert(errorBody.error || 'Rejestracja nieudana');
+    return;
+  }
+  alert('Konto utworzone. Teraz zaloguj się tymi samymi danymi.');
 });
 
 async function loadProducts(){
