@@ -40,3 +40,20 @@ test('fallback products are normalized with rich metadata', () => {
   assert.equal(normalized.category, 'Elektronika');
   assert.equal(normalized.location, 'Lublin');
 });
+
+test('removeProduct deletes a demo listing from local storage', () => {
+  const context = loadSiteData();
+  const added = context.addProduct({
+    id: 'demo-delete',
+    title: 'Remove me',
+    description: 'To be deleted',
+    price: 10
+  });
+
+  const afterAdd = context.getStoredProducts();
+  assert.equal(afterAdd.some((product) => product.id === added.id), true);
+
+  context.removeProduct('demo-delete');
+  const afterRemove = context.getStoredProducts();
+  assert.equal(afterRemove.some((product) => product.id === 'demo-delete'), false);
+});

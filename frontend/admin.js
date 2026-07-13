@@ -67,14 +67,19 @@ async function loadProducts() {
   container.querySelectorAll('button[data-action="del"]').forEach((b) => b.addEventListener('click', async (e) => {
     const id = e.target.getAttribute('data-id');
     try {
-      await fetch('/api/products/' + id, {
+      const res = await fetch('/api/products/' + id, {
         method: 'DELETE',
         headers: { authorization: 'Bearer ' + token }
       });
+
+      if (!res.ok) {
+        throw new Error('Delete failed');
+      }
     } catch (error) {
       removeProduct(id);
+    } finally {
+      loadProducts();
     }
-    loadProducts();
   }));
 }
 
