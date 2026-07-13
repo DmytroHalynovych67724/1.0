@@ -1,5 +1,8 @@
 # E-commerce Vanilla Node Starter
 
+[![CI](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/ci.yml/badge.svg)](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/ci.yml)
+[![Docker Publish](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/docker-publish.yml)
+
 A polished starter template for a Node.js + Express + Vanilla JavaScript e-commerce project.
 
 ## Quick start
