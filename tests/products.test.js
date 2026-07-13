@@ -5,7 +5,7 @@ const { createServer } = require('node:http');
 const { app, setup } = require('../backend/app');
 const { getDB } = require('../backend/db');
 
-test('Products CRUD', async (t) => {
+test('Products CRUD', async () => {
   await setup();
   // ensure db empty
   const db = getDB();

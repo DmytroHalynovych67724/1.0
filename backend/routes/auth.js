@@ -15,7 +15,7 @@ router.post('/register', async (req, res) => {
   const hash = await bcrypt.hash(password, 10);
   const id = Date.now().toString();
   db.prepare('INSERT INTO users (id,username,password,role) VALUES (?,?,?,?)').run(id, username, hash, 'admin');
-  res.status(201).json({ id: user.id, username: user.username });
+  res.status(201).json({ id, username });
 });
 
 router.post('/login', async (req, res) => {
