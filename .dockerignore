@@ -3,7 +3,6 @@ data
 .git
 .github
 npm-debug.log*
-Dockerfile
 docker-compose.yml
 *.md
 *.log
