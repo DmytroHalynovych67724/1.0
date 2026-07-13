@@ -11,14 +11,15 @@
       <div id="product"></div>
       <div><a href="/">Back to catalog</a></div>
     </main>
+    <script src="site-data.js"></script>
     <script>
       async function load(){
         const params = new URLSearchParams(location.search);
         const id = params.get('id');
         if(!id) return document.getElementById('product').textContent = 'No product id';
-        const res = await fetch('/api/products/'+id);
-        if(!res.ok) return document.getElementById('product').textContent = 'Not found';
-        const p = await res.json();
+        const products = await fetchProducts();
+        const p = findProductById(products, id);
+        if(!p) return document.getElementById('product').textContent = 'Not found';
         document.getElementById('product').innerHTML = `<h1>${p.title}</h1><p>${p.description}</p><div>${p.price} USD</div><div><button id="add">Add to cart</button></div>`;
         document.getElementById('add').addEventListener('click', ()=>{
           const cart = JSON.parse(localStorage.getItem('cart')||'[]');

@@ -19,13 +19,12 @@ openCart.addEventListener('click', () => {
 });
 
 adminBtn.addEventListener('click', () => {
-  window.open('/admin.html', '_blank');
+  window.open('admin.html', '_blank');
 });
 
 async function loadProducts() {
-  const res = await fetch('/api/products');
-  const list = await res.json();
-  catalog.innerHTML = `<div class="card-grid">${list.map(p=>`<div class="card"><h3>${p.title}</h3><p>${p.description}</p><div class="price">${p.price} USD</div><div class="card-actions"><a class="btn" href="/product.html?id=${p.id}">View</a><button data-id="${p.id}">Add to cart</button></div></div>`).join('')}</div>`;
+  const list = await fetchProducts();
+  catalog.innerHTML = `<div class="card-grid">${list.map(p=>`<div class="card"><h3>${p.title}</h3><p>${p.description}</p><div class="price">${p.price} USD</div><div class="card-actions"><a class="btn" href="product.html?id=${p.id}">View</a><button data-id="${p.id}">Add to cart</button></div></div>`).join('')}</div>`;
   catalog.querySelectorAll('button[data-id]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.getAttribute('data-id');
