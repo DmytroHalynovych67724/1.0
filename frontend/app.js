@@ -5,19 +5,20 @@ const adminBtn = document.getElementById('admin');
 const searchInput = document.getElementById('search');
 const categoryFilter = document.getElementById('categoryFilter');
 
-let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+let savedItems = JSON.parse(localStorage.getItem('savedItems') || '[]');
 let allProducts = [];
 
-function renderCart() {
+function renderSavedItems() {
   cartEl.style.display = 'block';
-  cartEl.innerHTML = `<h3>Koszyk (${cart.length})</h3>` +
-    cart.map(c=>`<div class="cart-item">${c.title} — ${c.price} USD</div>`).join('') +
-    `<div style="margin-top:1rem;"><button id="checkout">Checkout (sim)</button></div>`;
-  const chk = document.getElementById('checkout');
-  if (chk) chk.addEventListener('click', ()=>{ alert('Checkout simulated'); cart = []; localStorage.setItem('cart', JSON.stringify(cart)); renderCart(); });
+  if (!savedItems.length) {
+    cartEl.innerHTML = '<h3>Obserwowane (0)</h3><p>Brak zapisanych ogłoszeń.</p>';
+    return;
+  }
+  cartEl.innerHTML = `<h3>Obserwowane (${savedItems.length})</h3>` +
+    savedItems.map((item) => `<div class="cart-item">${item.title} — ${item.price} USD</div>`).join('');
 }
 
-openCart.addEventListener('click', () => { renderCart(); });
+openCart.addEventListener('click', () => { renderSavedItems(); });
 adminBtn.addEventListener('click', () => { window.open('admin.html', '_blank'); });
 
 function filterProducts() {
@@ -34,15 +35,18 @@ function renderProducts(list) {
   catalog.innerHTML = `<div class="card-grid">${list.map((p) => {
     const images = Array.isArray(p.images) && p.images.length ? p.images : ['https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80'];
     const imageUrl = images[0];
-    return `<div class="card"><img class="card-image" src="${imageUrl}" alt="${p.title}" /><div class="card-body"><h3>${p.title}</h3><p>${p.description}</p><div class="meta">${p.category || 'General'} • ${p.location || 'Unknown'}</div><div class="price">${p.price} USD</div><div class="card-actions"><a class="btn" href="product.html?id=${p.id}">Szczegóły</a><button data-id="${p.id}">Do koszyka</button></div></div></div>`;
+    return `<div class="card"><img class="card-image" src="${imageUrl}" alt="${p.title}" /><div class="card-body"><h3>${p.title}</h3><p>${p.description}</p><div class="meta">${p.category || 'Elektronika'} • ${p.location || 'Lublin'}</div><div class="price">${p.price} USD</div><div class="card-actions"><a class="btn" href="product.html?id=${p.id}">Zobacz</a><button class="save-btn" data-id="${p.id}">Obserwuj</button></div></div></div>`;
   }).join('')}</div>`;
-  catalog.querySelectorAll('button[data-id]').forEach((btn) => {
+  catalog.querySelectorAll('button.save-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-id');
       const prod = list.find((x) => x.id === id);
-      cart.push(prod);
-      localStorage.setItem('cart', JSON.stringify(cart));
-      alert('Dodano do koszyka');
+      if (!savedItems.find((item) => item.id === id)) {
+        savedItems.push(prod);
+        localStorage.setItem('savedItems', JSON.stringify(savedItems));
+        renderSavedItems();
+        alert('Dodano do obserwowanych');
+      }
     });
   });
 }
