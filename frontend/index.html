@@ -9,15 +9,29 @@
   <body>
     <main class="shell">
       <section class="hero">
-        <p class="eyebrow">Node + Express + Vanilla JS</p>
-        <h1>Modern e-commerce starter</h1>
-        <p>Catalog produktów — kliknij produkt, aby dodać do koszyka.</p>
-        <div id="catalog"></div>
-        <hr />
-        <div>
-          <button id="openCart">Otwórz koszyk</button>
-          <button id="admin">Admin</button>
+        <div class="hero-top">
+          <div>
+            <p class="eyebrow">Olx-style marketplace</p>
+            <h1>Sprzedaj i kupuj lokalnie</h1>
+            <p>Nowoczesne ogłoszenia z galerią zdjęć, kategoriami i szybkim kontaktem.</p>
+          </div>
+          <div class="hero-actions">
+            <button id="openCart">Koszyk</button>
+            <button id="admin">Admin</button>
+          </div>
         </div>
+        <div class="filters">
+          <input id="search" placeholder="Szukaj ogłoszeń..." />
+          <select id="categoryFilter">
+            <option value="">Wszystkie kategorie</option>
+            <option value="Motoryzacja">Motoryzacja</option>
+            <option value="Elektronika">Elektronika</option>
+            <option value="Meble">Meble</option>
+            <option value="Moda">Moda</option>
+            <option value="Usługi">Usługi</option>
+          </select>
+        </div>
+        <div id="catalog"></div>
         <div id="cart" style="display:none; margin-top:1rem;"></div>
       </section>
     </main>

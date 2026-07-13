@@ -6,21 +6,36 @@
     <title>Admin</title>
   </head>
   <body>
-    <h1>Admin Panel</h1>
-    <div>
-      <label>Username: <input id="username" /></label>
-      <label>Password: <input id="password" type="password" /></label>
-      <button id="login">Login</button>
-    </div>
-    <div id="controls" style="display:none;">
-      <h2>Products</h2>
-      <div id="productList"></div>
-      <h3>Add product</h3>
-      <input id="title" placeholder="Title" />
-      <input id="price" placeholder="Price" />
-      <input id="desc" placeholder="Description" />
-      <button id="add">Add</button>
-    </div>
+    <main class="shell admin-shell">
+      <section class="hero admin-panel">
+        <h1>Admin Panel</h1>
+        <div class="admin-login">
+          <label>Username: <input id="username" /></label>
+          <label>Password: <input id="password" type="password" /></label>
+          <button id="login">Login</button>
+        </div>
+        <div id="controls" style="display:none;">
+          <h2>Dodaj ogłoszenie</h2>
+          <form id="adForm" class="ad-form">
+            <input id="title" placeholder="Tytuł ogłoszenia" required />
+            <input id="price" placeholder="Cena" required />
+            <textarea id="desc" placeholder="Opis"></textarea>
+            <input id="images" placeholder="Obrazki (URL, oddzielone przecinkiem)" />
+            <select id="category">
+              <option value="Motoryzacja">Motoryzacja</option>
+              <option value="Elektronika">Elektronika</option>
+              <option value="Meble">Meble</option>
+              <option value="Moda">Moda</option>
+              <option value="Usługi">Usługi</option>
+            </select>
+            <input id="location" placeholder="Miasto / lokalizacja" />
+            <button id="add" type="submit">Dodaj ogłoszenie</button>
+          </form>
+          <h3>Aktualne ogłoszenia</h3>
+          <div id="productList"></div>
+        </div>
+      </section>
+    </main>
 
     <script src="admin.js"></script>
   </body>

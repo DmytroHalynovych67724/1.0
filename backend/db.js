@@ -16,10 +16,18 @@ function initDB() {
       title TEXT NOT NULL,
       description TEXT,
       price REAL DEFAULT 0,
+      images TEXT,
+      category TEXT,
+      location TEXT,
       createdAt INTEGER,
       updatedAt INTEGER
     )`
   ).run();
+
+  const productColumns = new Set(db.prepare('PRAGMA table_info(products)').all().map((column) => column.name));
+  if (!productColumns.has('images')) db.prepare('ALTER TABLE products ADD COLUMN images TEXT').run();
+  if (!productColumns.has('category')) db.prepare('ALTER TABLE products ADD COLUMN category TEXT').run();
+  if (!productColumns.has('location')) db.prepare('ALTER TABLE products ADD COLUMN location TEXT').run();
 
   // users table
   db.prepare(

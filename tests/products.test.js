@@ -4,6 +4,7 @@ const { once } = require('node:events');
 const { createServer } = require('node:http');
 const { app, setup } = require('../backend/app');
 const { getDB } = require('../backend/db');
+const { createProduct } = require('../backend/models/products');
 
 test('Products CRUD', async () => {
   await setup();
@@ -61,4 +62,28 @@ test('DELETE /api/products/:id returns 404 for missing product', async () => {
 
   server.close();
   await once(server, 'close');
+});
+
+test('createProduct stores image, category and location metadata', async () => {
+  await setup();
+  const db = getDB();
+  db.prepare('DELETE FROM products').run();
+
+  const product = await createProduct({
+    title: 'Vintage desk',
+    description: 'Beautiful desk',
+    price: 120,
+    images: ['data:image/png;base64,abc'],
+    category: 'Furniture',
+    location: 'Lviv'
+  });
+
+  assert.equal(product.category, 'Furniture');
+  assert.equal(product.location, 'Lviv');
+  assert.deepEqual(product.images, ['data:image/png;base64,abc']);
+
+  const saved = db.prepare('SELECT category, location, images FROM products WHERE id = ?').get(product.id);
+  assert.equal(saved.category, 'Furniture');
+  assert.equal(saved.location, 'Lviv');
+  assert.equal(saved.images, '["data:image/png;base64,abc"]');
 });
