@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin</title>
+  </head>
+  <body>
+    <h1>Admin Panel</h1>
+    <div>
+      <label>Username: <input id="username" /></label>
+      <label>Password: <input id="password" type="password" /></label>
+      <button id="login">Login</button>
+    </div>
+    <div id="controls" style="display:none;">
+      <h2>Products</h2>
+      <div id="productList"></div>
+      <h3>Add product</h3>
+      <input id="title" placeholder="Title" />
+      <input id="price" placeholder="Price" />
+      <input id="desc" placeholder="Description" />
+      <button id="add">Add</button>
+    </div>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

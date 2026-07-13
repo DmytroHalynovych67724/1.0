@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Product</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <div id="product"></div>
+      <div><a href="/">Back to catalog</a></div>
+    </main>
+    <script>
+      async function load(){
+        const params = new URLSearchParams(location.search);
+        const id = params.get('id');
+        if(!id) return document.getElementById('product').textContent = 'No product id';
+        const res = await fetch('/api/products/'+id);
+        if(!res.ok) return document.getElementById('product').textContent = 'Not found';
+        const p = await res.json();
+        document.getElementById('product').innerHTML = `<h1>${p.title}</h1><p>${p.description}</p><div>${p.price} USD</div><div><button id="add">Add to cart</button></div>`;
+        document.getElementById('add').addEventListener('click', ()=>{
+          const cart = JSON.parse(localStorage.getItem('cart')||'[]');
+          cart.push(p);
+          localStorage.setItem('cart', JSON.stringify(cart));
+          alert('Added to cart');
+        });
+      }
+      load();
+    </script>
+  </body>
+</html>

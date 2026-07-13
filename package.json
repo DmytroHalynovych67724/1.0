@@ -1,0 +1,41 @@
+{
+  "name": "ecommerce-vanilla-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-ready Node.js + Express + Vanilla Web e-commerce starter",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "nodemon backend/server.js",
+    "start": "node backend/server.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "node --test",
+    "seed": "node backend/seed.js",
+    "docker:build": "docker build -t ecommerce-starter .",
+    "docker:up": "docker-compose up --build -d"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^6.7.0",
+    "helmet": "^6.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "better-sqlite3": "^8.3.0",
+    "morgan": "^1.10.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.0.0",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.3.3",
+    "pm2": "^5.2.0"
+  },
+  "pm2": {
+    "apps": []
+  }
+}
