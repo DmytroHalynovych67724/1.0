@@ -2,9 +2,9 @@
 setlocal
 cd /d "%~dp0"
 
-echo Checking for processes listening on port 3000...
+echo Checking for NaShary processes listening on ports 3000 and 5173...
 set FOUND=0
-for /f "tokens=5" %%p in ('netstat -ano ^| findstr /R /C:":3000 " ^| findstr LISTENING') do (
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr /R /C:":3000 " /C:":5173 " ^| findstr LISTENING') do (
   set FOUND=1
   echo Found PID %%p using port 3000, attempting to stop...
   taskkill /PID %%p /F >nul 2>nul

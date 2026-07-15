@@ -1,6 +1,5 @@
 {
   "env": {
-    "browser": true,
     "node": true,
     "es2021": true
   },
@@ -11,5 +10,22 @@
   },
   "rules": {
     "no-console": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["frontend/**/*.js"],
+      "env": {
+        "browser": true,
+        "node": false
+      }
+    },
+    {
+      "files": ["frontend/src/**/*.{js,jsx}"],
+      "env": { "browser": true, "node": false, "es2021": true },
+      "extends": ["plugin:react/recommended", "plugin:react-hooks/recommended"],
+      "parserOptions": { "ecmaVersion": 2022, "sourceType": "module", "ecmaFeatures": { "jsx": true } },
+      "settings": { "react": { "version": "detect" } },
+      "rules": { "react/prop-types": "off", "react/react-in-jsx-scope": "off" }
+    }
+  ]
 }

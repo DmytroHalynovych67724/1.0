@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.*
+!.env.example
 dist/
 build/
 coverage/
@@ -12,4 +13,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-data/db.sqlite
+data/*.sqlite
+data/*.sqlite-*
+data/icecat-smartphones.json

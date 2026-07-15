@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 560" role="img" aria-labelledby="title desc">
+  <title id="title">Сучасна електроніка</title>
+  <desc id="desc">Смартфон, ноутбук, навушники та смартгодинник</desc>
+  <defs>
+    <linearGradient id="halo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#bfdbfe"/></linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1a1a1a"/><stop offset=".5" stop-color="#2563eb"/><stop offset="1" stop-color="#dbeafe"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#292929" flood-opacity=".18"/></filter>
+  </defs>
+  <circle cx="370" cy="282" r="230" fill="url(#halo)" opacity=".14"/>
+  <circle cx="568" cy="95" r="14" fill="#2563eb"/><circle cx="110" cy="390" r="10" fill="#94a3b8"/>
+  <g filter="url(#shadow)">
+    <path d="M135 170h385a22 22 0 0122 22v237H113V192a22 22 0 0122-22z" fill="#353535"/>
+    <rect x="130" y="188" width="395" height="222" rx="8" fill="url(#screen)"/>
+    <path d="M80 429h494l57 31c9 5 5 19-6 19H55c-11 0-15-14-6-19z" fill="#e2e8f0"/>
+    <path d="M260 441h170l-14 17H275z" fill="#94a3b8"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="455" y="160" width="144" height="286" rx="34" fill="#292929"/>
+    <rect x="468" y="178" width="118" height="244" rx="24" fill="url(#screen)"/>
+    <rect x="505" y="188" width="44" height="6" rx="3" fill="#292929"/>
+    <circle cx="527" cy="399" r="4" fill="#fff" opacity=".8"/>
+  </g>
+  <g filter="url(#shadow)" fill="none" stroke="#f8fafc" stroke-width="21" stroke-linecap="round">
+    <path d="M174 176a67 67 0 01134 0v54"/><path d="M172 224v67"/><path d="M310 224v67"/>
+  </g>
+  <rect x="150" y="216" width="44" height="91" rx="20" fill="#2563eb"/><rect x="288" y="216" width="44" height="91" rx="20" fill="#2563eb"/>
+  <g filter="url(#shadow)"><rect x="112" y="354" width="82" height="103" rx="24" fill="#fff"/><rect x="126" y="370" width="54" height="55" rx="15" fill="#171717"/><rect x="143" y="430" width="20" height="8" rx="4" fill="#cbd5e1"/></g>
+</svg>

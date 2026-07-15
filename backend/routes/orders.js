@@ -1,23 +1,54 @@
 const express = require('express');
+const { createOrder, getOrder, listOrders, updateOrderStatus } = require('../models/orders');
+const { requireAdmin, requireAuth } = require('../middleware/auth');
+const { AppError, asyncHandler } = require('../utils/errors');
+const { validateOrder, validatePagination } = require('../utils/validation');
+
 const router = express.Router();
-const { createOrder, getOrder } = require('../models/orders');
-const { requireAuth } = require('../middleware/auth');
 
-// create order (checkout) - expects { items: [{id, qty}], total }
-router.post('/', requireAuth, async (req, res) => {
-  const { items, total } = req.body;
-  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'items required' });
-  // simulate payment and create order
-  const order = await createOrder({ userId: req.user.sub, items, total });
-  res.status(201).json(order);
-});
+router.use(requireAuth);
 
-router.get('/:id', requireAuth, async (req, res) => {
-  const order = await getOrder(req.params.id);
-  if (!order) return res.status(404).json({ error: 'Not found' });
-  // allow only owner or admin
-  if (order.userId !== req.user.sub && req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
-  res.json(order);
-});
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const pagination = validatePagination(req.query);
+    const orders = await listOrders({
+      userId: req.user.id,
+      includeAll: req.user.role === 'admin',
+      ...pagination,
+    });
+    res.json(orders);
+  })
+);
+
+router.patch(
+  '/:id/status',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const status = typeof req.body?.status === 'string' ? req.body.status.trim().toLowerCase() : '';
+    res.json(await updateOrderStatus({ orderId: req.params.id, status, changedBy: req.user.id }));
+  })
+);
+
+router.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const { items, checkout, promoCode } = validateOrder(req.body);
+    const order = await createOrder({ userId: req.user.id, items, checkout, promoCode });
+    res.status(201).json(order);
+  })
+);
+
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const order = await getOrder(req.params.id);
+    if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found');
+    if (order.userId !== req.user.id && req.user.role !== 'admin') {
+      throw new AppError(403, 'ORDER_ACCESS_DENIED', 'You cannot access this order');
+    }
+    res.json(order);
+  })
+);
 
 module.exports = router;

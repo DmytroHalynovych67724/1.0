@@ -1,12 +1,8 @@
-name: Deploy to GitHub Pages
+name: Deploy React app to GitHub Pages
 
-# Re-run deployment when frontend or Pages workflow changes.
 on:
   push:
-    branches: [main, master]
-    paths:
-      - 'frontend/**'
-      - '.github/workflows/pages.yml'
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -19,23 +15,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Build React application
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_STATIC_DEMO: ${{ vars.VITE_API_URL == '' && 'true' || 'false' }}
+        run: npm run build
+
+      - name: Add demo catalog and static assets
+        run: |
+          node scripts/export-demo-catalog.js frontend/dist/demo-products.json
+          cp -R frontend/assets/. frontend/dist/assets/
+          touch frontend/dist/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    needs: build
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./frontend
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

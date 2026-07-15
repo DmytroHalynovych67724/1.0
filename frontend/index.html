@@ -1,42 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="pl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>E-commerce Starter</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta name="theme-color" content="#7c1530" />
+    <meta name="description" content="NaShary — nowa i używana elektronika w dobrych cenach." />
+    <title>NaShary — elektronika bliżej Ciebie</title>
   </head>
   <body>
-    <main class="shell">
-      <section class="hero">
-        <div class="hero-top">
-          <div>
-            <p class="eyebrow">Elektronika i nowe technologie</p>
-            <h1>Najlepsze ogłoszenia tech</h1>
-            <p>Nowoczesne oferty z laptopami, telefonami, akcesoriami i urządzeniami.</p>
-          </div>
-          <div class="hero-actions">
-            <button id="openCart">Koszyk</button>
-            <button id="admin">Admin</button>
-          </div>
-        </div>
-        <div class="filters">
-          <input id="search" placeholder="Szukaj ogłoszeń..." />
-          <select id="categoryFilter">
-            <option value="">Wszystkie kategorie</option>
-            <option value="Telefony">Telefony</option>
-            <option value="Laptopy">Laptopy</option>
-            <option value="Gaming">Gaming</option>
-            <option value="Audio">Audio</option>
-            <option value="Akcesoria">Akcesoria</option>
-          </select>
-        </div>
-        <div id="catalog"></div>
-        <div id="cart" style="display:none; margin-top:1rem;"></div>
-      </section>
-    </main>
-
-    <script src="site-data.js"></script>
-    <script src="app.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

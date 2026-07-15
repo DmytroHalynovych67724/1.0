@@ -1,11 +1,22 @@
-version: '3.8'
 services:
   web:
     build: .
     ports:
-      - "3000:3000"
+      - '${PORT:-3000}:${PORT:-3000}'
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+      DB_PATH: /usr/src/app/data/db.sqlite
+      JWT_SECRET: ${JWT_SECRET:?Copy .env.example to .env and set JWT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      ICECAT_ENABLED: ${ICECAT_ENABLED:-true}
+      ICECAT_USERNAME: ${ICECAT_USERNAME:-openIcecat-live}
+      ICECAT_API_TOKEN: ${ICECAT_API_TOKEN:-}
+      ICECAT_CONTENT_TOKEN: ${ICECAT_CONTENT_TOKEN:-}
+      ICECAT_LANGUAGE: ${ICECAT_LANGUAGE:-EN}
     volumes:
-      - .:/usr/src/app
       - ./data:/usr/src/app/data
+    restart: unless-stopped
+    init: true

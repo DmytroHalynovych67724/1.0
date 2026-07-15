@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="title desc">
+  <title id="title">Зображення товару</title>
+  <desc id="desc">Абстрактна ілюстрація електронного пристрою</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2ff"/><stop offset="1" stop-color="#dbeafe"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="480" rx="32" fill="url(#bg)"/>
+  <circle cx="112" cy="86" r="46" fill="#fff" opacity=".5"/>
+  <circle cx="550" cy="390" r="84" fill="#c7d2fe" opacity=".45"/>
+  <rect x="178" y="83" width="284" height="284" rx="34" fill="#fff" stroke="#c7d2fe" stroke-width="8"/>
+  <rect x="206" y="116" width="228" height="174" rx="18" fill="url(#screen)"/>
+  <path d="M235 255l47-54 35 36 39-65 52 83z" fill="#fff" opacity=".86"/>
+  <circle cx="373" cy="160" r="17" fill="#fef3c7"/>
+  <rect x="260" y="317" width="120" height="14" rx="7" fill="#cbd5e1"/>
+</svg>

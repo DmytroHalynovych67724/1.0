@@ -2,7 +2,7 @@ name: Build and publish Docker image
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch: {}
 
 permissions:
@@ -19,6 +19,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Prepare image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/technohub-marketplace" >> "$GITHUB_ENV"
 
       - name: Setup QEMU
         uses: docker/setup-qemu-action@v2
@@ -39,8 +42,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/dmytrohalynovych67724/ecommerce-starter:latest
-            ghcr.io/dmytrohalynovych67724/ecommerce-starter:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Optionally push to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
@@ -57,5 +60,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ env.DOCKERHUB_USERNAME }}/ecommerce-starter:latest
-            ${{ env.DOCKERHUB_USERNAME }}/ecommerce-starter:${{ github.sha }}
+            ${{ env.DOCKERHUB_USERNAME }}/technohub-marketplace:latest
+            ${{ env.DOCKERHUB_USERNAME }}/technohub-marketplace:${{ github.sha }}

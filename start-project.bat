@@ -21,10 +21,19 @@ if not exist .env (
   copy .env.example .env >nul
 )
 
-start "E-commerce Dev Server" cmd /k "npm run dev"
-start "http://localhost:3000" http://localhost:3000
+echo Preparing the NaShary demo catalog...
+call npm run seed
+if errorlevel 1 (
+  echo Failed to prepare the database. Check the message above.
+  pause
+  exit /b 1
+)
+
+start "NaShary Dev Server" cmd /k "npm run dev"
+timeout /t 3 /nobreak >nul
+start "" http://localhost:5173
 
 echo.
-echo Project started.
-echo Open http://localhost:3000
+echo NaShary started.
+echo Open http://localhost:5173
 pause

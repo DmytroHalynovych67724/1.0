@@ -1,29 +1,51 @@
-Jako student Pani seminarium dyplomowego, chciałbym oficjalnie zaproponować temat mojej pracy inżynierskiej:
+# Propozycja tematu pracy dyplomowej
 
-"Projekt i implementacja responsywnego serwisu e-commerce do sprzedaży urządzeń mobilnych i akcesoriów"
+## Temat
 
-W ramach pracy planuję stworzyć aplikację internetową (e-commerce), wykorzystując technologie webowe (HTML, CSS, JavaScript) oraz Node.js do obsługi bazy danych. Moim celem jest realizacja serwisu z katalogiem produktów, koszykiem oraz panelem administracyjnym.
+**Projekt i implementacja responsywnej platformy sprzedaży nowej i używanej elektroniki**
 
-Zakres pracy (krótko):
-- Analiza wymagań i projekt architektury systemu (frontend + backend + DB)
-- Implementacja backendu w Node.js/Express (API REST)
-- Implementacja frontend w Vanilla JS, responsywny design (HTML5/CSS3)
-- Autentykacja i autoryzacja (JWT), panel admina do zarządzania produktami
-- Prosty mechanizm koszyka (localStorage) oraz symulacja procesu zamówienia
-- Testy jednostkowe i integracyjne, CI (GitHub Actions)
-- Deployment (Docker + PM2) i dokumentacja projektu
+## Cel pracy
 
-Technologie planowane:
-- Backend: Node.js, Express
-- Frontend: HTML5, CSS3, Vanilla JavaScript
-- Baza danych: plik JSON (dla prototypu) / opcjonalnie SQLite
-- Narzędzia: npm, ESLint, Prettier, PM2, Docker, Git
+Celem pracy jest zaprojektowanie i wykonanie kompletnej aplikacji internetowej typu
+marketplace, przeznaczonej wyłącznie do sprzedaży sprzętu elektronicznego. System łączy
+funkcje sklepu internetowego i serwisu ogłoszeniowego: umożliwia przeglądanie nowych oraz
+używanych urządzeń, wyszukiwanie i filtrowanie ofert, zapisywanie ulubionych produktów,
+obsługę koszyka i składanie zamówień.
 
-Cel pracy: dostarczyć kompletny, działający prototyp serwisu e-commerce z dokumentacją i instrukcją uruchomienia, demonstrujący umiejętności projektowe, implementacyjne i inżynierskie.
+## Zakres pracy
 
-Proponuję termin oddania prototypu do wstępnej prezentacji: 6 tygodni od zatwierdzenia tematu.
+- analiza wymagań oraz projekt architektury klient-serwer;
+- responsywny interfejs użytkownika w HTML5, CSS3 i Vanilla JavaScript;
+- katalog elektroniki z wyszukiwaniem, kategoriami, filtrami i sortowaniem;
+- prezentacja stanu produktu (nowy/używany), marki, ceny, dostępności i sposobu dostawy;
+- rejestracja i logowanie użytkowników z wykorzystaniem JWT oraz bcrypt;
+- rozdzielenie uprawnień kupującego i administratora;
+- koszyk, lista ulubionych oraz proces składania zamówienia;
+- panel administracyjny do zarządzania ofertami;
+- REST API w Node.js i Express oraz trwałe przechowywanie danych w SQLite;
+- walidacja danych, podstawowe zabezpieczenia i kontrola dostępu;
+- testy jednostkowe i integracyjne oraz automatyczna kontrola jakości w GitHub Actions;
+- konteneryzacja aplikacji w Dockerze i przygotowanie dokumentacji wdrożeniowej.
 
+## Technologie
+
+- **Frontend:** HTML5, CSS3, Vanilla JavaScript;
+- **Backend:** Node.js, Express;
+- **Baza danych:** SQLite (`better-sqlite3`);
+- **Bezpieczeństwo:** JWT, bcrypt, Helmet, rate limiting;
+- **Testowanie i jakość:** Node.js Test Runner, ESLint, Prettier, GitHub Actions;
+- **Uruchamianie i wdrożenie:** npm, Docker, Docker Compose, PM2.
+
+## Rezultat
+
+Rezultatem pracy będzie działający prototyp platformy e-commerce z kompletnym przepływem od
+wyszukania produktu do złożenia zamówienia, panelem administracyjnym, dokumentacją techniczną
+oraz zestawem automatycznych testów. Projekt będzie demonstrował praktyczne zastosowanie
+architektury REST, relacyjnej bazy danych, mechanizmów autoryzacji i responsywnego projektowania
+interfejsów webowych.
 
 ---
-Podpis:
-[Twoje Imię i Nazwisko]
+
+Autor: **[Imię i nazwisko]**
+
+Promotor: **[Imię i nazwisko promotora]**

@@ -1,41 +1,51 @@
 {
-  "name": "ecommerce-vanilla-node",
+  "name": "na-shary-marketplace",
   "version": "1.0.0",
   "private": true,
-  "description": "Production-ready Node.js + Express + Vanilla Web e-commerce starter",
+  "description": "React marketplace for new and pre-owned electronics",
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "nodemon backend/server.js",
+    "dev": "concurrently -k -n API,WEB -c green,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "nodemon backend/server.js",
+    "dev:web": "vite --config frontend/vite.config.mjs",
+    "build": "vite build --config frontend/vite.config.mjs",
     "start": "node backend/server.js",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "test": "node --test",
+    "test:api": "node --test tests/api.test.js",
+    "check": "npm run lint && npm run build && npm test",
     "seed": "node backend/seed.js",
-    "docker:build": "docker build -t ecommerce-starter .",
-    "docker:up": "docker-compose up --build -d"
+    "docker:build": "docker build -t na-shary-marketplace .",
+    "docker:up": "docker compose up --build -d"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^8.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "express-rate-limit": "^6.7.0",
     "helmet": "^6.0.1",
     "jsonwebtoken": "^9.0.2",
-    "better-sqlite3": "^8.3.0",
     "morgan": "^1.10.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^6.30.4",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^9.2.4",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "nodemon": "^3.1.14",
+    "pm2": "^5.2.0",
     "prettier": "^3.3.3",
-    "pm2": "^5.2.0"
-  },
-  "pm2": {
-    "apps": []
+    "vite": "^6.4.3"
   }
 }

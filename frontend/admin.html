@@ -1,45 +1,141 @@
 <!doctype html>
-<html lang="en">
+<html lang="pl">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Особистий кабінет продавця NaShary." />
+    <meta name="theme-color" content="#2563eb" />
+    <title>Кабінет продавця — NaShary</title>
+    <link rel="icon" href="assets/nashary-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <main class="shell admin-shell">
-      <section class="hero admin-panel">
-        <h1>Admin Panel</h1>
-        <div class="admin-login">
-          <label>Username: <input id="username" /></label>
-          <label>Password: <input id="password" type="password" /></label>
-          <button id="login">Zaloguj</button>
-          <button id="registerBtn" type="button">Zarejestruj</button>
-        </div>
-        <p class="hint">Demo: użytkownik <strong>admin</strong> z hasłem <strong>admin123</strong> albo stwórz własne konto.</p>
-        <div id="controls" style="display:none;">
-          <h2>Dodaj ogłoszenie</h2>
-          <form id="adForm" class="ad-form">
-            <input id="title" placeholder="Tytuł ogłoszenia" required />
-            <input id="price" placeholder="Cena" required />
-            <textarea id="desc" placeholder="Opis"></textarea>
-            <input id="images" placeholder="Obrazki (URL, oddzielone przecinkiem)" />
-            <select id="category">
-              <option value="Telefony">Telefony</option>
-              <option value="Laptopy">Laptopy</option>
-              <option value="Gaming">Gaming</option>
-              <option value="Audio">Audio</option>
-              <option value="Akcesoria">Akcesoria</option>
-            </select>
-            <input id="location" placeholder="Miasto / lokalizacja" />
-            <button id="add" type="submit">Dodaj ogłoszenie</button>
+  <body class="cabinet-page">
+    <header class="cabinet-header">
+      <div class="container cabinet-header__inner">
+        <a class="brand" href="index.html" aria-label="NaShary — на головну"><span class="brand__shape" aria-hidden="true"></span><span class="brand__word">NaShary</span></a>
+        <span class="cabinet-header__divider"></span>
+        <strong>Кабінет продавця</strong>
+        <div class="cabinet-header__actions"><a class="back-link" href="index.html"><span aria-hidden="true">←</span> До магазину</a><button class="button-link" id="headerLogout" type="button" hidden>Вийти</button></div>
+      </div>
+    </header>
+
+    <main class="cabinet-main">
+      <div class="cabinet-loading" id="cabinetLoading" aria-live="polite"><span class="loader"></span><p>Перевіряємо доступ до кабінету…</p></div>
+
+      <section class="cabinet-auth" id="cabinetAuth" hidden aria-labelledby="cabinetAuthTitle">
+        <div class="cabinet-auth__visual"><img src="assets/hero-devices.svg" alt="Електроніка" /><div><span class="eyebrow eyebrow--light">Продавайте просто</span><h1>Ваша техніка знайде нового власника</h1><p>Увійдіть, щоб створювати оголошення та керувати власними пропозиціями.</p></div></div>
+        <div class="cabinet-auth__form">
+          <span class="auth-card__icon" aria-hidden="true">♙</span>
+          <h2 id="cabinetAuthTitle">Вхід до кабінету</h2>
+          <p>Використайте свій акаунт NaShary.</p>
+          <form id="cabinetLoginForm" class="form-stack" novalidate>
+            <label class="form-field"><span>Логін</span><div class="input-wrap"><span aria-hidden="true">@</span><input id="cabinetUsername" autocomplete="username" required minlength="3" placeholder="Ваш логін" /></div></label>
+            <label class="form-field"><span>Пароль</span><div class="input-wrap"><span aria-hidden="true">⌑</span><input id="cabinetPassword" type="password" autocomplete="current-password" required placeholder="Ваш пароль" /></div></label>
+            <button class="button button--primary button--full" id="cabinetLoginButton" type="submit">Увійти</button>
+            <p class="form-message" id="cabinetLoginMessage" role="alert"></p>
           </form>
-          <h3>Aktualne ogłoszenia</h3>
-          <div id="productList"></div>
+          <p class="auth-switch">Немає акаунта? <a href="auth.html?action=register&next=admin.html">Зареєструватися</a></p>
         </div>
       </section>
+
+      <div class="cabinet-layout container" id="cabinetApp" hidden>
+        <aside class="cabinet-sidebar">
+          <div class="cabinet-profile"><span class="seller-avatar" id="cabinetAvatar">TH</span><div><strong id="cabinetUsernameLabel">Користувач</strong><small id="cabinetRoleLabel">Продавець</small></div></div>
+          <nav class="cabinet-nav" aria-label="Розділи кабінету">
+            <button class="is-active" type="button" data-view="listings"><span aria-hidden="true">▦</span> Оголошення <small id="sidebarListingCount">0</small></button>
+            <button type="button" data-view="editor"><span aria-hidden="true">＋</span> Додати товар</button>
+            <button type="button" data-view="orders"><span aria-hidden="true">▤</span> Замовлення <small id="sidebarOrderCount">0</small></button>
+            <button type="button" data-view="messages"><span aria-hidden="true">◌</span> Повідомлення <small id="sidebarMessageCount">0</small></button>
+            <button type="button" data-view="users" data-admin-only><span aria-hidden="true">✓</span> Верифікація</button>
+          </nav>
+          <div class="cabinet-sidebar__help"><span aria-hidden="true">?</span><strong>Потрібна допомога?</strong><p>Перевірте назву, стан і фото перед публікацією.</p><a href="mailto:support@nashary.example">Написати підтримці</a></div>
+          <button class="cabinet-logout" id="logoutButton" type="button"><span aria-hidden="true">↪</span> Вийти з акаунта</button>
+        </aside>
+
+        <div class="cabinet-content">
+          <div class="network-banner" id="networkBanner" hidden role="alert"><span>!</span><p><strong>Сервер недоступний</strong><small>Зміни не зберігаються локально. Відновіть з’єднання та повторіть дію.</small></p><button type="button" id="retryConnection">Повторити</button></div>
+
+          <section class="cabinet-view" id="listingsView" data-view-panel="listings">
+            <div class="cabinet-page-head"><div><span class="eyebrow" id="listingsEyebrow">Ваші пропозиції</span><h1 id="listingsTitle">Мої оголошення</h1><p id="listingsSubtitle">Керуйте технікою, яку продаєте на NaShary.</p></div><button class="button button--primary" type="button" data-open-editor>＋ Додати оголошення</button></div>
+            <div class="stats-grid">
+              <div class="stat-card"><span class="stat-card__icon stat-card__icon--purple">▦</span><p><small>Усього оголошень</small><strong id="totalListings">0</strong></p></div>
+              <div class="stat-card"><span class="stat-card__icon stat-card__icon--green">✓</span><p><small>В наявності</small><strong id="activeListings">0</strong></p></div>
+              <div class="stat-card"><span class="stat-card__icon stat-card__icon--orange">!</span><p><small>Закінчилися</small><strong id="outOfStockListings">0</strong></p></div>
+              <div class="stat-card"><span class="stat-card__icon stat-card__icon--blue">▤</span><p><small>Замовлень</small><strong id="totalOrders">0</strong></p></div>
+            </div>
+            <div class="cabinet-panel">
+              <div class="cabinet-panel__toolbar"><div><h2>Оголошення</h2><span id="listingCountText">0 товарів</span></div><label class="cabinet-search"><span aria-hidden="true">⌕</span><input id="listingSearch" type="search" placeholder="Пошук за назвою або брендом" /></label></div>
+              <div class="listing-list" id="productList" aria-live="polite"></div>
+              <div class="cabinet-empty" id="listingsEmpty" hidden><span aria-hidden="true">▦</span><h3>У вас ще немає оголошень</h3><p>Додайте перший товар і він з’явиться в каталозі.</p><button class="button button--primary" type="button" data-open-editor>Створити оголошення</button></div>
+            </div>
+          </section>
+
+          <section class="cabinet-view" id="editorView" data-view-panel="editor" hidden>
+            <div class="cabinet-page-head"><div><span class="eyebrow" id="editorEyebrow">Нова пропозиція</span><h1 id="editorTitle">Додати оголошення</h1><p>Заповніть дані чесно — так покупець швидше ухвалить рішення.</p></div><button class="button-link" id="cancelEditTop" type="button">← Назад до оголошень</button></div>
+            <form id="productForm" class="listing-form" novalidate>
+              <input id="editingId" type="hidden" />
+              <input id="editingRegion" type="hidden" />
+              <section class="form-section"><div class="form-section__heading"><span>1</span><div><h2>Основна інформація</h2><p>Назва, категорія та стан товару</p></div></div><div class="form-grid">
+                <label class="form-field form-field--full"><span>Назва оголошення *</span><input id="title" required minlength="4" maxlength="120" placeholder="Наприклад, iPhone 15 Pro 256GB Natural Titanium" /><small class="field-hint"><span id="titleCounter">0</span>/120 символів</small></label>
+                <label class="form-field"><span>Категорія *</span><select id="category" required><option value="">Оберіть категорію</option><option value="Смартфони">Смартфони</option><option value="Ноутбуки">Ноутбуки</option><option value="Комп’ютери">Комп’ютери</option><option value="Gaming">Геймінг</option><option value="Аудіо">Аудіо</option><option value="TV">TV і монітори</option><option value="Фото">Фото і відео</option><option value="Аксесуари">Аксесуари</option></select></label>
+                <label class="form-field"><span>Бренд *</span><input id="brand" required maxlength="60" placeholder="Apple, Samsung, Sony…" /></label>
+                <fieldset class="form-field form-field--full condition-field"><legend>Стан товару *</legend><label><input type="radio" name="productCondition" value="new" checked /><span><b>Новий</b><small>Не використовувався, у заводському стані</small></span></label><label><input type="radio" name="productCondition" value="used" /><span><b>Б/в</b><small>Був у використанні, стан описано чесно</small></span></label></fieldset>
+              </div></section>
+
+              <section class="form-section"><div class="form-section__heading"><span>2</span><div><h2>Ціна та наявність</h2><p>Вкажіть актуальні дані</p></div></div><div class="form-grid form-grid--three">
+                <label class="form-field"><span>Ціна *</span><div class="input-suffix"><input id="price" type="number" inputmode="decimal" min="0.01" step="0.01" required placeholder="0" /><b>PLN</b></div></label>
+                <label class="form-field"><span>Кількість *</span><input id="stock" type="number" inputmode="numeric" min="0" max="9999" step="1" value="1" required /></label>
+                <label class="form-field"><span>Місто *</span><input id="location" list="polishCities" required maxlength="80" placeholder="Варшава" /><datalist id="polishCities"><option value="Варшава"></option><option value="Краків"></option><option value="Вроцлав"></option><option value="Гданськ"></option><option value="Познань"></option><option value="Лодзь"></option><option value="Люблін"></option><option value="Катовіце"></option></datalist></label>
+                <label class="form-field form-field--full"><span>Спосіб отримання *</span><select id="delivery" required><option value="both">Доставка або самовивіз</option><option value="shipping">Лише доставка</option><option value="pickup">Лише самовивіз</option></select></label>
+              </div></section>
+
+              <section class="form-section"><div class="form-section__heading"><span>3</span><div><h2>Опис і фотографії</h2><p>Розкажіть про стан, комплект і особливості</p></div></div><div class="form-grid">
+                <label class="form-field form-field--full"><span>Опис *</span><textarea id="description" required minlength="20" maxlength="3000" rows="7" placeholder="Опишіть технічний і візуальний стан, комплектацію, термін користування…"></textarea><small class="field-hint"><span id="descriptionCounter">0</span>/3000 символів</small></label>
+                <label class="form-field form-field--full"><span>Посилання на фото</span><textarea id="images" rows="3" placeholder="Одне https-посилання в кожному рядку"></textarea><small class="field-hint">До 8 зображень. Якщо фото немає, використаємо ілюстрацію категорії.</small></label>
+                <div class="image-preview form-field--full" id="imagePreview"><span class="image-preview__placeholder">▧</span><p>Попередній перегляд першого фото</p></div>
+              </div></section>
+
+              <div class="form-actions"><button class="button button--secondary" id="cancelEdit" type="button">Скасувати</button><button class="button button--primary button--large" id="saveProduct" type="submit">Опублікувати оголошення</button></div>
+              <p class="form-message form-message--right" id="productFormMessage" role="alert"></p>
+            </form>
+          </section>
+
+          <section class="cabinet-view" id="ordersView" data-view-panel="orders" hidden>
+            <div class="cabinet-page-head"><div><span class="eyebrow">Історія покупок</span><h1 id="ordersTitle">Замовлення</h1><p>Переглядайте створені замовлення та їхній поточний статус.</p></div></div>
+            <div class="cabinet-panel"><div class="cabinet-panel__toolbar"><div><h2>Список замовлень</h2><span id="orderCountText">0 замовлень</span></div></div><div class="orders-list" id="ordersList"></div><div class="cabinet-empty" id="ordersEmpty" hidden><span aria-hidden="true">▤</span><h3>Замовлень ще немає</h3><p>Після оформлення покупки вона з’явиться тут.</p><a class="button button--primary" href="index.html#catalogSection">Перейти до каталогу</a></div></div>
+          </section>
+
+          <section class="cabinet-view" id="messagesView" data-view-panel="messages" hidden>
+            <div class="cabinet-page-head"><div><span class="eyebrow">Покупці та продавці</span><h1>Повідомлення</h1><p>Обговорюйте стан товару, доставку та ціну в межах NaShary.</p></div></div>
+            <div class="cabinet-chat-layout">
+              <aside class="cabinet-chat-list" id="cabinetChatList"></aside>
+              <div class="cabinet-chat-thread">
+                <div class="cabinet-chat-placeholder" id="cabinetChatPlaceholder">Оберіть діалог ліворуч</div>
+                <div id="cabinetChatActive" hidden>
+                  <header><div><small id="cabinetChatPerson"></small><strong id="cabinetChatTitle"></strong></div></header>
+                  <div class="chat-messages" id="cabinetChatMessages"></div>
+                  <form class="chat-offer-compose" id="cabinetOfferForm"><input id="cabinetOfferAmount" type="number" min="0.01" step="0.01" placeholder="Ваша ціна" /><button class="button button--secondary" type="submit">Запропонувати ціну</button></form>
+                  <form class="chat-compose" id="cabinetMessageForm"><textarea id="cabinetMessageInput" maxlength="1000" rows="2" required placeholder="Напишіть повідомлення…"></textarea><button class="button button--primary" type="submit">Надіслати</button></form>
+                  <p class="form-message" id="cabinetChatError" role="alert"></p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cabinet-view" id="usersView" data-view-panel="users" hidden>
+            <div class="cabinet-page-head"><div><span class="eyebrow">Довіра до продавців</span><h1>Верифікація профілів</h1><p>Це демонстраційне ручне підтвердження профілю, а не перевірка державних документів.</p></div></div>
+            <div class="cabinet-panel"><div class="user-verification-list" id="userVerificationList"></div></div>
+          </section>
+        </div>
+      </div>
     </main>
 
+    <div class="modal" id="deleteModal" hidden role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+      <div class="modal__card modal__card--small"><span class="modal__warning" aria-hidden="true">!</span><h2 id="deleteModalTitle">Видалити оголошення?</h2><p id="deleteModalText">Цю дію неможливо скасувати.</p><div class="modal__actions"><button class="button button--secondary" id="cancelDelete" type="button">Залишити</button><button class="button button--danger" id="confirmDelete" type="button">Так, видалити</button></div><p class="form-message" id="deleteMessage" role="alert"></p></div>
+    </div>
+
+    <script src="i18n.js"></script>
+    <script src="region.js"></script>
     <script src="site-data.js"></script>
     <script src="admin.js"></script>
   </body>
