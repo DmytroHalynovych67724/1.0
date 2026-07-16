@@ -377,33 +377,40 @@ export default function Catalog({ favoritesOnly = false }) {
 
       <div className="shell catalog-promo-strip"><span>{region.toUpperCase()}</span><p>{c.promo}</p><button type="button" onClick={() => navigate('/games')}>{c.play}</button></div>
 
-      {!favoritesOnly && brands.length > 0 && (
-        <section className="shell brand-rail">
-          <header>
-            <div>
-              <b>{c.popular}</b>
-              <span>{c.popularNote}</span>
+      {!favoritesOnly && (brands.length > 0 || models.length > 0) && (
+        <section className="shell catalog-discovery">
+          {brands.length > 0 && (
+            <div className="brand-rail">
+              <header>
+                <div>
+                  <b>{c.popular}</b>
+                  <span>{c.popularNote}</span>
+                </div>
+              </header>
+              <div className="brand-rail__track">
+                {brands.map((brand) => (
+                  <button
+                    className={params.get('brand') === brand ? 'is-active' : ''}
+                    type="button"
+                    key={brand}
+                    onClick={() => set('brand', params.get('brand') === brand ? '' : brand)}
+                  >
+                    <span>{brand.slice(0, 2).toUpperCase()}</span>
+                    <b>{brand}</b>
+                    <small>{brandCounts[brand]}</small>
+                  </button>
+                ))}
+              </div>
             </div>
-          </header>
-          <div className="brand-rail__track">
-            {brands.map((brand) => (
-              <button
-                className={params.get('brand') === brand ? 'is-active' : ''}
-                type="button"
-                key={brand}
-                onClick={() => set('brand', params.get('brand') === brand ? '' : brand)}
-              >
-                <span>{brand.slice(0, 2).toUpperCase()}</span>
-                <b>{brand}</b>
-                <small>{brandCounts[brand]}</small>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
+          )}
 
-      {!favoritesOnly && models.length > 0 && (
-        <section className="shell model-rail"><b>{c.models}</b><div>{models.map((model) => { const sample = sourceProducts.find((item) => item.model === model); return <button type="button" key={model} onClick={() => navigate(`/model/${encodeURIComponent(sample?.brand || '')}/${encodeURIComponent(model)}`)}>{model}<small>{modelCounts[model]}</small></button>; })}</div></section>
+          {models.length > 0 && (
+            <div className="model-rail">
+              <b>{c.models}</b>
+              <div>{models.map((model) => { const sample = sourceProducts.find((item) => item.model === model); return <button type="button" key={model} onClick={() => navigate(`/model/${encodeURIComponent(sample?.brand || '')}/${encodeURIComponent(model)}`)}>{model}<small>{modelCounts[model]}</small></button>; })}</div>
+            </div>
+          )}
+        </section>
       )}
 
       <div className="shell catalog-react-layout">
