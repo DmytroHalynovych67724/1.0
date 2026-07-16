@@ -144,7 +144,7 @@ async function listProducts(filters = {}) {
     (SELECT AVG(r.rating) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerRating,
     (SELECT COUNT(*) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerReviewCount
     FROM products p LEFT JOIN users u ON u.id = p.createdBy${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY ${orderBy}`;
-  const products = db.prepare(sql).all(params).map(normalizeProduct);
+  const products = (await db.prepare(sql).all(params)).map(normalizeProduct);
   if (!filters.specs || !Object.keys(filters.specs).length) return products;
   return products.filter((product) =>
     Object.entries(filters.specs).every(
@@ -156,7 +156,7 @@ async function listProducts(filters = {}) {
 
 async function getProduct(id) {
   return normalizeProduct(
-    getDB()
+    await getDB()
       .prepare(
         `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar,
     (SELECT AVG(r.rating) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerRating,
@@ -168,7 +168,7 @@ async function getProduct(id) {
 }
 
 async function getProductOwner(id) {
-  const row = getDB().prepare('SELECT createdBy FROM products WHERE id = ?').get(id);
+  const row = await getDB().prepare('SELECT createdBy FROM products WHERE id = ?').get(id);
   return row ? row.createdBy : undefined;
 }
 
@@ -197,18 +197,25 @@ async function createProduct(payload, options = {}) {
     delivery: ['shipping', 'pickup', 'both'].includes(payload.delivery) ? payload.delivery : 'both',
     warranty: ['seller', 'manufacturer'].includes(payload.warranty) ? payload.warranty : 'none',
     negotiable: payload.negotiable !== false,
-    status: ['active', 'reserved', 'sold', 'draft'].includes(payload.status) ? payload.status : 'active',
+    status: ['active', 'reserved', 'sold', 'draft'].includes(payload.status)
+      ? payload.status
+      : 'active',
     urgent: Boolean(payload.urgent),
-    inspection: payload.inspection && typeof payload.inspection === 'object' ? payload.inspection : {},
-    deviceDetails: payload.deviceDetails && typeof payload.deviceDetails === 'object' ? payload.deviceDetails : {},
+    inspection:
+      payload.inspection && typeof payload.inspection === 'object' ? payload.inspection : {},
+    deviceDetails:
+      payload.deviceDetails && typeof payload.deviceDetails === 'object'
+        ? payload.deviceDetails
+        : {},
     region,
     currency: currencyForRegion(region),
     createdBy: options.createdBy || null,
     createdAt,
   };
 
-  db.prepare(
-    `
+  await db
+    .prepare(
+      `
     INSERT INTO products (
       id, title, description, price, priceCents, images, specs, category, location,
       condition, brand, model, stock, seller, sellerType, delivery, warranty, negotiable, status, urgent, inspection, deviceDetails, region, currency, createdBy, createdAt
@@ -217,17 +224,19 @@ async function createProduct(payload, options = {}) {
       @condition, @brand, @model, @stock, @seller, @sellerType, @delivery, @warranty, @negotiable, @status, @urgent, @inspection, @deviceDetails, @region, @currency, @createdBy, @createdAt
     )
   `
-  ).run({
-    ...product,
-    images: JSON.stringify(product.images),
-    specs: JSON.stringify(product.specs),
-    inspection: JSON.stringify(product.inspection),
-    deviceDetails: JSON.stringify(product.deviceDetails),
-    negotiable: product.negotiable ? 1 : 0,
-    urgent: product.urgent ? 1 : 0,
-  });
+    )
+    .run({
+      ...product,
+      images: JSON.stringify(product.images),
+      specs: JSON.stringify(product.specs),
+      inspection: JSON.stringify(product.inspection),
+      deviceDetails: JSON.stringify(product.deviceDetails),
+      negotiable: product.negotiable ? 1 : 0,
+      urgent: product.urgent ? 1 : 0,
+    });
 
-  db.prepare('INSERT INTO price_history (id, productId, priceCents, createdAt) VALUES (?, ?, ?, ?)')
+  await db
+    .prepare('INSERT INTO price_history (id, productId, priceCents, createdAt) VALUES (?, ?, ?, ?)')
     .run(uuidv4(), id, product.priceCents, createdAt);
 
   return getProduct(id);
@@ -243,7 +252,7 @@ async function updateProduct(id, payload) {
   const priceCents = Math.round(merged.price * 100);
   const updatedAt = Date.now();
   const priceChanged = Number(existing.price) !== Number(merged.price);
-  const result = getDB()
+  const result = await getDB()
     .prepare(
       `
     UPDATE products SET
@@ -298,21 +307,28 @@ async function updateProduct(id, payload) {
       urgent: merged.urgent ? 1 : 0,
       inspection: JSON.stringify(merged.inspection || {}),
       deviceDetails: JSON.stringify(merged.deviceDetails || {}),
-      oldPriceCents: priceChanged ? Math.round(existing.price * 100) : (existing.oldPrice ? Math.round(existing.oldPrice * 100) : null),
+      oldPriceCents: priceChanged
+        ? Math.round(existing.price * 100)
+        : existing.oldPrice
+          ? Math.round(existing.oldPrice * 100)
+          : null,
       region: merged.region,
       currency: merged.currency,
       updatedAt,
     });
 
   if (result.changes && priceChanged) {
-    getDB().prepare('INSERT INTO price_history (id, productId, priceCents, createdAt) VALUES (?, ?, ?, ?)')
+    await getDB()
+      .prepare(
+        'INSERT INTO price_history (id, productId, priceCents, createdAt) VALUES (?, ?, ?, ?)'
+      )
       .run(uuidv4(), id, priceCents, updatedAt);
   }
   return result.changes ? getProduct(id) : null;
 }
 
 async function deleteProduct(id) {
-  return getDB().prepare('DELETE FROM products WHERE id = ?').run(id).changes > 0;
+  return (await getDB().prepare('DELETE FROM products WHERE id = ?').run(id)).changes > 0;
 }
 
 module.exports = {

@@ -39,20 +39,22 @@ async function ensureAdmin(db, options = {}) {
     console.warn('Using development demo admin credentials admin / admin123');
   }
 
-  const existing = db
+  const existing = await db
     .prepare('SELECT id, username, password, role FROM users WHERE username = ? COLLATE NOCASE')
     .get(config.username);
 
   if (!existing) {
     let id = 'admin1';
-    if (db.prepare('SELECT id FROM users WHERE id = ?').get(id)) id = uuidv4();
+    if (await db.prepare('SELECT id FROM users WHERE id = ?').get(id)) id = uuidv4();
     const hash = await bcrypt.hash(config.password, 12);
-    db.prepare(
-      `
+    await db
+      .prepare(
+        `
       INSERT INTO users (id, username, password, role, verificationStatus, verifiedAt, createdAt)
       VALUES (?, ?, ?, 'admin', 'verified', ?, ?)
     `
-    ).run(id, config.username, hash, Date.now(), Date.now());
+      )
+      .run(id, config.username, hash, Date.now(), Date.now());
     return { created: true, updated: false, skipped: false, username: config.username };
   }
 
@@ -79,13 +81,15 @@ async function ensureAdmin(db, options = {}) {
   const needsUpdate = existing.role !== 'admin' || !passwordMatches;
   if (needsUpdate) {
     const hash = passwordMatches ? existing.password : await bcrypt.hash(config.password, 12);
-    db.prepare(
-      `
+    await db
+      .prepare(
+        `
       UPDATE users
       SET password = ?, role = 'admin', verificationStatus = 'verified', verifiedAt = COALESCE(verifiedAt, ?), updatedAt = ?
       WHERE id = ?
     `
-    ).run(hash, Date.now(), Date.now(), existing.id);
+      )
+      .run(hash, Date.now(), Date.now(), existing.id);
   }
 
   return {

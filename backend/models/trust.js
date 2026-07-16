@@ -4,7 +4,7 @@ const { AppError } = require('../utils/errors');
 
 async function createReview({ orderId, productId, buyerId, rating, comment }) {
   const db = getDB();
-  const order = db
+  const order = await db
     .prepare('SELECT * FROM orders WHERE id = ? AND userId = ?')
     .get(orderId, buyerId);
   if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found');
@@ -25,18 +25,20 @@ async function createReview({ orderId, productId, buyerId, rating, comment }) {
   if (!item) throw new AppError(400, 'PRODUCT_NOT_IN_ORDER', 'Product is not part of this order');
   const sellerId =
     item.sellerId ||
-    db.prepare('SELECT createdBy FROM products WHERE id = ?').get(productId)?.createdBy;
+    (await db.prepare('SELECT createdBy FROM products WHERE id = ?').get(productId))?.createdBy;
   if (!sellerId) throw new AppError(409, 'SELLER_UNAVAILABLE', 'Seller cannot be reviewed');
   const id = uuidv4();
   try {
-    db.prepare(
-      `
+    await db
+      .prepare(
+        `
       INSERT INTO reviews (id, orderId, productId, buyerId, sellerId, rating, comment, createdAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
-    ).run(id, orderId, productId, buyerId, sellerId, rating, comment, Date.now());
+      )
+      .run(id, orderId, productId, buyerId, sellerId, rating, comment, Date.now());
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || /unique/i.test(error.message || '')) {
       throw new AppError(409, 'REVIEW_ALREADY_EXISTS', 'This purchase has already been reviewed');
     }
     throw error;
@@ -46,7 +48,7 @@ async function createReview({ orderId, productId, buyerId, rating, comment }) {
 
 async function listSellerReviews(sellerId) {
   const db = getDB();
-  const reviews = db
+  const reviews = await db
     .prepare(
       `
     SELECT r.id, r.productId, r.rating, r.comment, r.createdAt, u.username AS buyerName
@@ -55,7 +57,7 @@ async function listSellerReviews(sellerId) {
   `
     )
     .all(sellerId);
-  const summary = db
+  const summary = await db
     .prepare(
       'SELECT ROUND(AVG(rating), 1) AS rating, COUNT(*) AS count FROM reviews WHERE sellerId = ? AND hidden = 0'
     )
@@ -65,13 +67,15 @@ async function listSellerReviews(sellerId) {
 
 async function getReviewEligibility({ productId, buyerId }) {
   const db = getDB();
-  const product = db.prepare('SELECT id, createdBy FROM products WHERE id = ?').get(productId);
+  const product = await db
+    .prepare('SELECT id, createdBy FROM products WHERE id = ?')
+    .get(productId);
   if (!product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
   if (product.createdBy === buyerId) {
     return { eligible: false, reason: 'own_listing' };
   }
 
-  const orders = db
+  const orders = await db
     .prepare(
       `SELECT id, items FROM orders
        WHERE userId = ? AND status = 'completed'
@@ -81,14 +85,17 @@ async function getReviewEligibility({ productId, buyerId }) {
   const matchingOrder = orders.find((order) => {
     try {
       const items = JSON.parse(order.items || '[]');
-      return Array.isArray(items) && items.some((item) => item.id === productId || item.productId === productId);
+      return (
+        Array.isArray(items) &&
+        items.some((item) => item.id === productId || item.productId === productId)
+      );
     } catch (_error) {
       return false;
     }
   });
   if (!matchingOrder) return { eligible: false, reason: 'completed_purchase_required' };
 
-  const existing = db
+  const existing = await db
     .prepare('SELECT id FROM reviews WHERE orderId = ? AND productId = ? AND buyerId = ?')
     .get(matchingOrder.id, productId, buyerId);
   if (existing) return { eligible: false, reason: 'already_reviewed' };
@@ -109,7 +116,7 @@ async function listUsers() {
 async function setVerification({ userId, verified }) {
   const db = getDB();
   const now = Date.now();
-  const result = db
+  const result = await db
     .prepare('UPDATE users SET verificationStatus = ?, verifiedAt = ?, updatedAt = ? WHERE id = ?')
     .run(verified ? 'verified' : 'unverified', verified ? now : null, now, userId);
   if (!result.changes) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');

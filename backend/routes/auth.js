@@ -29,7 +29,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const { username, password } = validateCredentials(req.body, { registration: true });
     const db = getDB();
-    const existing = db
+    const existing = await db
       .prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE')
       .get(username);
     if (existing) throw new AppError(409, 'USERNAME_TAKEN', 'Username is already registered');
@@ -39,11 +39,13 @@ router.post(
     const passwordHash = await bcrypt.hash(password, 12);
 
     try {
-      db.prepare(
-        'INSERT INTO users (id, username, password, role, createdAt) VALUES (?, ?, ?, ?, ?)'
-      ).run(id, username, passwordHash, 'user', createdAt);
+      await db
+        .prepare(
+          'INSERT INTO users (id, username, password, role, createdAt) VALUES (?, ?, ?, ?, ?)'
+        )
+        .run(id, username, passwordHash, 'user', createdAt);
     } catch (error) {
-      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || /unique/i.test(error.message || '')) {
         throw new AppError(409, 'USERNAME_TAKEN', 'Username is already registered');
       }
       throw error;
@@ -59,7 +61,7 @@ router.post(
   '/login',
   asyncHandler(async (req, res) => {
     const { username, password } = validateCredentials(req.body);
-    const user = getDB()
+    const user = await getDB()
       .prepare(
         'SELECT id, username, password, role, avatar, verificationStatus, verifiedAt, createdAt FROM users WHERE username = ? COLLATE NOCASE'
       )
@@ -92,23 +94,29 @@ router.get('/me', requireAuth, (req, res) => {
   res.json({ user: publicUser(req.user) });
 });
 
-router.patch('/me', requireAuth, (req, res) => {
-  const avatar = typeof req.body?.avatar === 'string' ? req.body.avatar.trim() : null;
-  const validRemote = avatar === '' || /^https?:\/\/[^\s]{1,2000}$/i.test(avatar || '');
-  const validData =
-    /^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/=\s]+$/i.test(avatar || '') &&
-    Buffer.byteLength(avatar, 'utf8') <= 1_000_000;
-  if (avatar === null || (!validRemote && !validData)) {
-    throw new AppError(400, 'INVALID_AVATAR', 'Avatar must be a supported image smaller than 1 MB');
-  }
-  const db = getDB();
-  db.prepare('UPDATE users SET avatar = ?, updatedAt = ? WHERE id = ?').run(
-    avatar,
-    Date.now(),
-    req.user.id
-  );
-  const updated = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-  res.json({ user: publicUser(updated) });
-});
+router.patch(
+  '/me',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const avatar = typeof req.body?.avatar === 'string' ? req.body.avatar.trim() : null;
+    const validRemote = avatar === '' || /^https?:\/\/[^\s]{1,2000}$/i.test(avatar || '');
+    const validData =
+      /^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/=\s]+$/i.test(avatar || '') &&
+      Buffer.byteLength(avatar, 'utf8') <= 1_000_000;
+    if (avatar === null || (!validRemote && !validData)) {
+      throw new AppError(
+        400,
+        'INVALID_AVATAR',
+        'Avatar must be a supported image smaller than 1 MB'
+      );
+    }
+    const db = getDB();
+    await db
+      .prepare('UPDATE users SET avatar = ?, updatedAt = ? WHERE id = ?')
+      .run(avatar, Date.now(), req.user.id);
+    const updated = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    res.json({ user: publicUser(updated) });
+  })
+);
 
 module.exports = router;

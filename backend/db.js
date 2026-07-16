@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const Database = require('better-sqlite3');
+const { createLocalDatabase, createRemoteDatabase } = require('./database-client');
 
 const defaultFile = path.join(__dirname, '..', 'data', 'db.sqlite');
 
@@ -14,20 +14,31 @@ function getConfiguredFile() {
   return path.resolve(configured.trim());
 }
 
-function addColumnIfMissing(database, table, column, definition) {
+function getTursoConfig() {
+  if (process.env.NODE_ENV === 'test') return null;
+  const url = String(process.env.TURSO_DATABASE_URL || '').trim();
+  const authToken = String(process.env.TURSO_AUTH_TOKEN || '').trim();
+  if (!url && !authToken) return null;
+  if (!url || !authToken) {
+    throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be configured together');
+  }
+  if (!/^libsql:\/\//i.test(url) && !/^https:\/\//i.test(url)) {
+    throw new Error('TURSO_DATABASE_URL must start with libsql:// or https://');
+  }
+  return { url, authToken };
+}
+
+async function addColumnIfMissing(database, table, column, definition) {
   const columns = new Set(
-    database
-      .prepare(`PRAGMA table_info(${table})`)
-      .all()
-      .map((item) => item.name)
+    (await database.prepare(`PRAGMA table_info(${table})`).all()).map((item) => item.name)
   );
   if (!columns.has(column)) {
-    database.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+    await database.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
   }
 }
 
-function migrateProducts(database) {
-  database.exec(`
+async function migrateProducts(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS products (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -52,93 +63,115 @@ function migrateProducts(database) {
     )
   `);
 
-  addColumnIfMissing(database, 'products', 'description', "TEXT NOT NULL DEFAULT ''");
-  addColumnIfMissing(database, 'products', 'price', 'REAL NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'products', 'priceCents', 'INTEGER');
-  addColumnIfMissing(database, 'products', 'images', "TEXT NOT NULL DEFAULT '[]'");
-  addColumnIfMissing(database, 'products', 'specs', "TEXT NOT NULL DEFAULT '{}'");
-  addColumnIfMissing(database, 'products', 'category', "TEXT NOT NULL DEFAULT 'Elektronika'");
-  addColumnIfMissing(database, 'products', 'location', "TEXT NOT NULL DEFAULT 'Unknown'");
-  addColumnIfMissing(database, 'products', 'condition', "TEXT NOT NULL DEFAULT 'used'");
-  addColumnIfMissing(database, 'products', 'brand', "TEXT NOT NULL DEFAULT ''");
-  addColumnIfMissing(database, 'products', 'stock', 'INTEGER NOT NULL DEFAULT 1');
-  addColumnIfMissing(database, 'products', 'seller', "TEXT NOT NULL DEFAULT 'NaShary Store'");
-  addColumnIfMissing(database, 'products', 'sellerType', "TEXT NOT NULL DEFAULT 'store'");
-  addColumnIfMissing(database, 'products', 'delivery', "TEXT NOT NULL DEFAULT 'both'");
-  addColumnIfMissing(database, 'products', 'region', "TEXT NOT NULL DEFAULT 'pl'");
-  addColumnIfMissing(database, 'products', 'currency', "TEXT NOT NULL DEFAULT 'PLN'");
-  addColumnIfMissing(database, 'products', 'createdBy', 'TEXT');
-  addColumnIfMissing(database, 'products', 'createdAt', 'INTEGER');
-  addColumnIfMissing(database, 'products', 'updatedAt', 'INTEGER');
-  addColumnIfMissing(database, 'products', 'model', "TEXT NOT NULL DEFAULT ''");
-  addColumnIfMissing(database, 'products', 'warranty', "TEXT NOT NULL DEFAULT 'none'");
-  addColumnIfMissing(database, 'products', 'negotiable', 'INTEGER NOT NULL DEFAULT 1');
-  addColumnIfMissing(database, 'products', 'status', "TEXT NOT NULL DEFAULT 'active'");
-  addColumnIfMissing(database, 'products', 'urgent', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'products', 'inspection', "TEXT NOT NULL DEFAULT '{}'");
-  addColumnIfMissing(database, 'products', 'oldPriceCents', 'INTEGER');
-  addColumnIfMissing(database, 'products', 'deviceDetails', "TEXT NOT NULL DEFAULT '{}'");
+  await addColumnIfMissing(database, 'products', 'description', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'products', 'price', 'REAL NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'products', 'priceCents', 'INTEGER');
+  await addColumnIfMissing(database, 'products', 'images', "TEXT NOT NULL DEFAULT '[]'");
+  await addColumnIfMissing(database, 'products', 'specs', "TEXT NOT NULL DEFAULT '{}'");
+  await addColumnIfMissing(database, 'products', 'category', "TEXT NOT NULL DEFAULT 'Elektronika'");
+  await addColumnIfMissing(database, 'products', 'location', "TEXT NOT NULL DEFAULT 'Unknown'");
+  await addColumnIfMissing(database, 'products', 'condition', "TEXT NOT NULL DEFAULT 'used'");
+  await addColumnIfMissing(database, 'products', 'brand', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'products', 'stock', 'INTEGER NOT NULL DEFAULT 1');
+  await addColumnIfMissing(database, 'products', 'seller', "TEXT NOT NULL DEFAULT 'NaShary Store'");
+  await addColumnIfMissing(database, 'products', 'sellerType', "TEXT NOT NULL DEFAULT 'store'");
+  await addColumnIfMissing(database, 'products', 'delivery', "TEXT NOT NULL DEFAULT 'both'");
+  await addColumnIfMissing(database, 'products', 'region', "TEXT NOT NULL DEFAULT 'pl'");
+  await addColumnIfMissing(database, 'products', 'currency', "TEXT NOT NULL DEFAULT 'PLN'");
+  await addColumnIfMissing(database, 'products', 'createdBy', 'TEXT');
+  await addColumnIfMissing(database, 'products', 'createdAt', 'INTEGER');
+  await addColumnIfMissing(database, 'products', 'updatedAt', 'INTEGER');
+  await addColumnIfMissing(database, 'products', 'model', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'products', 'warranty', "TEXT NOT NULL DEFAULT 'none'");
+  await addColumnIfMissing(database, 'products', 'negotiable', 'INTEGER NOT NULL DEFAULT 1');
+  await addColumnIfMissing(database, 'products', 'status', "TEXT NOT NULL DEFAULT 'active'");
+  await addColumnIfMissing(database, 'products', 'urgent', 'INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'products', 'inspection', "TEXT NOT NULL DEFAULT '{}'");
+  await addColumnIfMissing(database, 'products', 'oldPriceCents', 'INTEGER');
+  await addColumnIfMissing(database, 'products', 'deviceDetails', "TEXT NOT NULL DEFAULT '{}'");
 
   const now = Date.now();
-  database.prepare("UPDATE products SET description = '' WHERE description IS NULL").run();
-  database.prepare("UPDATE products SET images = '[]' WHERE images IS NULL OR images = ''").run();
-  database.prepare("UPDATE products SET specs = '{}' WHERE specs IS NULL OR specs = ''").run();
-  database
+  await database.prepare("UPDATE products SET description = '' WHERE description IS NULL").run();
+  await database
+    .prepare("UPDATE products SET images = '[]' WHERE images IS NULL OR images = ''")
+    .run();
+  await database
+    .prepare("UPDATE products SET specs = '{}' WHERE specs IS NULL OR specs = ''")
+    .run();
+  await database
     .prepare(
       "UPDATE products SET category = 'Elektronika' WHERE category IS NULL OR TRIM(category) = ''"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE products SET location = 'Unknown' WHERE location IS NULL OR TRIM(location) = ''"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE products SET condition = 'used' WHERE condition IS NULL OR condition NOT IN ('new', 'used')"
     )
     .run();
-  database.prepare("UPDATE products SET brand = '' WHERE brand IS NULL").run();
-  database.prepare('UPDATE products SET stock = 1 WHERE stock IS NULL OR stock < 0').run();
-  database
+  await database.prepare("UPDATE products SET brand = '' WHERE brand IS NULL").run();
+  await database.prepare('UPDATE products SET stock = 1 WHERE stock IS NULL OR stock < 0').run();
+  await database
     .prepare(
       "UPDATE products SET seller = 'NaShary Store' WHERE seller IS NULL OR TRIM(seller) = ''"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE products SET sellerType = 'store' WHERE sellerType IS NULL OR sellerType NOT IN ('store', 'private')"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE products SET delivery = 'both' WHERE delivery IS NULL OR delivery NOT IN ('shipping', 'pickup', 'both')"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE products SET region = 'pl' WHERE region IS NULL OR region NOT IN ('pl', 'ua', 'eu')"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE products SET currency = CASE region WHEN 'ua' THEN 'UAH' WHEN 'eu' THEN 'EUR' ELSE 'PLN' END"
     )
     .run();
-  database.prepare('UPDATE products SET price = 0 WHERE price IS NULL OR price < 0').run();
-  database
+  await database.prepare('UPDATE products SET price = 0 WHERE price IS NULL OR price < 0').run();
+  await database
     .prepare(
       'UPDATE products SET priceCents = CAST(ROUND(price * 100) AS INTEGER) WHERE priceCents IS NULL OR priceCents < 0'
     )
     .run();
-  database.prepare('UPDATE products SET createdAt = ? WHERE createdAt IS NULL').run(now);
-  database.prepare("UPDATE products SET model = TRIM(REPLACE(title, brand, '')) WHERE model IS NULL OR TRIM(model) = ''").run();
-  database.prepare("UPDATE products SET warranty = 'none' WHERE warranty IS NULL OR warranty NOT IN ('none', 'seller', 'manufacturer')").run();
-  database.prepare("UPDATE products SET status = CASE WHEN stock > 0 THEN 'active' ELSE 'sold' END WHERE status IS NULL OR status NOT IN ('active', 'reserved', 'sold', 'draft')").run();
-  database.prepare("UPDATE products SET inspection = '{}' WHERE inspection IS NULL OR inspection = ''").run();
-  database.prepare("UPDATE products SET deviceDetails = '{}' WHERE deviceDetails IS NULL OR deviceDetails = ''").run();
+  await database.prepare('UPDATE products SET createdAt = ? WHERE createdAt IS NULL').run(now);
+  await database
+    .prepare(
+      "UPDATE products SET model = TRIM(REPLACE(title, brand, '')) WHERE model IS NULL OR TRIM(model) = ''"
+    )
+    .run();
+  await database
+    .prepare(
+      "UPDATE products SET warranty = 'none' WHERE warranty IS NULL OR warranty NOT IN ('none', 'seller', 'manufacturer')"
+    )
+    .run();
+  await database
+    .prepare(
+      "UPDATE products SET status = CASE WHEN stock > 0 THEN 'active' ELSE 'sold' END WHERE status IS NULL OR status NOT IN ('active', 'reserved', 'sold', 'draft')"
+    )
+    .run();
+  await database
+    .prepare("UPDATE products SET inspection = '{}' WHERE inspection IS NULL OR inspection = ''")
+    .run();
+  await database
+    .prepare(
+      "UPDATE products SET deviceDetails = '{}' WHERE deviceDetails IS NULL OR deviceDetails = ''"
+    )
+    .run();
 
-  database.exec(`
+  await database.exec(`
     CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(createdAt DESC);
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
     CREATE INDEX IF NOT EXISTS idx_products_condition ON products(condition);
@@ -147,8 +180,8 @@ function migrateProducts(database) {
   `);
 }
 
-function migrateMarketplace(database) {
-  database.exec(`
+async function migrateMarketplace(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS price_history (
       id TEXT PRIMARY KEY,
       productId TEXT NOT NULL,
@@ -248,13 +281,17 @@ function migrateMarketplace(database) {
     CREATE INDEX IF NOT EXISTS idx_newsletter_active ON newsletter_subscribers(active, createdAt DESC);
   `);
 
-  database.prepare(`INSERT INTO price_history (id, productId, priceCents, createdAt)
+  await database
+    .prepare(
+      `INSERT INTO price_history (id, productId, priceCents, createdAt)
     SELECT 'initial-' || id, id, priceCents, createdAt FROM products
-    WHERE priceCents IS NOT NULL AND NOT EXISTS (SELECT 1 FROM price_history h WHERE h.productId = products.id)`).run();
+    WHERE priceCents IS NOT NULL AND NOT EXISTS (SELECT 1 FROM price_history h WHERE h.productId = products.id)`
+    )
+    .run();
 }
 
-function migrateUsers(database) {
-  database.exec(`
+async function migrateUsers(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       username TEXT UNIQUE NOT NULL,
@@ -268,35 +305,40 @@ function migrateUsers(database) {
     )
   `);
 
-  addColumnIfMissing(database, 'users', 'role', "TEXT NOT NULL DEFAULT 'user'");
-  addColumnIfMissing(database, 'users', 'avatar', "TEXT NOT NULL DEFAULT ''");
-  addColumnIfMissing(database, 'users', 'verificationStatus', "TEXT NOT NULL DEFAULT 'unverified'");
-  addColumnIfMissing(database, 'users', 'verifiedAt', 'INTEGER');
-  addColumnIfMissing(database, 'users', 'createdAt', 'INTEGER');
-  addColumnIfMissing(database, 'users', 'updatedAt', 'INTEGER');
+  await addColumnIfMissing(database, 'users', 'role', "TEXT NOT NULL DEFAULT 'user'");
+  await addColumnIfMissing(database, 'users', 'avatar', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(
+    database,
+    'users',
+    'verificationStatus',
+    "TEXT NOT NULL DEFAULT 'unverified'"
+  );
+  await addColumnIfMissing(database, 'users', 'verifiedAt', 'INTEGER');
+  await addColumnIfMissing(database, 'users', 'createdAt', 'INTEGER');
+  await addColumnIfMissing(database, 'users', 'updatedAt', 'INTEGER');
 
-  database
+  await database
     .prepare("UPDATE users SET role = 'user' WHERE role IS NULL OR role NOT IN ('user', 'admin')")
     .run();
-  database.prepare("UPDATE users SET avatar = '' WHERE avatar IS NULL").run();
-  database.prepare('UPDATE users SET createdAt = ? WHERE createdAt IS NULL').run(Date.now());
-  database
+  await database.prepare("UPDATE users SET avatar = '' WHERE avatar IS NULL").run();
+  await database.prepare('UPDATE users SET createdAt = ? WHERE createdAt IS NULL').run(Date.now());
+  await database
     .prepare(
       "UPDATE users SET verificationStatus = 'unverified' WHERE verificationStatus IS NULL OR verificationStatus NOT IN ('unverified', 'verified')"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE users SET verificationStatus = 'verified', verifiedAt = COALESCE(verifiedAt, ?) WHERE role = 'admin'"
     )
     .run(Date.now());
-  database.exec(
+  await database.exec(
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase_unique ON users(username COLLATE NOCASE)'
   );
 }
 
-function migrateOrders(database) {
-  database.exec(`
+async function migrateOrders(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
@@ -324,93 +366,97 @@ function migrateOrders(database) {
     )
   `);
 
-  addColumnIfMissing(database, 'orders', 'items', "TEXT NOT NULL DEFAULT '[]'");
-  addColumnIfMissing(database, 'orders', 'total', 'REAL NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'orders', 'totalCents', 'INTEGER');
-  addColumnIfMissing(database, 'orders', 'subtotal', 'REAL NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'orders', 'subtotalCents', 'INTEGER');
-  addColumnIfMissing(database, 'orders', 'discount', 'REAL NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'orders', 'discountCents', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'orders', 'shipping', 'REAL NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'orders', 'shippingCents', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(database, 'orders', 'shippingDiscount', 'REAL NOT NULL DEFAULT 0');
-  addColumnIfMissing(
+  await addColumnIfMissing(database, 'orders', 'items', "TEXT NOT NULL DEFAULT '[]'");
+  await addColumnIfMissing(database, 'orders', 'total', 'REAL NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'orders', 'totalCents', 'INTEGER');
+  await addColumnIfMissing(database, 'orders', 'subtotal', 'REAL NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'orders', 'subtotalCents', 'INTEGER');
+  await addColumnIfMissing(database, 'orders', 'discount', 'REAL NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'orders', 'discountCents', 'INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'orders', 'shipping', 'REAL NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'orders', 'shippingCents', 'INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'orders', 'shippingDiscount', 'REAL NOT NULL DEFAULT 0');
+  await addColumnIfMissing(
     database,
     'orders',
     'shippingDiscountCents',
     'INTEGER NOT NULL DEFAULT 0'
   );
-  addColumnIfMissing(database, 'orders', 'promoCode', 'TEXT');
-  addColumnIfMissing(database, 'orders', 'rewardType', 'TEXT');
-  addColumnIfMissing(database, 'orders', 'rewardGift', 'TEXT');
-  addColumnIfMissing(database, 'orders', 'checkoutData', "TEXT NOT NULL DEFAULT '{}'");
-  addColumnIfMissing(database, 'orders', 'region', "TEXT NOT NULL DEFAULT 'pl'");
-  addColumnIfMissing(database, 'orders', 'currency', "TEXT NOT NULL DEFAULT 'PLN'");
-  addColumnIfMissing(database, 'orders', 'status', "TEXT NOT NULL DEFAULT 'created'");
-  addColumnIfMissing(database, 'orders', 'createdAt', 'INTEGER');
-  addColumnIfMissing(database, 'orders', 'updatedAt', 'INTEGER');
+  await addColumnIfMissing(database, 'orders', 'promoCode', 'TEXT');
+  await addColumnIfMissing(database, 'orders', 'rewardType', 'TEXT');
+  await addColumnIfMissing(database, 'orders', 'rewardGift', 'TEXT');
+  await addColumnIfMissing(database, 'orders', 'checkoutData', "TEXT NOT NULL DEFAULT '{}'");
+  await addColumnIfMissing(database, 'orders', 'region', "TEXT NOT NULL DEFAULT 'pl'");
+  await addColumnIfMissing(database, 'orders', 'currency', "TEXT NOT NULL DEFAULT 'PLN'");
+  await addColumnIfMissing(database, 'orders', 'status', "TEXT NOT NULL DEFAULT 'created'");
+  await addColumnIfMissing(database, 'orders', 'createdAt', 'INTEGER');
+  await addColumnIfMissing(database, 'orders', 'updatedAt', 'INTEGER');
 
-  database.prepare("UPDATE orders SET items = '[]' WHERE items IS NULL OR items = ''").run();
-  database.prepare('UPDATE orders SET total = 0 WHERE total IS NULL OR total < 0').run();
-  database
+  await database.prepare("UPDATE orders SET items = '[]' WHERE items IS NULL OR items = ''").run();
+  await database.prepare('UPDATE orders SET total = 0 WHERE total IS NULL OR total < 0').run();
+  await database
     .prepare(
       'UPDATE orders SET totalCents = CAST(ROUND(total * 100) AS INTEGER) WHERE totalCents IS NULL OR totalCents < 0'
     )
     .run();
-  database
+  await database
     .prepare('UPDATE orders SET subtotal = total WHERE subtotal IS NULL OR subtotal < 0')
     .run();
-  database
+  await database
     .prepare(
       'UPDATE orders SET subtotalCents = totalCents WHERE subtotalCents IS NULL OR subtotalCents < 0'
     )
     .run();
-  database.prepare('UPDATE orders SET discount = 0 WHERE discount IS NULL OR discount < 0').run();
-  database
+  await database
+    .prepare('UPDATE orders SET discount = 0 WHERE discount IS NULL OR discount < 0')
+    .run();
+  await database
     .prepare('UPDATE orders SET discountCents = 0 WHERE discountCents IS NULL OR discountCents < 0')
     .run();
-  database.prepare('UPDATE orders SET shipping = 0 WHERE shipping IS NULL OR shipping < 0').run();
-  database
+  await database
+    .prepare('UPDATE orders SET shipping = 0 WHERE shipping IS NULL OR shipping < 0')
+    .run();
+  await database
     .prepare('UPDATE orders SET shippingCents = 0 WHERE shippingCents IS NULL OR shippingCents < 0')
     .run();
-  database
+  await database
     .prepare(
       'UPDATE orders SET shippingDiscount = 0 WHERE shippingDiscount IS NULL OR shippingDiscount < 0'
     )
     .run();
-  database
+  await database
     .prepare(
       'UPDATE orders SET shippingDiscountCents = 0 WHERE shippingDiscountCents IS NULL OR shippingDiscountCents < 0'
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE orders SET checkoutData = '{}' WHERE checkoutData IS NULL OR checkoutData = ''"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE orders SET region = 'pl' WHERE region IS NULL OR region NOT IN ('pl', 'ua', 'eu')"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE orders SET currency = CASE region WHEN 'ua' THEN 'UAH' WHEN 'eu' THEN 'EUR' ELSE 'PLN' END"
     )
     .run();
-  database
+  await database
     .prepare("UPDATE orders SET status = 'created' WHERE status IS NULL OR status = ''")
     .run();
-  database.prepare('UPDATE orders SET createdAt = ? WHERE createdAt IS NULL').run(Date.now());
-  database.exec(`
+  await database.prepare('UPDATE orders SET createdAt = ? WHERE createdAt IS NULL').run(Date.now());
+  await database.exec(`
     CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders(userId, createdAt DESC);
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
     CREATE INDEX IF NOT EXISTS idx_orders_region_created ON orders(region, createdAt DESC);
   `);
 }
 
-function migratePromotions(database) {
-  database.exec(`
+async function migratePromotions(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS promo_codes (
       code TEXT PRIMARY KEY COLLATE NOCASE,
       type TEXT NOT NULL CHECK(type IN ('percent', 'fixed')),
@@ -444,38 +490,45 @@ function migratePromotions(database) {
     CREATE INDEX IF NOT EXISTS idx_promo_codes_region_active ON promo_codes(region, active);
     CREATE INDEX IF NOT EXISTS idx_promo_redemptions_user ON promo_redemptions(userId, createdAt DESC);
   `);
-  addColumnIfMissing(database, 'promo_codes', 'ownerId', 'TEXT');
-  addColumnIfMissing(database, 'promo_codes', 'rewardType', "TEXT NOT NULL DEFAULT 'discount'");
-  addColumnIfMissing(
+  await addColumnIfMissing(database, 'promo_codes', 'ownerId', 'TEXT');
+  await addColumnIfMissing(
+    database,
+    'promo_codes',
+    'rewardType',
+    "TEXT NOT NULL DEFAULT 'discount'"
+  );
+  await addColumnIfMissing(
     database,
     'promo_codes',
     'applicableCondition',
     "TEXT NOT NULL DEFAULT 'new'"
   );
-  addColumnIfMissing(
+  await addColumnIfMissing(
     database,
     'promo_codes',
     'applicableSellerType',
     "TEXT NOT NULL DEFAULT 'store'"
   );
-  addColumnIfMissing(database, 'promo_codes', 'giftKey', 'TEXT');
-  database
-    .prepare("UPDATE promo_codes SET rewardType = 'discount' WHERE rewardType IS NULL OR rewardType = ''")
+  await addColumnIfMissing(database, 'promo_codes', 'giftKey', 'TEXT');
+  await database
+    .prepare(
+      "UPDATE promo_codes SET rewardType = 'discount' WHERE rewardType IS NULL OR rewardType = ''"
+    )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE promo_codes SET applicableCondition = 'new' WHERE applicableCondition IS NULL OR applicableCondition = ''"
     )
     .run();
-  database
+  await database
     .prepare(
       "UPDATE promo_codes SET applicableSellerType = 'store' WHERE applicableSellerType IS NULL OR applicableSellerType = ''"
     )
     .run();
 }
 
-function migrateChats(database) {
-  database.exec(`
+async function migrateChats(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
       productId TEXT NOT NULL,
@@ -525,8 +578,8 @@ function migrateChats(database) {
   `);
 }
 
-function migrateTrust(database) {
-  database.exec(`
+async function migrateTrust(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS order_status_history (
       id TEXT PRIMARY KEY,
       orderId TEXT NOT NULL,
@@ -557,8 +610,8 @@ function migrateTrust(database) {
   `);
 }
 
-function migrateRewards(database) {
-  database.exec(`
+async function migrateRewards(database) {
+  await database.exec(`
     CREATE TABLE IF NOT EXISTS game_attempts (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
@@ -575,12 +628,14 @@ function migrateRewards(database) {
   `);
 
   const attemptsSchema =
-    database
-      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'game_attempts'")
-      .get()?.sql || '';
+    (
+      await database
+        .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'game_attempts'")
+        .get()
+    )?.sql || '';
   if (!attemptsSchema.includes('tictactoe')) {
-    database.pragma('foreign_keys = OFF');
-    database.exec(`
+    await database.pragma('foreign_keys = OFF');
+    await database.exec(`
       ALTER TABLE game_attempts RENAME TO game_attempts_legacy;
       CREATE TABLE game_attempts (
         id TEXT PRIMARY KEY,
@@ -598,39 +653,42 @@ function migrateRewards(database) {
       DROP TABLE game_attempts_legacy;
       CREATE INDEX idx_game_attempts_user_created ON game_attempts(userId, createdAt DESC);
     `);
-    database.pragma('foreign_keys = ON');
+    await database.pragma('foreign_keys = ON');
   }
 }
 
-function initDB() {
+async function initDB() {
+  const turso = getTursoConfig();
   const configuredFile = getConfiguredFile();
-  if (db && activeFile === configuredFile) return db;
-  if (db) closeDB();
+  const connectionKey = turso ? `turso:${turso.url}` : `sqlite:${configuredFile}`;
+  if (db && activeFile === connectionKey) return db;
+  if (db) await closeDB();
 
-  if (configuredFile !== ':memory:') {
-    fs.mkdirSync(path.dirname(configuredFile), { recursive: true });
+  if (turso) {
+    db = createRemoteDatabase(turso);
+  } else {
+    if (configuredFile !== ':memory:') {
+      fs.mkdirSync(path.dirname(configuredFile), { recursive: true });
+    }
+    db = createLocalDatabase(configuredFile);
   }
+  activeFile = connectionKey;
 
-  db = new Database(configuredFile);
-  activeFile = configuredFile;
-  db.pragma('foreign_keys = ON');
-  db.pragma('busy_timeout = 5000');
-  if (configuredFile !== ':memory:') db.pragma('journal_mode = WAL');
-
-  const migrate = db.transaction(() => {
-    migrateUsers(db);
-    migrateProducts(db);
-    migrateOrders(db);
-    migratePromotions(db);
-    migrateChats(db);
-    migrateTrust(db);
-    migrateRewards(db);
-    migrateMarketplace(db);
-  });
   try {
-    migrate();
+    await db.pragma('foreign_keys = ON');
+    await db.pragma('busy_timeout = 5000');
+    if (!turso && configuredFile !== ':memory:') await db.pragma('journal_mode = WAL');
+
+    await migrateUsers(db);
+    await migrateProducts(db);
+    await migrateOrders(db);
+    await migratePromotions(db);
+    await migrateChats(db);
+    await migrateTrust(db);
+    await migrateRewards(db);
+    await migrateMarketplace(db);
   } catch (error) {
-    closeDB();
+    await closeDB();
     throw error;
   }
 
@@ -638,20 +696,25 @@ function initDB() {
 }
 
 function getDB() {
-  const configuredFile = getConfiguredFile();
-  if (!db || activeFile !== configuredFile) return initDB();
+  if (!db) throw new Error('Database is not initialized. Call setup() before handling requests.');
   return db;
 }
 
-function closeDB() {
-  if (db) db.close();
+async function closeDB() {
+  if (db) await db.close();
   db = undefined;
   activeFile = undefined;
 }
 
+function getDatabaseInfo() {
+  return { provider: db?.kind || (getTursoConfig() ? 'turso' : 'sqlite') };
+}
+
 module.exports = {
   closeDB,
+  getDatabaseInfo,
   getConfiguredFile,
+  getTursoConfig,
   getDB,
   initDB,
   resetConnection: closeDB,

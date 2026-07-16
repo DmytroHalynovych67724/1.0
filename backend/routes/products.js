@@ -170,8 +170,14 @@ router.get(
       candidates
         .filter((item) => item.id !== product.id)
         .sort((a, b) => {
-          const aScore = (a.brand === product.brand ? 3 : 0) + (a.model === product.model ? 4 : 0) - Math.abs(a.price - product.price) / Math.max(product.price, 1);
-          const bScore = (b.brand === product.brand ? 3 : 0) + (b.model === product.model ? 4 : 0) - Math.abs(b.price - product.price) / Math.max(product.price, 1);
+          const aScore =
+            (a.brand === product.brand ? 3 : 0) +
+            (a.model === product.model ? 4 : 0) -
+            Math.abs(a.price - product.price) / Math.max(product.price, 1);
+          const bScore =
+            (b.brand === product.brand ? 3 : 0) +
+            (b.model === product.model ? 4 : 0) -
+            Math.abs(b.price - product.price) / Math.max(product.price, 1);
           return bScore - aScore;
         })
         .slice(0, 8)
@@ -185,12 +191,27 @@ router.get(
     const product = await getProduct(req.params.id);
     if (!product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
     const db = require('../db').getDB();
-    const history = db.prepare('SELECT priceCents, createdAt FROM price_history WHERE productId = ? ORDER BY createdAt ASC').all(product.id)
-      .map((item) => ({ price: item.priceCents / 100, createdAt: item.createdAt }));
-    const market = db.prepare("SELECT priceCents FROM products WHERE region = ? AND category = ? AND brand = ? AND model = ? AND status = 'active' ORDER BY priceCents")
+    const history = (
+      await db
+        .prepare(
+          'SELECT priceCents, createdAt FROM price_history WHERE productId = ? ORDER BY createdAt ASC'
+        )
+        .all(product.id)
+    ).map((item) => ({ price: item.priceCents / 100, createdAt: item.createdAt }));
+    const market = await db
+      .prepare(
+        "SELECT priceCents FROM products WHERE region = ? AND category = ? AND brand = ? AND model = ? AND status = 'active' ORDER BY priceCents"
+      )
       .all(product.region, product.category, product.brand, product.model);
-    const median = market.length ? market[Math.floor(market.length / 2)].priceCents / 100 : product.price;
-    res.json({ history, median, verdict: product.price <= median * 0.9 ? 'great' : product.price <= median * 1.1 ? 'fair' : 'high' });
+    const median = market.length
+      ? market[Math.floor(market.length / 2)].priceCents / 100
+      : product.price;
+    res.json({
+      history,
+      median,
+      verdict:
+        product.price <= median * 0.9 ? 'great' : product.price <= median * 1.1 ? 'fair' : 'high',
+    });
   })
 );
 
@@ -208,9 +229,13 @@ router.get(
     const representative = offers[0];
     const accessories = (await listProducts({ region, category: 'Akcesoria' })).slice(0, 6);
     const db = require('../db').getDB();
-    const reviews = db.prepare(`SELECT r.*, u.username, u.avatar FROM model_reviews r
+    const reviews = await db
+      .prepare(
+        `SELECT r.*, u.username, u.avatar FROM model_reviews r
       JOIN users u ON u.id = r.userId JOIN products p ON p.id = r.productId
-      WHERE p.region = ? AND r.brand = ? COLLATE NOCASE AND r.model = ? COLLATE NOCASE ORDER BY r.createdAt DESC`).all(region, brand, model);
+      WHERE p.region = ? AND r.brand = ? COLLATE NOCASE AND r.model = ? COLLATE NOCASE ORDER BY r.createdAt DESC`
+      )
+      .all(region, brand, model);
     const priceValues = offers.map((item) => item.price).sort((a, b) => a - b);
     res.json({
       brand,

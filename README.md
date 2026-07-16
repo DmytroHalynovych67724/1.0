@@ -3,6 +3,32 @@
 [![CI](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/ci.yml/badge.svg)](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/ci.yml)
 [![Docker Publish](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/DmytroHalynovych67724/1.0/actions/workflows/docker-publish.yml)
 
+## Turso та безплатний Render
+
+Backend автоматично використовує Turso, якщо одночасно задані
+`TURSO_DATABASE_URL` і `TURSO_AUTH_TOKEN`. Без них локальна розробка працює
+через SQLite у `DB_PATH`. Тести завжди створюють окрему тимчасову SQLite-базу
+та ніколи не підключаються до Turso.
+
+Для безплатного розгортання backend:
+
+1. У Render оберіть **New → Blueprint** і репозиторій цього проєкту.
+2. Render прочитає `render.yaml`. Введіть чотири секретні значення:
+   `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `ADMIN_USERNAME` і
+   `ADMIN_PASSWORD` (пароль щонайменше 12 символів).
+3. Після успішного deploy відкрийте
+   `https://<назва-сервісу>.onrender.com/api/health?details=1`. Правильна
+   відповідь містить `"status":"ok"` і `"database":"turso"`.
+4. Один раз виконайте `npm run seed` локально з тими самими Turso та admin
+   змінними, щоб додати демонстраційний каталог і створити адміністратора.
+5. У GitHub відкрийте **Settings → Secrets and variables → Actions →
+   Variables**, створіть `VITE_API_URL` зі значенням публічної адреси Render
+   без кінцевого `/`, після чого повторно запустіть workflow **Deploy GitHub
+   Pages**.
+
+Секрети з `.env` не додаються до Git. `render.yaml` містить лише назви змінних,
+а не їхні значення.
+
 ## GitHub Pages
 
 Кожен push у `master` автоматично збирає React-версію та публікує її через GitHub Pages.
@@ -94,38 +120,38 @@ npm run dev
 
 ## Змінні середовища
 
-| Змінна           | Обов’язковість        | Призначення                                               |
-| ---------------- | --------------------- | --------------------------------------------------------- |
-| `PORT`           | ні                    | HTTP-порт, типово `3000`                                  |
-| `NODE_ENV`       | ні                    | `development`, `test` або `production`                    |
-| `DB_PATH`        | ні                    | шлях до SQLite; типово `data/db.sqlite`                   |
-| `JWT_SECRET`     | так для production    | унікальний секрет JWT, щонайменше 32 байти                |
-| `ADMIN_USERNAME` | для seed/bootstrap    | логін початкового адміністратора                          |
-| `ADMIN_PASSWORD` | для seed/bootstrap    | пароль початкового адміністратора                         |
-| `CORS_ORIGIN`    | для окремого frontend | дозволені origin через кому; для same-origin не потрібний |
-| `ICECAT_ENABLED` | ні                    | вмикає автоматичні характеристики Open Icecat            |
-| `ICECAT_USERNAME` | для власного Icecat  | ім’я Open Icecat; demo: `openIcecat-live`                 |
-| `ICECAT_API_TOKEN` | для власного Icecat | серверний токен доступу до карток товарів                 |
-| `ICECAT_CONTENT_TOKEN` | для медіа Icecat | серверний токен доступу до захищених матеріалів           |
-| `ICECAT_LANGUAGE` | ні                   | стабільна мова полів API, типово `EN`                     |
+| Змінна                 | Обов’язковість        | Призначення                                               |
+| ---------------------- | --------------------- | --------------------------------------------------------- |
+| `PORT`                 | ні                    | HTTP-порт, типово `3000`                                  |
+| `NODE_ENV`             | ні                    | `development`, `test` або `production`                    |
+| `DB_PATH`              | ні                    | шлях до SQLite; типово `data/db.sqlite`                   |
+| `JWT_SECRET`           | так для production    | унікальний секрет JWT, щонайменше 32 байти                |
+| `ADMIN_USERNAME`       | для seed/bootstrap    | логін початкового адміністратора                          |
+| `ADMIN_PASSWORD`       | для seed/bootstrap    | пароль початкового адміністратора                         |
+| `CORS_ORIGIN`          | для окремого frontend | дозволені origin через кому; для same-origin не потрібний |
+| `ICECAT_ENABLED`       | ні                    | вмикає автоматичні характеристики Open Icecat             |
+| `ICECAT_USERNAME`      | для власного Icecat   | ім’я Open Icecat; demo: `openIcecat-live`                 |
+| `ICECAT_API_TOKEN`     | для власного Icecat   | серверний токен доступу до карток товарів                 |
+| `ICECAT_CONTENT_TOKEN` | для медіа Icecat      | серверний токен доступу до захищених матеріалів           |
+| `ICECAT_LANGUAGE`      | ні                    | стабільна мова полів API, типово `EN`                     |
 
 Не додавайте `.env`, робочу базу або production-секрети до Git.
 
 ## Команди npm
 
-| Команда                | Дія                                               |
-| ---------------------- | ------------------------------------------------- |
+| Команда                | Дія                                                |
+| ---------------------- | -------------------------------------------------- |
 | `npm run dev`          | React dev-сервер і API з автоматичним перезапуском |
-| `npm run build`        | production-збірка React                           |
-| `npm start`            | API та готова React-збірка на порту 3000          |
-| `npm run seed`         | початкові товари й обліковий запис адміністратора |
-| `npm test`             | усі автоматичні тести                             |
-| `npm run test:api`     | лише інтеграційні тести API                       |
-| `npm run lint`         | статичний аналіз JavaScript                       |
-| `npm run check`        | lint і тести однією командою                      |
-| `npm run format`       | форматування через Prettier                       |
-| `npm run docker:build` | складання Docker image                            |
-| `npm run docker:up`    | запуск через Docker Compose                       |
+| `npm run build`        | production-збірка React                            |
+| `npm start`            | API та готова React-збірка на порту 3000           |
+| `npm run seed`         | початкові товари й обліковий запис адміністратора  |
+| `npm test`             | усі автоматичні тести                              |
+| `npm run test:api`     | лише інтеграційні тести API                        |
+| `npm run lint`         | статичний аналіз JavaScript                        |
+| `npm run check`        | lint і тести однією командою                       |
+| `npm run format`       | форматування через Prettier                        |
+| `npm run docker:build` | складання Docker image                             |
+| `npm run docker:up`    | запуск через Docker Compose                        |
 
 ## API
 
@@ -143,37 +169,37 @@ npm run dev
 
 ### Товари
 
-| Метод і маршрут               | Доступ           | Опис                                    |
-| ----------------------------- | ---------------- | --------------------------------------- |
-| `GET /api/products`           | публічний        | каталог, пошук, регіон, фільтрація й сортування |
-| `GET /api/products/mine`      | користувач/admin | власні або всі оголошення для керування |
-| `GET /api/products/:id`       | публічний        | одне оголошення                         |
-| `POST /api/products`          | користувач/admin | створення оголошення                    |
-| `PUT/PATCH /api/products/:id` | власник/admin    | повне або часткове оновлення            |
-| `DELETE /api/products/:id`    | власник/admin    | видалення оголошення                    |
+| Метод і маршрут               | Доступ           | Опис                                                  |
+| ----------------------------- | ---------------- | ----------------------------------------------------- |
+| `GET /api/products`           | публічний        | каталог, пошук, регіон, фільтрація й сортування       |
+| `GET /api/products/mine`      | користувач/admin | власні або всі оголошення для керування               |
+| `GET /api/products/:id`       | публічний        | одне оголошення                                       |
+| `POST /api/products`          | користувач/admin | створення оголошення                                  |
+| `PUT/PATCH /api/products/:id` | власник/admin    | повне або часткове оновлення                          |
+| `DELETE /api/products/:id`    | власник/admin    | видалення оголошення                                  |
 | `GET /api/device-specs?q=…`   | користувач/admin | Open Icecat, GTIN/MPN і резервний пошук характеристик |
 
 ### Чати
 
-| Метод і маршрут                 | Доступ     | Опис                                      |
-| ------------------------------- | ---------- | ----------------------------------------- |
-| `GET /api/chats`                | користувач | власні діалоги покупця або продавця       |
-| `POST /api/chats`               | користувач | відкрити діалог для конкретного оголошення |
-| `GET /api/chats/:id/messages`   | учасник    | повідомлення та відмітка прочитання       |
-| `POST /api/chats/:id/messages`  | учасник    | надіслати повідомлення                    |
-| `POST /api/chats/:id/offers`    | учасник    | запропонувати або назвати зустрічну ціну  |
-| `PATCH /api/chats/:id/offers/:offerId` | отримувач | прийняти або відхилити ціну          |
+| Метод і маршрут                        | Доступ     | Опис                                       |
+| -------------------------------------- | ---------- | ------------------------------------------ |
+| `GET /api/chats`                       | користувач | власні діалоги покупця або продавця        |
+| `POST /api/chats`                      | користувач | відкрити діалог для конкретного оголошення |
+| `GET /api/chats/:id/messages`          | учасник    | повідомлення та відмітка прочитання        |
+| `POST /api/chats/:id/messages`         | учасник    | надіслати повідомлення                     |
+| `POST /api/chats/:id/offers`           | учасник    | запропонувати або назвати зустрічну ціну   |
+| `PATCH /api/chats/:id/offers/:offerId` | отримувач  | прийняти або відхилити ціну                |
 
 ### Довіра та винагороди
 
-| Метод і маршрут                         | Доступ     | Опис                                  |
-| --------------------------------------- | ---------- | ------------------------------------- |
-| `POST /api/trust/reviews`               | покупець   | оцінка після завершеного замовлення   |
-| `GET /api/trust/sellers/:id/reviews`    | публічний  | рейтинг і відгуки продавця            |
-| `PATCH /api/trust/users/:id/verification` | admin    | demo-верифікація профілю              |
-| `POST /api/rewards/spin`                | користувач | нагорода за щоденну гру на точність    |
-| `GET/POST /api/rewards/quiz`            | користувач | локалізована щоденна tech-вікторина    |
-| `POST /api/rewards/tictactoe`           | користувач | перевірена перемога у хрестики-нулики  |
+| Метод і маршрут                           | Доступ     | Опис                                  |
+| ----------------------------------------- | ---------- | ------------------------------------- |
+| `POST /api/trust/reviews`                 | покупець   | оцінка після завершеного замовлення   |
+| `GET /api/trust/sellers/:id/reviews`      | публічний  | рейтинг і відгуки продавця            |
+| `PATCH /api/trust/users/:id/verification` | admin      | demo-верифікація профілю              |
+| `POST /api/rewards/spin`                  | користувач | нагорода за щоденну гру на точність   |
+| `GET/POST /api/rewards/quiz`              | користувач | локалізована щоденна tech-вікторина   |
+| `POST /api/rewards/tictactoe`             | користувач | перевірена перемога у хрестики-нулики |
 
 Параметри каталогу: `q`, `category`, `brand`, `condition`, `minPrice`, `maxPrice`, `inStock` і `sort`. Значення `sort`: `newest`, `oldest`, `price_asc`, `price_desc`.
 

@@ -16,7 +16,7 @@ router.post(
 router.get(
   '/quiz',
   asyncHandler(async (req, res) => {
-    res.json(quizChallenge({ userId: req.user.id, language: req.query?.language }));
+    res.json(await quizChallenge({ userId: req.user.id, language: req.query?.language }));
   })
 );
 

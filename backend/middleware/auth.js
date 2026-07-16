@@ -3,7 +3,7 @@ const { JWT_AUDIENCE, JWT_ISSUER, getJwtSecret } = require('../config');
 const { getDB } = require('../db');
 const { sendError } = require('../utils/errors');
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const authorization = req.get('authorization');
   if (!authorization || !/^Bearer\s+\S+$/i.test(authorization)) {
     return sendError(res, 401, 'AUTH_REQUIRED', 'Authentication is required');
@@ -20,7 +20,7 @@ function requireAuth(req, res, next) {
       return sendError(res, 401, 'INVALID_TOKEN', 'Authentication token is invalid or expired');
     }
 
-    const user = getDB()
+    const user = await getDB()
       .prepare(
         'SELECT id, username, role, avatar, verificationStatus, verifiedAt, createdAt FROM users WHERE id = ?'
       )

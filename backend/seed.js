@@ -607,19 +607,91 @@ const EXTRA_PRODUCT_SPECS = [
 
 const MODEL_OFFER_DEMOS = [
   {
-    id: 'demo-iphone-15-used-blue', title: 'Apple iPhone 15 128 GB Blue', description: 'Bateria 92%, ekran bez rys, delikatne ślady na ramce. Pudełko i przewód w zestawie.', price: 2699,
-    images: ['https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=1200&q=85'], category: 'Smartfony', location: 'Gdańsk', condition: 'used', brand: 'Apple', stock: 1, seller: 'Michał', sellerType: 'private', delivery: 'both', region: 'pl',
-    deviceDetails: { batteryHealth: 92, display: 'Bardzo dobry', body: 'Drobne ślady', completeness: 'Pudełko i przewód', defects: 'Brak', grade: 'A', country: 'Polska', serialChecked: true },
+    id: 'demo-iphone-15-used-blue',
+    title: 'Apple iPhone 15 128 GB Blue',
+    description:
+      'Bateria 92%, ekran bez rys, delikatne ślady na ramce. Pudełko i przewód w zestawie.',
+    price: 2699,
+    images: [
+      'https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=1200&q=85',
+    ],
+    category: 'Smartfony',
+    location: 'Gdańsk',
+    condition: 'used',
+    brand: 'Apple',
+    stock: 1,
+    seller: 'Michał',
+    sellerType: 'private',
+    delivery: 'both',
+    region: 'pl',
+    deviceDetails: {
+      batteryHealth: 92,
+      display: 'Bardzo dobry',
+      body: 'Drobne ślady',
+      completeness: 'Pudełko i przewód',
+      defects: 'Brak',
+      grade: 'A',
+      country: 'Polska',
+      serialChecked: true,
+    },
   },
   {
-    id: 'demo-iphone-15-used-black', title: 'Apple iPhone 15 256 GB Black', description: 'W pełni sprawny, bateria 87%. Widoczne rysy na ramce, ekran w bardzo dobrym stanie.', price: 2799,
-    images: ['https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=1200&q=85'], category: 'Smartfony', location: 'Poznań', condition: 'used', brand: 'Apple', stock: 1, seller: 'Ola', sellerType: 'private', delivery: 'shipping', region: 'pl',
-    deviceDetails: { batteryHealth: 87, display: 'Bardzo dobry', body: 'Widoczne rysy', completeness: 'Telefon i przewód', defects: 'Brak', grade: 'B', country: 'Niemcy', serialChecked: true },
+    id: 'demo-iphone-15-used-black',
+    title: 'Apple iPhone 15 256 GB Black',
+    description:
+      'W pełni sprawny, bateria 87%. Widoczne rysy na ramce, ekran w bardzo dobrym stanie.',
+    price: 2799,
+    images: [
+      'https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=1200&q=85',
+    ],
+    category: 'Smartfony',
+    location: 'Poznań',
+    condition: 'used',
+    brand: 'Apple',
+    stock: 1,
+    seller: 'Ola',
+    sellerType: 'private',
+    delivery: 'shipping',
+    region: 'pl',
+    deviceDetails: {
+      batteryHealth: 87,
+      display: 'Bardzo dobry',
+      body: 'Widoczne rysy',
+      completeness: 'Telefon i przewód',
+      defects: 'Brak',
+      grade: 'B',
+      country: 'Niemcy',
+      serialChecked: true,
+    },
   },
   {
-    id: 'demo-galaxy-s23-new', title: 'Samsung Galaxy S23 256 GB Black', description: 'Nowy, zaplombowany telefon z fakturą i gwarancją producenta.', price: 2099,
-    images: ['https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?auto=format&fit=crop&w=1200&q=85'], category: 'Smartfony', location: 'Warszawa', condition: 'new', brand: 'Samsung', stock: 4, seller: 'MobileHub', sellerType: 'store', delivery: 'both', region: 'pl', warranty: 'manufacturer',
-    deviceDetails: { batteryHealth: 100, display: 'Nowy', body: 'Nowy', completeness: 'Pełny zestaw', defects: 'Brak', grade: 'N', country: 'Polska', serialChecked: true },
+    id: 'demo-galaxy-s23-new',
+    title: 'Samsung Galaxy S23 256 GB Black',
+    description: 'Nowy, zaplombowany telefon z fakturą i gwarancją producenta.',
+    price: 2099,
+    images: [
+      'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?auto=format&fit=crop&w=1200&q=85',
+    ],
+    category: 'Smartfony',
+    location: 'Warszawa',
+    condition: 'new',
+    brand: 'Samsung',
+    stock: 4,
+    seller: 'MobileHub',
+    sellerType: 'store',
+    delivery: 'both',
+    region: 'pl',
+    warranty: 'manufacturer',
+    deviceDetails: {
+      batteryHealth: 100,
+      display: 'Nowy',
+      body: 'Nowy',
+      completeness: 'Pełny zestaw',
+      defects: 'Brak',
+      grade: 'N',
+      country: 'Polska',
+      serialChecked: true,
+    },
   },
 ];
 
@@ -808,7 +880,10 @@ function inferSpecs(product) {
 }
 
 function inferModel(product) {
-  let value = String(product.model || product.title || '').replace(new RegExp(`^${String(product.brand || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'i'), '');
+  let value = String(product.model || product.title || '').replace(
+    new RegExp(`^${String(product.brand || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'i'),
+    ''
+  );
   value = value
     .replace(/\b\d+\s*\/\s*\d+\s*(?:GB|TB)?\b/gi, '')
     .replace(/\b\d+\s*(?:GB|TB)\b/gi, '')
@@ -820,13 +895,30 @@ function inferModel(product) {
 
 function inferDeviceDetails(product) {
   if (product.deviceDetails) return product.deviceDetails;
-  if (product.condition === 'new') return { batteryHealth: 100, display: 'Nowy', body: 'Nowy', completeness: 'Pełny zestaw', defects: 'Brak', grade: 'N', serialChecked: true };
+  if (product.condition === 'new')
+    return {
+      batteryHealth: 100,
+      display: 'Nowy',
+      body: 'Nowy',
+      completeness: 'Pełny zestaw',
+      defects: 'Brak',
+      grade: 'N',
+      serialChecked: true,
+    };
   const score = [...product.id].reduce((sum, character) => sum + character.charCodeAt(0), 0);
   const batteryHealth = 82 + (score % 15);
-  return { batteryHealth, display: score % 3 ? 'Bardzo dobry' : 'Drobne rysy', body: score % 2 ? 'Drobne ślady' : 'Bardzo dobry', completeness: score % 2 ? 'Urządzenie i ładowarka' : 'Pełny zestaw', defects: 'Brak', grade: batteryHealth >= 90 ? 'A' : 'B', serialChecked: true };
+  return {
+    batteryHealth,
+    display: score % 3 ? 'Bardzo dobry' : 'Drobne rysy',
+    body: score % 2 ? 'Drobne ślady' : 'Bardzo dobry',
+    completeness: score % 2 ? 'Urządzenie i ładowarka' : 'Pełny zestaw',
+    defects: 'Brak',
+    grade: batteryHealth >= 90 ? 'A' : 'B',
+    serialChecked: true,
+  };
 }
 
-function insertDemoProducts(db) {
+async function insertDemoProducts(db) {
   const insert = db.prepare(`
     INSERT OR IGNORE INTO products (
       id, title, description, price, priceCents, images, specs, category, location,
@@ -837,10 +929,10 @@ function insertDemoProducts(db) {
     )
   `);
   const createdAt = Date.now();
-  const insertAll = db.transaction(() => {
+  const insertAll = db.transaction(async () => {
     let inserted = 0;
-    DEMO_PRODUCTS.forEach((product, index) => {
-      const result = insert.run({
+    for (const [index, product] of DEMO_PRODUCTS.entries()) {
+      const result = await insert.run({
         ...product,
         region: normalizeRegion(product.region),
         currency: currencyForRegion(product.region),
@@ -852,21 +944,33 @@ function insertDemoProducts(db) {
         negotiable: product.sellerType === 'private' ? 1 : 0,
         status: 'active',
         urgent: 0,
-        inspection: JSON.stringify({ screen: true, battery: true, cameras: true, buttons: true, connectivity: true, serialNumber: true }),
+        inspection: JSON.stringify({
+          screen: true,
+          battery: true,
+          cameras: true,
+          buttons: true,
+          connectivity: true,
+          serialNumber: true,
+        }),
         deviceDetails: JSON.stringify(inferDeviceDetails(product)),
         createdAt: createdAt - index * 60_000,
       });
       inserted += result.changes;
-      db.prepare('UPDATE products SET specs = ?, model = ?, deviceDetails = ? WHERE id = ?').run(
-        JSON.stringify(inferSpecs(product)), inferModel(product), JSON.stringify(inferDeviceDetails(product)), product.id
-      );
-    });
+      await db
+        .prepare('UPDATE products SET specs = ?, model = ?, deviceDetails = ? WHERE id = ?')
+        .run(
+          JSON.stringify(inferSpecs(product)),
+          inferModel(product),
+          JSON.stringify(inferDeviceDetails(product)),
+          product.id
+        );
+    }
     return inserted;
   });
   return insertAll();
 }
 
-function insertDemoPromoCodes(db) {
+async function insertDemoPromoCodes(db) {
   const insert = db.prepare(`
     INSERT OR IGNORE INTO promo_codes (
       code, type, value, region, minTotalCents, maxDiscountCents,
@@ -877,25 +981,32 @@ function insertDemoPromoCodes(db) {
     )
   `);
   const createdAt = Date.now();
-  return db.transaction(() =>
-    DEMO_PROMO_CODES.reduce(
-      (count, promo) => count + insert.run({ ...promo, createdAt }).changes,
-      0
-    )
-  )();
+  return db.transaction(async () => {
+    let inserted = 0;
+    for (const promo of DEMO_PROMO_CODES) {
+      inserted += (await insert.run({ ...promo, createdAt })).changes;
+    }
+    return inserted;
+  })();
 }
 
-function enrichPhoneSpecifications(db) {
-  const rows = db.prepare("SELECT id, title, specs FROM products WHERE category = 'Smartfony'").all();
+async function enrichPhoneSpecifications(db) {
+  const rows = await db
+    .prepare("SELECT id, title, specs FROM products WHERE category = 'Smartfony'")
+    .all();
   const update = db.prepare('UPDATE products SET specs = ? WHERE id = ?');
-  return db.transaction(() => {
+  return db.transaction(async () => {
     let changed = 0;
     for (const row of rows) {
       const match = curatedSpecs(row.title);
       if (!match) continue;
       let current = {};
-      try { current = JSON.parse(row.specs || '{}'); } catch (_error) { current = {}; }
-      update.run(JSON.stringify({ ...match.specs, ...current }), row.id);
+      try {
+        current = JSON.parse(row.specs || '{}');
+      } catch (_error) {
+        current = {};
+      }
+      await update.run(JSON.stringify({ ...match.specs, ...current }), row.id);
       changed += 1;
     }
     return changed;
@@ -905,16 +1016,18 @@ function enrichPhoneSpecifications(db) {
 async function seed() {
   await setup();
   const db = getDB();
-  const insertedProducts = insertDemoProducts(db);
-  enrichPhoneSpecifications(db);
-  const insertedPromoCodes = insertDemoPromoCodes(db);
-  const admin = await ensureAdmin(db, { allowDevelopmentDefault: true });
-  if (admin.skipped) throw new Error('ADMIN_PASSWORD is required when seeding in production');
-  const adminUser = db
+  const admin = await ensureAdmin(db, { allowDevelopmentDefault: db.kind === 'sqlite' });
+  if (admin.skipped) {
+    throw new Error('ADMIN_PASSWORD is required before seeding a Turso or production database');
+  }
+  const insertedProducts = await insertDemoProducts(db);
+  await enrichPhoneSpecifications(db);
+  const insertedPromoCodes = await insertDemoPromoCodes(db);
+  const adminUser = await db
     .prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE')
     .get(admin.username);
   if (adminUser) {
-    db.prepare('UPDATE products SET createdBy = ? WHERE createdBy IS NULL').run(adminUser.id);
+    await db.prepare('UPDATE products SET createdBy = ? WHERE createdBy IS NULL').run(adminUser.id);
   }
   console.log(
     `Demo catalog ready (${insertedProducts} new products, ${DEMO_PRODUCTS.length} total demo products)`

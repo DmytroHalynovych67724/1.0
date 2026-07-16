@@ -50,13 +50,13 @@ function normalizeOrder(row) {
 async function createOrder({ userId, items, checkout: checkoutData = {}, promoCode = '' }) {
   const db = getDB();
 
-  const processOrder = db.transaction(() => {
+  const processOrder = db.transaction(async () => {
     const snapshot = [];
     let totalCents = 0;
     let orderRegion;
 
     for (const item of items) {
-      const product = db
+      const product = await db
         .prepare(
           `
         SELECT id, title, price, priceCents, stock, brand, condition, images, region, currency,
@@ -98,7 +98,7 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
       }
       orderRegion = productRegion;
 
-      const acceptedOffer = db
+      const acceptedOffer = await db
         .prepare(
           `
         SELECT o.id, o.amountCents
@@ -132,8 +132,11 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
       if (productImages.length && typeof productImages[0] === 'string') image = productImages[0];
       const sellerId =
         product.createdBy ||
-        db.prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY createdAt ASC LIMIT 1").get()
-          ?.id ||
+        (
+          await db
+            .prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY createdAt ASC LIMIT 1")
+            .get()
+        )?.id ||
         null;
       snapshot.push({
         id: product.id,
@@ -165,11 +168,11 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
     let rewardGift = null;
     if (promoCode) {
       const now = Date.now();
-      const promo = db
+      const promo = await db
         .prepare('SELECT * FROM promo_codes WHERE code = ? COLLATE NOCASE')
         .get(promoCode);
       const alreadyUsed = promo
-        ? db
+        ? await db
             .prepare('SELECT 1 FROM promo_redemptions WHERE code = ? COLLATE NOCASE AND userId = ?')
             .get(promo.code, userId)
         : null;
@@ -201,9 +204,7 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
           promo.applicableCondition === 'any' || item.condition === promo.applicableCondition;
         const sellerMatches =
           promo.applicableSellerType === 'any' || item.sellerType === promo.applicableSellerType;
-        return conditionMatches && sellerMatches
-          ? sum + Math.round(item.lineTotal * 100)
-          : sum;
+        return conditionMatches && sellerMatches ? sum + Math.round(item.lineTotal * 100) : sum;
       }, 0);
       const hasUsedItem = snapshot.some((item) => item.condition === 'used');
       const rewardType = promo.rewardType || 'discount';
@@ -263,7 +264,7 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
     totalCents = subtotalCents - discountCents + shippingCents - shippingDiscountCents;
 
     for (const item of items) {
-      const result = db
+      const result = await db
         .prepare(
           `
         UPDATE products
@@ -276,18 +277,19 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         throw new AppError(409, 'INSUFFICIENT_STOCK', 'Product stock changed during checkout');
       }
     }
-    snapshot
-      .filter((item) => item.acceptedOfferId)
-      .forEach((item) => {
-        db.prepare(
+    for (const item of snapshot.filter((entry) => entry.acceptedOfferId)) {
+      await db
+        .prepare(
           "UPDATE price_offers SET status = 'redeemed', updatedAt = ? WHERE id = ? AND status = 'accepted'"
-        ).run(Date.now(), item.acceptedOfferId);
-      });
+        )
+        .run(Date.now(), item.acceptedOfferId);
+    }
 
     const id = uuidv4();
     const createdAt = Date.now();
-    db.prepare(
-      `
+    await db
+      .prepare(
+        `
       INSERT INTO orders (
         id, userId, items, subtotal, subtotalCents, discount, discountCents,
         shipping, shippingCents, shippingDiscount, shippingDiscountCents,
@@ -295,60 +297,67 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         region, currency, status, createdAt
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-    ).run(
-      id,
-      userId,
-      JSON.stringify(snapshot),
-      subtotalCents / 100,
-      subtotalCents,
-      discountCents / 100,
-      discountCents,
-      shippingCents / 100,
-      shippingCents,
-      shippingDiscountCents / 100,
-      shippingDiscountCents,
-      totalCents / 100,
-      totalCents,
-      appliedPromo,
-      appliedRewardType,
-      rewardGift,
-      JSON.stringify({
-        ...checkoutData,
-        ...(rewardGift ? { reward: { type: 'gift', key: rewardGift } } : {}),
-      }),
-      orderRegion,
-      currencyForRegion(orderRegion),
-      'created',
-      createdAt
-    );
+      )
+      .run(
+        id,
+        userId,
+        JSON.stringify(snapshot),
+        subtotalCents / 100,
+        subtotalCents,
+        discountCents / 100,
+        discountCents,
+        shippingCents / 100,
+        shippingCents,
+        shippingDiscountCents / 100,
+        shippingDiscountCents,
+        totalCents / 100,
+        totalCents,
+        appliedPromo,
+        appliedRewardType,
+        rewardGift,
+        JSON.stringify({
+          ...checkoutData,
+          ...(rewardGift ? { reward: { type: 'gift', key: rewardGift } } : {}),
+        }),
+        orderRegion,
+        currencyForRegion(orderRegion),
+        'created',
+        createdAt
+      );
 
     if (appliedPromo) {
-      db.prepare(
-        'UPDATE promo_codes SET usedCount = usedCount + 1 WHERE code = ? COLLATE NOCASE'
-      ).run(appliedPromo);
-      db.prepare(
-        'INSERT INTO promo_redemptions (id, code, userId, orderId, createdAt) VALUES (?, ?, ?, ?, ?)'
-      ).run(uuidv4(), appliedPromo, userId, id, createdAt);
+      await db
+        .prepare('UPDATE promo_codes SET usedCount = usedCount + 1 WHERE code = ? COLLATE NOCASE')
+        .run(appliedPromo);
+      await db
+        .prepare(
+          'INSERT INTO promo_redemptions (id, code, userId, orderId, createdAt) VALUES (?, ?, ?, ?, ?)'
+        )
+        .run(uuidv4(), appliedPromo, userId, id, createdAt);
     }
-    db.prepare(
-      'INSERT INTO order_status_history (id, orderId, status, changedBy, createdAt) VALUES (?, ?, ?, ?, ?)'
-    ).run(uuidv4(), id, 'created', userId, createdAt);
+    await db
+      .prepare(
+        'INSERT INTO order_status_history (id, orderId, status, changedBy, createdAt) VALUES (?, ?, ?, ?, ?)'
+      )
+      .run(uuidv4(), id, 'created', userId, createdAt);
 
-    return normalizeOrder(db.prepare('SELECT * FROM orders WHERE id = ?').get(id));
+    return normalizeOrder(await db.prepare('SELECT * FROM orders WHERE id = ?').get(id));
   });
 
   return processOrder.immediate();
 }
 
 async function getOrder(id) {
-  return normalizeOrder(getDB().prepare('SELECT * FROM orders WHERE id = ?').get(id));
+  return normalizeOrder(await getDB().prepare('SELECT * FROM orders WHERE id = ?').get(id));
 }
 
 async function listOrders({ userId, includeAll = false, limit = 50, offset = 0 }) {
   const db = getDB();
   const rows = includeAll
-    ? db.prepare('SELECT * FROM orders ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(limit, offset)
-    : db
+    ? await db
+        .prepare('SELECT * FROM orders ORDER BY createdAt DESC LIMIT ? OFFSET ?')
+        .all(limit, offset)
+    : await db
         .prepare('SELECT * FROM orders WHERE userId = ? ORDER BY createdAt DESC LIMIT ? OFFSET ?')
         .all(userId, limit, offset);
   return rows.map(normalizeOrder);
@@ -364,7 +373,7 @@ async function updateOrderStatus({ orderId, status, changedBy }) {
     cancelled: [],
   };
   const db = getDB();
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
+  const order = await db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
   if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found');
   if (!Object.hasOwn(transitions, status) || !transitions[order.status]?.includes(status)) {
     throw new AppError(
@@ -374,17 +383,17 @@ async function updateOrderStatus({ orderId, status, changedBy }) {
     );
   }
   const now = Date.now();
-  db.transaction(() => {
-    db.prepare('UPDATE orders SET status = ?, updatedAt = ? WHERE id = ?').run(
-      status,
-      now,
-      orderId
-    );
-    db.prepare(
-      'INSERT INTO order_status_history (id, orderId, status, changedBy, createdAt) VALUES (?, ?, ?, ?, ?)'
-    ).run(uuidv4(), orderId, status, changedBy, now);
+  await db.transaction(async () => {
+    await db
+      .prepare('UPDATE orders SET status = ?, updatedAt = ? WHERE id = ?')
+      .run(status, now, orderId);
+    await db
+      .prepare(
+        'INSERT INTO order_status_history (id, orderId, status, changedBy, createdAt) VALUES (?, ?, ?, ?, ?)'
+      )
+      .run(uuidv4(), orderId, status, changedBy, now);
   })();
-  return normalizeOrder(db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId));
+  return normalizeOrder(await db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId));
 }
 
 module.exports = { createOrder, getOrder, listOrders, normalizeOrder, updateOrderStatus };

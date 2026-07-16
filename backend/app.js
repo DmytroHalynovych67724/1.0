@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const cors = require('cors');
 const { getCorsOptions, getJwtSecret } = require('./config');
-const { initDB } = require('./db');
+const { getDatabaseInfo, initDB } = require('./db');
 const { bootstrapAdminFromEnv } = require('./services/admin');
 const { AppError, sendError } = require('./utils/errors');
 
@@ -67,8 +67,10 @@ const authLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'na-shary-api' });
+app.get('/api/health', (req, res) => {
+  const health = { status: 'ok', service: 'na-shary-api' };
+  if (req.query.details === '1') health.database = getDatabaseInfo().provider;
+  res.json(health);
 });
 
 app.use('/api/auth', authLimiter, authRouter);
@@ -128,7 +130,7 @@ app.use((error, _req, res, _next) => {
 
 async function setup() {
   getJwtSecret();
-  const db = initDB();
+  const db = await initDB();
   await bootstrapAdminFromEnv(db);
   return db;
 }
