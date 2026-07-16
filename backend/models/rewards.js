@@ -5,6 +5,8 @@ const { AppError } = require('../utils/errors');
 const { normalizeRegion } = require('../utils/regions');
 
 const DAY = 24 * 60 * 60 * 1000;
+const QUIZ_DAILY_TOTAL = 8;
+const QUIZ_REQUIRED_CORRECT = 7;
 
 function today() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw' }).format(new Date());
@@ -304,7 +306,7 @@ function dailyQuestions(userId) {
   return [...QUIZ_QUESTIONS]
     .map((question, index) => ({ question, rank: seed[index % seed.length] ^ index }))
     .sort((a, b) => a.rank - b.rank)
-    .slice(0, 5)
+    .slice(0, QUIZ_DAILY_TOTAL)
     .map(({ question }) => question);
 }
 
@@ -318,7 +320,7 @@ async function quizChallenge({ userId, language = 'pl' }) {
     .get(userId, 'quiz', today());
   return {
     questions,
-    requiredCorrect: 4,
+    requiredCorrect: QUIZ_REQUIRED_CORRECT,
     total: questions.length,
     attempted: Boolean(attempt),
     previousResult: attempt
@@ -452,7 +454,7 @@ async function quiz({ userId, region, answers, answer, questionId }) {
         ? 1
         : 0;
   }
-  const requiredCorrect = total === 1 ? 1 : 4;
+  const requiredCorrect = total === 1 ? 1 : QUIZ_REQUIRED_CORRECT;
   const won = correct >= requiredCorrect;
   const reward = rewardFor('quiz', { perfect: won && correct === total });
   return play({

@@ -278,6 +278,15 @@ html[data-theme='dark'] .cart-indicator b {
   line-height: 1;
   transition: transform .18s ease, background .18s ease, color .18s ease;
 }
+.product-card-actions svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .product-card-actions button:hover { transform: translateY(-2px); }
 .product-card-actions .heart.is-active {
   border-color: var(--wine);
@@ -1705,7 +1714,7 @@ textarea:focus {
   border-radius: 14px;
   object-fit: contain;
   padding: 10px;
-  background: white;
+  background: var(--paper);
 }
 .cart-line > div:nth-child(2) {
   display: flex;
@@ -1735,7 +1744,7 @@ textarea:focus {
   flex-direction: row !important;
   align-items: center;
   gap: 4px !important;
-  background: white;
+  background: var(--paper);
 }
 .qty button {
   width: 34px !important;
@@ -1749,8 +1758,9 @@ textarea:focus {
 .checkout-form {
   margin-top: 50px;
   padding: 30px;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: white;
+  background: var(--paper);
 }
 .checkout-form h2 {
   margin-top: 0;
@@ -1764,7 +1774,7 @@ textarea:focus {
   grid-column: 1 / -1;
 }
 .checkout-form label {
-  color: #55514e;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1774,17 +1784,21 @@ textarea:focus {
   min-height: 45px;
   margin-top: 7px;
   padding: 0 12px;
+  background: var(--canvas);
+  color: var(--ink);
 }
 .cart-summary {
   position: sticky;
   top: 160px;
   padding: 30px;
   border-radius: var(--radius);
-  background: var(--ink);
-  color: white;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
 }
 .cart-summary .section-label {
-  color: var(--lime);
+  color: var(--wine);
 }
 .cart-summary h2 {
   margin: 0 0 28px;
@@ -1794,7 +1808,7 @@ textarea:focus {
   padding: 10px 0;
   display: flex;
   justify-content: space-between;
-  color: #c8c5c1;
+  color: var(--muted);
 }
 .cart-summary dd {
   margin: 0;
@@ -1802,19 +1816,21 @@ textarea:focus {
 .cart-summary .summary-total {
   margin-top: 12px;
   padding: 22px 0;
-  border-top: 1px solid #464648;
-  color: white;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
   font-size: 21px;
   font-weight: 700;
 }
 .cart-summary label {
-  color: #d5d2ce;
+  color: var(--muted);
 }
 .promo-input {
   position: relative;
 }
 .promo-input input {
   padding-right: 38px;
+  background: var(--canvas);
+  color: var(--ink);
 }
 .promo-input span {
   position: absolute;
@@ -1829,7 +1845,7 @@ textarea:focus {
 .cart-summary > small {
   display: block;
   margin-top: 16px;
-  color: #999593;
+  color: var(--muted);
   line-height: 1.5;
 }
 .empty-cart {
@@ -2020,8 +2036,8 @@ textarea:focus {
 }
 .precision-zone {
   position: absolute;
-  left: 47%;
-  width: 6%;
+  left: 48.25%;
+  width: 3.5%;
   height: 100%;
   border-radius: 7px;
   background: var(--lime);
@@ -5267,11 +5283,36 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   grid-template-columns: 268px minmax(0, 1fr);
   gap: 20px;
 }
+.catalog-page--favorites {
+  min-height: 70vh;
+}
+.catalog-page--favorites .catalog-heading {
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+.catalog-page--favorites .catalog-react-layout--favorites {
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: 26px;
+}
+.catalog-page--favorites .catalog-results .product-grid-react {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.catalog-page--favorites .empty-panel {
+  min-height: 260px;
+  display: grid;
+  place-content: center;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
 
 @media (max-width: 900px) {
   .catalog-discovery {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+  .catalog-page--favorites .catalog-results .product-grid-react {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -5315,6 +5356,9 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   }
   .catalog-page .model-rail button {
     flex: 0 0 132px;
+  }
+  .catalog-page--favorites .catalog-results .product-grid-react {
+    grid-template-columns: 1fr;
   }
 }
 

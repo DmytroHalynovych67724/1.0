@@ -893,6 +893,8 @@ test('daily mini-games issue server-side personal promo codes', async () => {
     token: intruder.token,
   });
   assert.equal(localizedQuestion.response.status, 200);
+  assert.equal(localizedQuestion.body.total, 8);
+  assert.equal(localizedQuestion.body.requiredCorrect, 7);
   assert.match(localizedQuestion.body.questions[0].prompt, /[А-Яа-яІіЇїЄє]/);
   assert.equal(Array.isArray(localizedQuestion.body.questions[0].options), true);
 

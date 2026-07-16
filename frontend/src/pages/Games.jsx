@@ -12,11 +12,11 @@ const lines = [
 const text = {
   pl: {
     precision: 'Strefa precyzji',
-    precisionText: 'Zatrzymaj wskaźnik w zielonym polu. Dopiero celne trafienie uruchamia dzienną próbę.',
+    precisionText: 'Zatrzymaj szybszy wskaźnik w bardzo wąskiej strefie. Jej pozycja i tempo zmieniają się przy każdym starcie.',
     start: 'Uruchom', stop: 'Zatrzymaj', miss: 'Prawie — wskaźnik zatrzymał się poza polem. Spróbuj ponownie.',
     hit: 'Celnie! Losujemy małą, uczciwą nagrodę…', quiz: 'Tech quiz',
-    quizText: 'Pięć pytań o technologię. Potrzebujesz co najmniej 4 poprawnych odpowiedzi.',
-    question: 'Pytanie', of: 'z', score: 'Twój wynik', required: 'Do nagrody potrzeba 4/5.',
+    quizText: 'Osiem pytań z różnych dziedzin technologii. Do nagrody potrzebujesz co najmniej 7 poprawnych odpowiedzi.',
+    question: 'Pytanie', of: 'z', score: 'Twój wynik', required: 'Do nagrody potrzeba 7/8.',
     ttt: 'Kółko i krzyżyk', tttText: 'Pokonaj sprytnego, ale omylnego bota. Zaczynasz jako X.',
     difficulty: 'Poziom: trudny', yourTurn: 'Twój ruch', botTurn: 'Bot myśli…', reset: 'Nowa plansza',
     won: 'Wygrana! Oto Twoja nagroda', lost: 'Bot wygrał. Możesz od razu zagrać ponownie.',
@@ -27,11 +27,11 @@ const text = {
     gifts: { care_kit: 'zestaw do czyszczenia', eco_pack: 'opakowanie ochronne', usb_c_cable: 'kabel USB‑C', device_inspection: 'bezpłatna kontrola urządzenia' },
   },
   uk: {
-    precision: 'Зона точності', precisionText: 'Зупини вказівник у зеленому полі. Лише точне влучання запускає денну спробу.',
+    precision: 'Зона точності', precisionText: 'Зупини швидший вказівник у дуже вузькій зоні. Її позиція та швидкість змінюються під час кожного запуску.',
     start: 'Запустити', stop: 'Зупинити', miss: 'Майже — вказівник зупинився поза полем. Спробуй ще раз.',
     hit: 'Влучно! Визначаємо невелику чесну нагороду…', quiz: 'Техноквіз',
-    quizText: 'П’ять запитань про техніку. Для перемоги потрібно щонайменше 4 правильні відповіді.',
-    question: 'Питання', of: 'з', score: 'Твій результат', required: 'Для нагороди потрібно 4/5.',
+    quizText: 'Вісім запитань із різних сфер технологій. Для нагороди потрібно щонайменше 7 правильних відповідей.',
+    question: 'Питання', of: 'з', score: 'Твій результат', required: 'Для нагороди потрібно 7/8.',
     ttt: 'Хрестики-нулики', tttText: 'Переможи розумного, але не безпомилкового бота. Ти граєш за X.',
     difficulty: 'Рівень: складний', yourTurn: 'Твій хід', botTurn: 'Бот думає…', reset: 'Нова гра',
     won: 'Перемога! Ось твоя нагорода', lost: 'Бот переміг. Можна одразу зіграти ще раз.',
@@ -42,11 +42,11 @@ const text = {
     gifts: { care_kit: 'набір для чищення', eco_pack: 'захисне пакування', usb_c_cable: 'кабель USB‑C', device_inspection: 'безкоштовна перевірка пристрою' },
   },
   en: {
-    precision: 'Precision zone', precisionText: 'Stop the pointer inside the green field. Only a hit starts the daily attempt.',
+    precision: 'Precision zone', precisionText: 'Stop the faster pointer inside a very narrow zone. Its position and speed change on every start.',
     start: 'Start', stop: 'Stop', miss: 'Close — the pointer stopped outside the field. Try again.',
     hit: 'Great hit! Picking a small, fair reward…', quiz: 'Tech quiz',
-    quizText: 'Five technology questions. You need at least 4 correct answers.',
-    question: 'Question', of: 'of', score: 'Your score', required: 'You need 4/5 for a reward.',
+    quizText: 'Eight questions from different areas of technology. You need at least 7 correct answers.',
+    question: 'Question', of: 'of', score: 'Your score', required: 'You need 7/8 for a reward.',
     ttt: 'Tic-tac-toe', tttText: 'Beat a smart but fallible bot. You play as X.',
     difficulty: 'Level: hard', yourTurn: 'Your turn', botTurn: 'Bot is thinking…', reset: 'New board',
     won: 'You won! Here is your reward', lost: 'The bot won. You can retry now.', draw: 'Draw. Try again.',
@@ -116,6 +116,8 @@ export default function Games({ game }) {
   const [position, setPosition] = useState(0);
   const positionRef = useRef(0);
   const startRef = useRef(0);
+  const precisionCycleRef = useRef(1250);
+  const [precisionTarget, setPrecisionTarget] = useState(50);
   const [running, setRunning] = useState(false);
   const [precisionMessage, setPrecisionMessage] = useState('');
   const [spinReward, setSpinReward] = useState(null);
@@ -143,7 +145,7 @@ export default function Games({ game }) {
     if (!running) return undefined;
     let frame;
     const animate = (time) => {
-      const phase = ((time - startRef.current) % 1900) / 1900;
+      const phase = ((time - startRef.current) % precisionCycleRef.current) / precisionCycleRef.current;
       const next = phase < 0.5 ? phase * 200 : (1 - phase) * 200;
       positionRef.current = next;
       setPosition(next);
@@ -170,13 +172,16 @@ export default function Games({ game }) {
   }, [board, botTurn, c.draw, c.lost]);
 
   const startPrecision = () => {
+    const nextTarget = 18 + Math.random() * 64;
+    precisionCycleRef.current = 1050 + Math.random() * 350;
+    setPrecisionTarget(nextTarget);
     startRef.current = performance.now(); positionRef.current = 0; setPosition(0);
     setPrecisionMessage(''); setSpinReward(null); setRunning(true);
   };
   const stopPrecision = async () => {
     const stoppedAt = positionRef.current;
     setRunning(false);
-    if (stoppedAt < 47 || stoppedAt > 53) { setPrecisionMessage(c.miss); return; }
+    if (Math.abs(stoppedAt - precisionTarget) > 1.75) { setPrecisionMessage(c.miss); return; }
     setPrecisionMessage(c.hit);
     try {
       setSpinReward(await api('/rewards/spin', { method: 'POST', body: JSON.stringify({ region }) }));
@@ -233,7 +238,7 @@ export default function Games({ game }) {
       <div className="games-grid">
         {game === 'precision' && <section className="game-panel game-panel--precision">
           <div className="game-number">01</div><h2>{c.precision}</h2><p>{c.precisionText}</p>
-          <div className="precision-track"><span className="precision-zone" /><i style={{ left: `${position}%` }} /></div>
+          <div className="precision-track"><span className="precision-zone" style={{ left: `${precisionTarget - 1.75}%` }} /><i style={{ left: `${position}%` }} /></div>
           <button className="primary-button" type="button" onClick={running ? stopPrecision : startPrecision}>{running ? c.stop : c.start}</button>
           {precisionMessage && <p className="game-status">{precisionMessage}</p>}
           <Reward result={spinReward} copy={() => flash(c.copied)} hint={c.copyHint} c={c} />

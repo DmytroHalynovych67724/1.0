@@ -254,10 +254,10 @@ export default function Catalog({ favoritesOnly = false }) {
   const specKeys = categorySpecs[category] || [];
 
   useEffect(() => {
-    const search = new URLSearchParams(signature);
+    const search = new URLSearchParams(favoritesOnly ? '' : signature);
     search.set('region', region);
-    if (sort === 'price-asc') search.set('sort', 'price_asc');
-    else if (sort === 'price-desc') search.set('sort', 'price_desc');
+    if (!favoritesOnly && sort === 'price-asc') search.set('sort', 'price_asc');
+    else if (!favoritesOnly && sort === 'price-desc') search.set('sort', 'price_desc');
     const path = `/products?${search}`;
     const cacheKey = `nashary:catalog:${path}`;
     const cached = readCatalogCache(cacheKey);
@@ -296,9 +296,13 @@ export default function Catalog({ favoritesOnly = false }) {
       cancelled = true;
       if (previewTimer) window.clearTimeout(previewTimer);
     };
-  }, [region, signature, sort]);
+  }, [favoritesOnly, region, signature, sort]);
 
   useEffect(() => {
+    if (favoritesOnly) {
+      queueMicrotask(() => setSourceProducts([]));
+      return undefined;
+    }
     const search = new URLSearchParams(signature);
     search.set('region', region);
     ['sort', 'brand', 'model', 'condition', 'grade', ...Object.keys(labels)].forEach((key) => search.delete(key));
@@ -331,7 +335,7 @@ export default function Catalog({ favoritesOnly = false }) {
       cancelled = true;
       if (previewTimer) window.clearTimeout(previewTimer);
     };
-  }, [signature, region]);
+  }, [favoritesOnly, signature, region]);
 
   const set = (key, value) => {
     const next = new URLSearchParams(params);
@@ -376,6 +380,7 @@ export default function Catalog({ favoritesOnly = false }) {
     () => (favoritesOnly ? products.filter((product) => favorites.includes(product.id)) : products),
     [favoritesOnly, favorites, products]
   );
+  const effectiveView = favoritesOnly ? 'grid' : view;
   const activeName = (key) => {
     if (labels[key]) return labels[key][language] || labels[key].pl;
     if (key === 'category') return t('category');
@@ -396,7 +401,7 @@ export default function Catalog({ favoritesOnly = false }) {
   };
 
   return (
-    <div className="catalog-page">
+    <div className={`catalog-page${favoritesOnly ? ' catalog-page--favorites' : ''}`}>
       <div className="shell page-heading catalog-heading">
         <span className="section-label">NaShary market</span>
         <h1>{title}</h1>
@@ -407,7 +412,7 @@ export default function Catalog({ favoritesOnly = false }) {
         </div>
       </div>
 
-      <div className="shell catalog-promo-strip"><span>{region.toUpperCase()}</span><p>{c.promo}</p><button type="button" onClick={() => navigate('/games')}>{c.play}</button></div>
+      {!favoritesOnly && <div className="shell catalog-promo-strip"><span>{region.toUpperCase()}</span><p>{c.promo}</p><button type="button" onClick={() => navigate('/games')}>{c.play}</button></div>}
 
       {!favoritesOnly && (brands.length > 0 || models.length > 0) && (
         <section className="shell catalog-discovery">
@@ -445,8 +450,8 @@ export default function Catalog({ favoritesOnly = false }) {
         </section>
       )}
 
-      <div className="shell catalog-react-layout">
-        {filtersOpen && (
+      <div className={`shell catalog-react-layout${favoritesOnly ? ' catalog-react-layout--favorites' : ''}`}>
+        {!favoritesOnly && filtersOpen && (
           <button
             className="filter-backdrop"
             type="button"
@@ -454,7 +459,7 @@ export default function Catalog({ favoritesOnly = false }) {
             onClick={() => setFiltersOpen(false)}
           />
         )}
-        <aside className={`filter-card${filtersOpen ? ' is-open' : ''}`}>
+        {!favoritesOnly && <aside className={`filter-card${filtersOpen ? ' is-open' : ''}`}>
           <div className="filter-title">
             <b>{t('filters')}</b>
             <span>
@@ -593,10 +598,10 @@ export default function Catalog({ favoritesOnly = false }) {
             <b>{c.safe}</b>
             <p>{c.note}</p>
           </div>
-        </aside>
+        </aside>}
 
         <section className="catalog-results">
-          {active.length > 0 && (
+          {!favoritesOnly && active.length > 0 && (
             <div className="active-filters">
               <span>{c.active}</span>
               {active.map(([key, value]) => (
@@ -609,7 +614,7 @@ export default function Catalog({ favoritesOnly = false }) {
               </button>
             </div>
           )}
-          <div className="catalog-toolbar">
+          {!favoritesOnly && <div className="catalog-toolbar">
             <button className="save-search-button" type="button" onClick={saveSearch}>♡ {c.saveSearch}</button>
             <button
               className="filter-mobile-button"
@@ -649,7 +654,7 @@ export default function Catalog({ favoritesOnly = false }) {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
           {loading ? (
             <div className="loading-grid">
               {Array.from({ length: 8 }, (_, index) => (
@@ -657,9 +662,9 @@ export default function Catalog({ favoritesOnly = false }) {
               ))}
             </div>
           ) : visibleProducts.length ? (
-            <div className={`product-grid-react product-grid-react--${view}`} key={signature}>
+            <div className={`product-grid-react product-grid-react--${effectiveView}`} key={signature}>
               {visibleProducts.slice(0, visible).map((product) => (
-                <ProductCard key={product.id} product={product} view={view} onQuickView={setQuickView} />
+                <ProductCard key={product.id} product={product} view={effectiveView} onQuickView={setQuickView} />
               ))}
             </div>
           ) : (

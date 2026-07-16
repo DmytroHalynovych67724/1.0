@@ -25,6 +25,23 @@ const specLabels = {
   color: { pl: 'Kolor', uk: 'Колір', en: 'Color' },
 };
 
+function PreviewIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M2.8 12s3.4-5.2 9.2-5.2 9.2 5.2 9.2 5.2-3.4 5.2-9.2 5.2S2.8 12 2.8 12Z" />
+      <circle cx="12" cy="12" r="2.6" />
+    </svg>
+  );
+}
+
+function CompareIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 7h15m0 0-3-3m3 3-3 3M20 17H5m0 0 3-3m-3 3 3 3" />
+    </svg>
+  );
+}
+
 export default function ProductCard({ product, view = 'grid', onQuickView }) {
   const {
     t,
@@ -65,7 +82,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
         </span>
         <div className="product-card-actions">
           {onQuickView && (
-            <button className="quick-card-button" type="button" onClick={() => onQuickView(product)} aria-label={c.quick} title={c.quick}>⌕</button>
+            <button className="quick-card-button" type="button" onClick={() => onQuickView(product)} aria-label={c.quick} title={c.quick}><PreviewIcon /></button>
           )}
           <button
             className={`compare-card-button${compared ? ' is-active' : ''}`}
@@ -74,7 +91,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
             aria-label={c.compare}
             title={c.compare}
           >
-            ◫
+            <CompareIcon />
           </button>
           <button
             className={`heart${favorite ? ' is-active' : ''}`}
