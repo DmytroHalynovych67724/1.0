@@ -30,6 +30,9 @@ function Icon({ name }) {
         <path d="M9 9V7a3 3 0 0 1 6 0v2" />
       </>
     ),
+    heart: (
+      <path d="M20.5 9.2c0 5-8.5 10-8.5 10s-8.5-5-8.5-10A4.7 4.7 0 0 1 12 6a4.7 4.7 0 0 1 8.5 3.2Z" />
+    ),
     menu: <path d="M4 7h16M4 12h16M4 17h16" />,
     moon: <path d="M20 15.4A8.2 8.2 0 0 1 8.6 4 8.5 8.5 0 1 0 20 15.4Z" />,
     sun: (
@@ -47,7 +50,7 @@ function Icon({ name }) {
 }
 
 export default function Header() {
-  const { t, language, setLanguage, region, setRegion, regions, theme, setTheme, user, cart } =
+  const { t, language, setLanguage, region, setRegion, regions, theme, setTheme, user, cart, favorites } =
     useStore();
   const [query, setQuery] = useState('');
   const [localeOpen, setLocaleOpen] = useState(false);
@@ -149,6 +152,14 @@ export default function Header() {
             aria-label={t('account')}
           >
             {user?.avatar ? <img src={user.avatar} alt="" /> : <Icon name="user" />}
+          </Link>
+          <Link
+            className="icon-button favorites-indicator"
+            to="/favorites"
+            aria-label={language === 'pl' ? 'Ulubione' : language === 'uk' ? 'Обране' : 'Favourites'}
+          >
+            <Icon name="heart" />
+            {favorites.length > 0 && <b>{favorites.length}</b>}
           </Link>
           <Link className="icon-button cart-indicator" to="/cart" aria-label={t('cart')}>
             <Icon name="bag" />

@@ -97,6 +97,8 @@ function normalizeIcecatProduct(payload, fallback = {}) {
   const usb = isYes(usbValue) ? 'USB' : usbValue;
   const network = read('Mobile network generation');
   const connectivity = joinParts([
+    read('Connectivity technology'),
+    read('Device interface'),
     network,
     wifi,
     bluetooth ? `Bluetooth ${bluetooth}` : '',
@@ -128,7 +130,8 @@ function normalizeIcecatProduct(payload, fallback = {}) {
     ram: read('RAM capacity', 'Internal memory'),
     ramType: read('RAM type', 'Internal memory type'),
     storage: read('Internal storage capacity', 'Total storage capacity'),
-    battery: read('Battery capacity'),
+    gpu: joinParts([read('Discrete graphics card model'), read('On-board graphics card model')], ' / '),
+    battery: read('Battery capacity', 'Battery life (max)', 'Continuous audio playback time'),
     charging: read('Fast charging power', 'AC adapter power'),
     mainCamera: joinParts(rearCameras, ' + '),
     frontCamera: joinParts(frontCameras, ' + '),
@@ -137,6 +140,9 @@ function normalizeIcecatProduct(payload, fallback = {}) {
     sim: read('SIM card capability'),
     os: joinParts([read('Operating system installed'), read('Operating system version')], ' '),
     connectivity,
+    platform: read('Gaming platforms supported', 'Platform'),
+    audioType: read('Product type', 'Headset type', 'Wearing style'),
+    accessoryType: read('Product type'),
     wifi,
     bluetooth,
     weight: read('Weight'),

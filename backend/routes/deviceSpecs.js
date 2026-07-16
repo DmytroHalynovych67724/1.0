@@ -14,7 +14,8 @@ router.get(
     if (query.length < 3 || query.length > 100) {
       throw new AppError(400, 'VALIDATION_ERROR', 'Enter at least three characters of a model name');
     }
-    res.json({ results: await findDeviceSpecs(query), provider: { icecat: icecatStatus() } });
+    const category = typeof req.query.category === 'string' ? req.query.category.trim().slice(0, 60) : '';
+    res.json({ results: await findDeviceSpecs(query, { category }), provider: { icecat: icecatStatus() } });
   })
 );
 

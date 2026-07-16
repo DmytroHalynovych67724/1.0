@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { normalizeIcecatProduct } = require('../backend/services/icecat');
-const { curatedSpecs, labelledWikiField, modelCompatible, wikipediaTitleCompatible } = require('../backend/services/deviceSpecs');
+const { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, wikipediaTitleCompatible } = require('../backend/services/deviceSpecs');
 
 function feature(name, value) {
   return {
@@ -88,4 +88,16 @@ test('Wikipedia family specifications are reduced to the requested phone variant
 test('Wikipedia fallback rejects a series page when the requested variant is missing', () => {
   assert.equal(wikipediaTitleCompatible('Samsung S24 Ultra', 'Samsung Galaxy S24'), false);
   assert.equal(wikipediaTitleCompatible('Google Pixel 9 Pro', 'Google Pixel 9 Pro'), true);
+});
+
+test('model-name lookup also covers laptops and audio devices', async () => {
+  const laptop = await findDeviceSpecs('MacBook Air M2 13 inch 8/256 GB', { category: 'Laptopy' });
+  assert.equal(laptop[0].model, 'MacBook Air M2');
+  assert.equal(laptop[0].specs.processor, 'Apple M2');
+  assert.match(laptop[0].specs.screen, /13\.6/);
+
+  const headphones = await findDeviceSpecs('Sony WH-1000XM5', { category: 'Audio' });
+  assert.equal(headphones[0].model, 'WH-1000XM5');
+  assert.match(headphones[0].specs.connectivity, /Bluetooth/);
+  assert.match(headphones[0].specs.battery, /30 h/);
 });

@@ -144,6 +144,7 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const products = await listProducts(productFilters(req.query));
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
     res.json(products);
   })
 );

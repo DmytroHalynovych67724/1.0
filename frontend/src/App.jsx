@@ -27,6 +27,7 @@ const routes = [
     children: [
       { index: true, element: <Home /> },
       { path: 'catalog', element: <Catalog /> },
+      { path: 'favorites', element: <Catalog favoritesOnly /> },
       { path: 'product/:id', element: <Product /> },
       { path: 'model/:brand/:model', element: <Model /> },
       { path: 'games', element: <GamesHub /> },

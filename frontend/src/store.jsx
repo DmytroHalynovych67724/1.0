@@ -43,6 +43,10 @@ export function StoreProvider({ children }) {
     localStorage.setItem('nashary-react-comparison', JSON.stringify(comparison));
   }, [comparison]);
   useEffect(() => {
+    // Start waking a free Render instance while the user is still browsing the landing page.
+    api('/health').catch(() => {});
+  }, []);
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('nashary-theme', theme);
   }, [theme]);

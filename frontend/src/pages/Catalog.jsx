@@ -49,13 +49,13 @@ const labels = {
 
 const categorySpecs = {
   Smartfony: ['screen', 'displayType', 'resolution', 'refreshRate', 'displayFeatures', 'processor', 'ram', 'ramType', 'storage', 'battery', 'charging', 'mainCamera', 'frontCamera', 'cameraFeatures', 'features', 'sim', 'os', 'connectivity', 'wifi', 'bluetooth', 'color', 'weight'],
-  Laptopy: ['color', 'screen', 'processor', 'ram', 'storage', 'gpu', 'os'],
-  Tablety: ['color', 'screen', 'processor', 'ram', 'storage', 'os'],
-  Gaming: ['color', 'platform', 'storage'],
-  Audio: ['color', 'audioType', 'connectivity'],
-  Monitory: ['color', 'screen', 'resolution', 'refreshRate'],
-  Foto: ['color', 'resolution', 'connectivity'],
-  Akcesoria: ['color', 'accessoryType', 'connectivity'],
+  Laptopy: ['screen', 'displayType', 'resolution', 'refreshRate', 'processor', 'ram', 'ramType', 'storage', 'gpu', 'battery', 'os', 'connectivity', 'wifi', 'bluetooth', 'color', 'weight'],
+  Tablety: ['screen', 'displayType', 'resolution', 'refreshRate', 'processor', 'ram', 'storage', 'battery', 'charging', 'os', 'connectivity', 'wifi', 'bluetooth', 'color', 'weight'],
+  Gaming: ['platform', 'processor', 'ram', 'storage', 'gpu', 'resolution', 'refreshRate', 'connectivity', 'wifi', 'color'],
+  Audio: ['audioType', 'connectivity', 'bluetooth', 'battery', 'charging', 'features', 'color', 'weight'],
+  Monitory: ['screen', 'displayType', 'resolution', 'refreshRate', 'displayFeatures', 'connectivity', 'features', 'color'],
+  Foto: ['resolution', 'displayType', 'connectivity', 'wifi', 'bluetooth', 'features', 'color', 'weight'],
+  Akcesoria: ['accessoryType', 'connectivity', 'bluetooth', 'features', 'color', 'weight'],
 };
 
 const copy = {
@@ -88,6 +88,7 @@ const copy = {
     compare: 'Porównaj',
     selected: 'wybrano',
     models: 'Popularne modele', saveSearch: 'Zapisz wyszukiwanie', savedSearch: 'Wyszukiwanie zapisane', more: 'Pokaż więcej', seller: 'Sprzedawca', private: 'Osoba prywatna', store: 'Sklep', delivery: 'Odbiór i dostawa', shipping: 'Dostawa', pickup: 'Odbiór osobisty', trust: 'Wiarygodność i oferta', verified: 'Zweryfikowany sprzedawca', negotiable: 'Możliwa negocjacja', warranty: 'Z gwarancją', urgent: 'Pilne', city: 'Miasto', anyCity: 'Wszystkie miasta', promo: 'Graj, odbieraj kody i kupuj taniej w swoim regionie.', play: 'Mini-gry',
+    favorites: 'Ulubione', favoriteEmpty: 'Nie masz jeszcze ulubionych ofert w tym regionie.', allOffers: 'Wszystkie oferty', discovery: 'Szybki wybór',
   },
   uk: {
     reset: 'Очистити',
@@ -118,6 +119,7 @@ const copy = {
     compare: 'Порівняти',
     selected: 'вибрано',
     models: 'Популярні моделі', saveSearch: 'Зберегти пошук', savedSearch: 'Пошук збережено', more: 'Показати більше', seller: 'Продавець', private: 'Приватна особа', store: 'Магазин', delivery: 'Отримання і доставка', shipping: 'Доставка', pickup: 'Самовивіз', trust: 'Довіра та пропозиція', verified: 'Перевірений продавець', negotiable: 'Можливий торг', warranty: 'З гарантією', urgent: 'Терміново', city: 'Місто', anyCity: 'Усі міста', promo: 'Грайте, отримуйте коди та купуйте дешевше у своєму регіоні.', play: 'Мініігри',
+    favorites: 'Обране', favoriteEmpty: 'У цьому регіоні ще немає обраних оголошень.', allOffers: 'Усі оголошення', discovery: 'Швидкий вибір',
   },
   en: {
     reset: 'Clear',
@@ -148,6 +150,7 @@ const copy = {
     compare: 'Compare',
     selected: 'selected',
     models: 'Popular models', saveSearch: 'Save search', savedSearch: 'Search saved', more: 'Show more', seller: 'Seller', private: 'Private seller', store: 'Store', delivery: 'Delivery & pickup', shipping: 'Shipping', pickup: 'Pickup', trust: 'Trust & offer', verified: 'Verified seller', negotiable: 'Negotiable', warranty: 'With warranty', urgent: 'Urgent', city: 'City', anyCity: 'All cities', promo: 'Play, earn codes and buy for less in your region.', play: 'Mini-games',
+    favorites: 'Favourites', favoriteEmpty: 'You have no favourite listings in this region yet.', allOffers: 'All listings', discovery: 'Quick choice',
   },
 };
 
@@ -157,6 +160,24 @@ function countsFor(items, selector) {
     if (value) counts[value] = (counts[value] || 0) + 1;
     return counts;
   }, {});
+}
+
+function readCatalogCache(key) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(key));
+    if (!cached || !Array.isArray(cached.items) || Date.now() - cached.savedAt > 24 * 60 * 60 * 1000) return null;
+    return cached.items;
+  } catch {
+    return null;
+  }
+}
+
+function writeCatalogCache(key, items) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), items }));
+  } catch {
+    // A full or disabled storage must never block the live catalogue.
+  }
 }
 
 function FilterSection({ title, children, open = true }) {
@@ -179,8 +200,39 @@ function FilterSection({ title, children, open = true }) {
   );
 }
 
-export default function Catalog() {
-  const { t, region, regions, language, comparison, user, flash } = useStore();
+function FilterValues({ values, counts, selected, onSelect, more }) {
+  const [expanded, setExpanded] = useState(false);
+  const selectedValue = values.find((value) => String(value) === String(selected));
+  const visible = expanded ? values : values.slice(0, 6);
+  const options = selectedValue && !visible.includes(selectedValue)
+    ? [selectedValue, ...visible.slice(0, 5)]
+    : visible;
+  return (
+    <div className="filter-values">
+      <div className="filter-option-list">
+        {options.map((value) => (
+          <button
+            className={String(selected) === String(value) ? 'is-active' : ''}
+            type="button"
+            key={value}
+            onClick={() => onSelect(String(selected) === String(value) ? '' : value)}
+          >
+            <span title={value}>{value}</span>
+            <small>{counts[value] || 0}</small>
+          </button>
+        ))}
+      </div>
+      {values.length > 6 && (
+        <button className="filter-values__more" type="button" onClick={() => setExpanded((value) => !value)}>
+          {expanded ? '−' : `${more} +${values.length - 6}`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function Catalog({ favoritesOnly = false }) {
+  const { t, region, regions, language, comparison, favorites, user, flash } = useStore();
   const navigate = useNavigate();
   const c = copy[language] || copy.pl;
   const [params, setParams] = useSearchParams();
@@ -206,25 +258,54 @@ export default function Catalog() {
     search.set('region', region);
     if (sort === 'price-asc') search.set('sort', 'price_asc');
     else if (sort === 'price-desc') search.set('sort', 'price_desc');
-    api(`/products?${search}`)
-      .then(setProducts)
-      .catch(() => setProducts([]))
-      .finally(() => setLoading(false));
+    const path = `/products?${search}`;
+    const cacheKey = `nashary:catalog:${path}`;
+    const cached = readCatalogCache(cacheKey);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (cached) {
+        setProducts(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+    });
+    api(path)
+      .then((items) => {
+        if (cancelled) return;
+        setProducts(items);
+        writeCatalogCache(cacheKey, items);
+      })
+      .catch(() => { if (!cancelled && !cached) setProducts([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [region, signature, sort]);
 
   useEffect(() => {
     const search = new URLSearchParams(signature);
     search.set('region', region);
     ['sort', 'brand', 'model', 'condition', 'grade', ...Object.keys(labels)].forEach((key) => search.delete(key));
-    api(`/products?${search}`)
-      .then(setSourceProducts)
-      .catch(() => setSourceProducts([]));
+    const path = `/products?${search}`;
+    const cacheKey = `nashary:catalog-source:${path}`;
+    const cached = readCatalogCache(cacheKey);
+    let cancelled = false;
+    if (cached) queueMicrotask(() => { if (!cancelled) setSourceProducts(cached); });
+    api(path)
+      .then((items) => {
+        if (cancelled) return;
+        setSourceProducts(items);
+        writeCatalogCache(cacheKey, items);
+      })
+      .catch(() => { if (!cancelled && !cached) setSourceProducts([]); });
+    return () => { cancelled = true; };
   }, [signature, region]);
 
   const set = (key, value) => {
     const next = new URLSearchParams(params);
     value ? next.set(key, value) : next.delete(key);
     if (key === 'category') Object.keys(labels).forEach((name) => next.delete(name));
+    setVisible(12);
     setParams(next);
   };
   const setView = (value) => {
@@ -256,8 +337,12 @@ export default function Catalog() {
   const cities = unique('location', sourceProducts.map((item) => item.location));
   const active = [...params.entries()].filter(([key]) => !['q', 'sort'].includes(key));
   const title = useMemo(
-    () => (query ? `“${query}”` : category || t('catalog')),
-    [query, category, t]
+    () => (favoritesOnly ? c.favorites : query ? `“${query}”` : category || t('catalog')),
+    [favoritesOnly, c.favorites, query, category, t]
+  );
+  const visibleProducts = useMemo(
+    () => (favoritesOnly ? products.filter((product) => favorites.includes(product.id)) : products),
+    [favoritesOnly, favorites, products]
   );
   const activeName = (key) => {
     if (labels[key]) return labels[key][language] || labels[key].pl;
@@ -280,10 +365,10 @@ export default function Catalog() {
 
   return (
     <div className="catalog-page">
-      <div className="shell page-heading">
+      <div className="shell page-heading catalog-heading">
         <span className="section-label">NaShary market</span>
         <h1>{title}</h1>
-        <p>{loading ? '…' : `${products.length} ${t('results')}`}</p>
+        <p>{loading ? '…' : `${visibleProducts.length} ${t('results')}`}</p>
         <div className="region-chip">
           <span>{region.toUpperCase()}</span>
           {c.only} {regions[region].label[language]}
@@ -292,7 +377,7 @@ export default function Catalog() {
 
       <div className="shell catalog-promo-strip"><span>{region.toUpperCase()}</span><p>{c.promo}</p><button type="button" onClick={() => navigate('/games')}>{c.play}</button></div>
 
-      {brands.length > 0 && (
+      {!favoritesOnly && brands.length > 0 && (
         <section className="shell brand-rail">
           <header>
             <div>
@@ -317,7 +402,7 @@ export default function Catalog() {
         </section>
       )}
 
-      {models.length > 0 && (
+      {!favoritesOnly && models.length > 0 && (
         <section className="shell model-rail"><b>{c.models}</b><div>{models.map((model) => { const sample = sourceProducts.find((item) => item.model === model); return <button type="button" key={model} onClick={() => navigate(`/model/${encodeURIComponent(sample?.brand || '')}/${encodeURIComponent(model)}`)}>{model}<small>{modelCounts[model]}</small></button>; })}</div></section>
       )}
 
@@ -453,20 +538,14 @@ export default function Catalog() {
                   const counts = countsFor(sourceProducts, (product) => product.specs?.[key]);
                   if (!values.length) return null;
                   return (
-                    <FilterSection key={key} title={labels[key][language] || labels[key].pl} open={index < 4}>
-                      <label className="filter-select-label">
-                      <select
-                        value={params.get(key) || ''}
-                        onChange={(event) => set(key, event.target.value)}
-                      >
-                        <option value="">{c.any}</option>
-                        {values.map((value) => (
-                          <option key={value} value={value}>
-                            {value} ({counts[value]})
-                          </option>
-                        ))}
-                      </select>
-                      </label>
+                    <FilterSection key={key} title={labels[key][language] || labels[key].pl} open={index < 5}>
+                      <FilterValues
+                        values={values}
+                        counts={counts}
+                        selected={params.get(key) || ''}
+                        onSelect={(value) => set(key, value)}
+                        more={c.more}
+                      />
                     </FilterSection>
                   );
                 })}
@@ -538,21 +617,21 @@ export default function Catalog() {
                 <i key={index} />
               ))}
             </div>
-          ) : products.length ? (
+          ) : visibleProducts.length ? (
             <div className={`product-grid-react product-grid-react--${view}`} key={signature}>
-              {products.slice(0, visible).map((product) => (
+              {visibleProducts.slice(0, visible).map((product) => (
                 <ProductCard key={product.id} product={product} view={view} onQuickView={setQuickView} />
               ))}
             </div>
           ) : (
             <div className="empty-panel">
-              <b>{t('empty')}</b>
-              <button className="quiet-button" type="button" onClick={reset}>
-                {c.reset}
+              <b>{favoritesOnly ? c.favoriteEmpty : t('empty')}</b>
+              <button className="quiet-button" type="button" onClick={() => favoritesOnly ? navigate('/catalog') : reset()}>
+                {favoritesOnly ? c.allOffers : c.reset}
               </button>
             </div>
           )}
-          {products.length > visible && <button className="load-more-button" type="button" onClick={() => setVisible((value) => value + 12)}>{c.more}<span>{products.length - visible}</span></button>}
+          {visibleProducts.length > visible && <button className="load-more-button" type="button" onClick={() => setVisible((value) => value + 12)}>{c.more}<span>{visibleProducts.length - visible}</span></button>}
         </section>
       </div>
 

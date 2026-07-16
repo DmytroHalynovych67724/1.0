@@ -18,6 +18,19 @@ const CURATED_PHONES = [
   { brand: 'Xiaomi', model: '14', specs: { screen: '6.36″ LTPO OLED', resolution: '2670 × 1200', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3', ram: '8 GB / 12 GB / 16 GB', storage: '256 GB / 512 GB / 1 TB', battery: '4610 mAh', mainCamera: '50 MP + 50 MP + 50 MP', frontCamera: '32 MP', os: 'Android', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.4, NFC, USB‑C', displayType: 'LTPO OLED', charging: '90 W', weight: '193 g' } },
   { brand: 'OnePlus', model: '12', specs: { screen: '6.82″ LTPO AMOLED', resolution: '3168 × 1440', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3', ram: '12 GB / 16 GB / 24 GB', storage: '256 GB / 512 GB / 1 TB', battery: '5400 mAh', mainCamera: '50 MP + 64 MP + 48 MP', frontCamera: '32 MP', os: 'Android', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.4, NFC, USB‑C', displayType: 'LTPO AMOLED', charging: '100 W', weight: '220 g' } },
 ];
+const CURATED_DEVICES = [
+  { category: 'Laptopy', brand: 'Apple', model: 'MacBook Air M2', specs: { screen: '13.6″ Liquid Retina IPS', resolution: '2560 × 1664', refreshRate: '60 Hz', processor: 'Apple M2', ram: '8 GB / 16 GB / 24 GB', storage: '256 GB / 512 GB / 1 TB / 2 TB', gpu: 'Apple M2 8-core / 10-core GPU', battery: '52.6 Wh', os: 'macOS', connectivity: 'MagSafe 3, 2× Thunderbolt / USB 4, 3.5 mm', wifi: 'Wi‑Fi 6', bluetooth: '5.3', weight: '1.24 kg' } },
+  { category: 'Laptopy', brand: 'Lenovo', model: 'Legion 5', specs: { screen: '15.6″ / 16″ IPS', resolution: 'Full HD / WQXGA', refreshRate: '144 Hz / 165 Hz', processor: 'AMD Ryzen 5 / Ryzen 7 or Intel Core i5 / i7', ram: '16 GB / 32 GB', storage: '512 GB / 1 TB SSD', gpu: 'NVIDIA GeForce RTX series', os: 'Windows', connectivity: 'USB‑C, USB‑A, HDMI, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.x' } },
+  { category: 'Laptopy', brand: 'ASUS', model: 'TUF Gaming A15', specs: { screen: '15.6″ IPS', resolution: '1920 × 1080', refreshRate: '144 Hz', processor: 'AMD Ryzen series', ram: '16 GB / 32 GB', storage: '512 GB / 1 TB SSD', gpu: 'NVIDIA GeForce RTX series', os: 'Windows', connectivity: 'USB‑C, USB‑A, HDMI, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.x' } },
+  { category: 'Audio', brand: 'Sony', model: 'WH-1000XM5', specs: { audioType: 'Słuchawki nauszne', connectivity: 'Bluetooth, 3.5 mm, USB‑C', bluetooth: '5.2', battery: 'do 30 h z ANC / 40 h bez ANC', charging: 'USB‑C, szybkie ładowanie', features: 'ANC, tryb ambient, multipoint', weight: '250 g' } },
+  { category: 'Audio', brand: 'Apple', model: 'AirPods Pro 2', specs: { audioType: 'Słuchawki dokanałowe', connectivity: 'Bluetooth, USB‑C / MagSafe', bluetooth: '5.3', battery: 'do 6 h / do 30 h z etui', features: 'ANC, tryb kontaktu, dźwięk przestrzenny', color: 'White' } },
+  { category: 'Gaming', brand: 'Sony', model: 'PlayStation 5 Slim', specs: { platform: 'PlayStation 5', processor: 'AMD Zen 2', ram: '16 GB GDDR6', storage: '1 TB SSD', gpu: 'AMD RDNA 2', resolution: 'do 4K', refreshRate: 'do 120 Hz', connectivity: 'HDMI 2.1, USB, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.1', color: 'White' } },
+  { category: 'Gaming', brand: 'Nintendo', model: 'Switch OLED', specs: { platform: 'Nintendo Switch', screen: '7″ OLED', resolution: '1280 × 720', storage: '64 GB', connectivity: 'USB‑C, HDMI przez stację dokującą', wifi: 'Wi‑Fi 5', bluetooth: '4.1', color: 'White / Neon' } },
+  { category: 'Monitory', brand: 'Dell', model: 'UltraSharp U2723QE', specs: { screen: '27″', displayType: 'IPS Black', resolution: '3840 × 2160 (4K UHD)', refreshRate: '60 Hz', connectivity: 'USB‑C, DisplayPort, HDMI, USB hub, Ethernet', features: 'KVM, Power Delivery 90 W', color: 'Silver / Black' } },
+  { category: 'Akcesoria', brand: 'Logitech', model: 'MX Master 3S', specs: { accessoryType: 'Mysz', connectivity: 'Bluetooth Low Energy / Logi Bolt', bluetooth: 'Low Energy', battery: 'do 70 dni', charging: 'USB‑C', features: '8000 DPI, ciche kliknięcia, MagSpeed', color: 'Graphite / Pale Grey' } },
+];
+const LOOKUP_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+const lookupCache = new Map();
 
 function simplifyWikiTemplates(value = '') {
   let cleaned = String(value);
@@ -169,8 +182,8 @@ function labelledWikiField(wikitext, names, query) {
   return cleanWiki(result);
 }
 
-function requestedPhoneIdentity(query, fallbackTitle) {
-  const brands = ['Samsung', 'Apple', 'Xiaomi', 'Google', 'OnePlus', 'Motorola', 'Huawei', 'Honor', 'Nothing', 'Sony', 'Nokia', 'Realme', 'Oppo', 'Vivo', 'Asus'];
+function requestedDeviceIdentity(query, fallbackTitle) {
+  const brands = ['Samsung', 'Apple', 'Xiaomi', 'Google', 'OnePlus', 'Motorola', 'Huawei', 'Honor', 'Nothing', 'Sony', 'Nokia', 'Realme', 'Oppo', 'Vivo', 'Asus', 'Lenovo', 'HP', 'Dell', 'Acer', 'MSI', 'Microsoft', 'LG', 'Nintendo', 'Canon', 'Nikon', 'Fujifilm', 'Logitech'];
   const brand = brands.find((item) => normalize(query).includes(normalize(item))) || fallbackTitle.split(' ')[0];
   const model = String(query)
     .replace(new RegExp(brand, 'i'), '')
@@ -180,46 +193,80 @@ function requestedPhoneIdentity(query, fallbackTitle) {
   return { brand, model: model || fallbackTitle, title: `${brand} ${model || fallbackTitle}`.trim() };
 }
 
-async function wikipediaSpecs(query) {
+function wikipediaKeyword(category) {
+  return {
+    Smartfony: 'smartphone',
+    Laptopy: 'laptop computer',
+    Tablety: 'tablet computer',
+    Gaming: 'game console',
+    Audio: 'headphones audio',
+    Monitory: 'computer monitor television',
+    Foto: 'camera',
+    Akcesoria: 'computer accessory',
+  }[category] || 'electronics';
+}
+
+function modelSearchQuery(query, category) {
+  let value = String(query)
+    .replace(/\b\d+\s*\/\s*\d+\s*(?:GB|ГБ|TB|ТБ)?\b/gi, ' ')
+    .replace(/\b(?:32|64|128|256|512|1024|2048)\s*(?:GB|ГБ|TB|ТБ)\b/gi, ' ')
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:inch|inches|″|")\b/gi, ' ')
+    .replace(/\b(?:black|white|blue|green|silver|graphite|gold|purple|red)\b/gi, ' ');
+  if (category === 'Laptopy') {
+    value = value
+      .replace(/\b(?:intel\s+)?(?:core\s+)?i[3579](?:-\d+[a-z]*)?\b/gi, ' ')
+      .replace(/\b(?:amd\s+)?ryzen\s*[3579](?:\s+\d+[a-z]*)?\b/gi, ' ')
+      .replace(/\b(?:nvidia\s+)?(?:rtx|gtx)\s*\d+[a-z]*\b/gi, ' ');
+  }
+  return value.replace(/[|]/g, ' ').replace(/\s*\/\s*/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function wikipediaSpecs(query, category = '') {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5500);
+  const timeout = setTimeout(() => controller.abort(), 6500);
   try {
+    const searchQuery = modelSearchQuery(query, category) || query;
     const searchUrl = new URL('https://en.wikipedia.org/w/api.php');
-    searchUrl.search = new URLSearchParams({ action: 'query', list: 'search', srsearch: `${query} smartphone`, srlimit: '5', format: 'json', origin: '*' });
+    searchUrl.search = new URLSearchParams({ action: 'query', list: 'search', srsearch: `"${searchQuery}" ${wikipediaKeyword(category)}`, srlimit: '6', format: 'json', origin: '*' });
     const search = await fetch(searchUrl, { signal: controller.signal, headers: { 'user-agent': 'NaShary diploma marketplace/1.0' } }).then((response) => response.json());
-    const result = search?.query?.search?.find((item) => !/list of|comparison|history/i.test(item.title));
-    if (!result) return null;
+    const candidates = (search?.query?.search || []).filter((item) => !/list of|comparison|history|timeline/i.test(item.title));
+    if (!candidates.length) return null;
 
     const pageUrl = new URL('https://en.wikipedia.org/w/api.php');
-    pageUrl.search = new URLSearchParams({ action: 'query', prop: 'revisions', rvprop: 'content', rvslots: 'main', titles: result.title, format: 'json', formatversion: '2', origin: '*' });
+    pageUrl.search = new URLSearchParams({ action: 'query', prop: 'revisions', rvprop: 'content', rvslots: 'main', titles: candidates.map((item) => item.title).join('|'), format: 'json', formatversion: '2', origin: '*' });
     const page = await fetch(pageUrl, { signal: controller.signal, headers: { 'user-agent': 'NaShary diploma marketplace/1.0' } }).then((response) => response.json());
-    const wikitext = page?.query?.pages?.[0]?.revisions?.[0]?.slots?.main?.content || '';
-    if (!wikitext) return null;
-    const title = result.title.replace(/\s*\([^)]*\)\s*$/, '');
-    const pageModels = field(wikitext, ['name']);
-    if (!wikipediaTitleCompatible(query, title, pageModels)) return null;
+    const selected = (page?.query?.pages || []).map((item) => {
+      const wikitext = item?.revisions?.[0]?.slots?.main?.content || '';
+      const title = String(item.title || '').replace(/\s*\([^)]*\)\s*$/, '');
+      return { item, title, wikitext, pageModels: field(wikitext, ['name']) };
+    }).find((item) => item.wikitext && wikipediaTitleCompatible(searchQuery, item.title, item.pageModels));
+    if (!selected) return null;
+    const { title, wikitext } = selected;
     const specs = {
       screen: labelledWikiField(wikitext, ['display', 'screen'], query),
-      processor: field(wikitext, ['soc', 'cpu']),
+      displayType: labelledWikiField(wikitext, ['display_type', 'panel'], query),
+      resolution: labelledWikiField(wikitext, ['display_resolution', 'resolution'], query),
+      processor: labelledWikiField(wikitext, ['soc', 'cpu', 'processor'], query),
       ram: labelledWikiField(wikitext, ['memory'], query),
       storage: labelledWikiField(wikitext, ['storage'], query),
+      gpu: labelledWikiField(wikitext, ['graphics', 'gpu'], query),
       battery: labelledWikiField(wikitext, ['battery'], query),
       mainCamera: labelledWikiField(wikitext, ['rear_camera', 'camera'], query),
       frontCamera: labelledWikiField(wikitext, ['front_camera'], query),
-      os: field(wikitext, ['os', 'operating_system']),
-      connectivity: field(wikitext, ['connectivity']),
+      os: labelledWikiField(wikitext, ['os', 'operating_system'], query),
+      connectivity: labelledWikiField(wikitext, ['connectivity', 'input', 'ports'], query),
       weight: labelledWikiField(wikitext, ['weight', 'mass'], query),
     };
     Object.keys(specs).forEach((key) => { if (!specs[key]) delete specs[key]; });
     if (Object.keys(specs).length < 2) return null;
-    const identity = requestedPhoneIdentity(query, title);
-    return { ...identity, specs, source: 'Wikipedia', sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(result.title.replaceAll(' ', '_'))}` };
+    const identity = requestedDeviceIdentity(searchQuery, title);
+    return { ...identity, category, specs, source: 'Wikipedia', sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(selected.item.title.replaceAll(' ', '_'))}` };
   } finally {
     clearTimeout(timeout);
   }
 }
 
-async function findDeviceSpecs(query) {
+async function lookupDeviceSpecs(query, { category = '' } = {}) {
   const normalized = String(query || '').trim().toLowerCase();
   if (normalized.length < 3) return [];
   const gtin = normalized.match(/(?:^|\D)(\d{8,14})(?:\D|$)/)?.[1];
@@ -229,12 +276,12 @@ async function findDeviceSpecs(query) {
   }
   const knownBrand = ['Samsung', 'Apple', 'Lenovo', 'HP', 'Dell', 'ASUS', 'Acer', 'Sony', 'LG', 'Xiaomi', 'Google', 'OnePlus']
     .find((brand) => normalized.includes(brand.toLowerCase()));
-  const productCode = String(query).match(/\b(?=[A-Z0-9/-]{6,}\b)(?=[A-Z0-9/-]*\d)(?=[A-Z0-9/-]*[-/])[A-Z0-9/-]+\b/i)?.[0];
+  const productCode = String(query).match(/\b(?=[A-Z0-9/-]{6,}\b)(?=[A-Z0-9/-]*\d)(?=[A-Z0-9/-]*[A-Z])[A-Z0-9/-]+\b/i)?.[0];
   if (knownBrand && productCode) {
     const icecatMatch = await fetchIcecatProduct({ brand: knownBrand, productCode });
     if (icecatMatch) return [icecatMatch];
   }
-  const localPhones = [...CURATED_PHONES]
+  const localPhones = category && category !== 'Smartfony' ? [] : [...CURATED_PHONES]
     .sort((left, right) => right.model.length - left.model.length)
     .filter((phone) => modelCompatible(query, phone.brand, phone.model))
     .slice(0, 5);
@@ -265,8 +312,18 @@ async function findDeviceSpecs(query) {
     }
     return local;
   }
+  const curatedDevices = CURATED_DEVICES
+    .filter((device) => !category || device.category === category)
+    .filter((device) => modelCompatible(modelSearchQuery(query, category), device.brand, device.model))
+    .map((device) => ({
+      ...device,
+      title: `${device.brand} ${device.model}`,
+      source: 'NaShary Open Cache',
+      matchConfidence: device.model === 'Legion 5' || device.model === 'TUF Gaming A15' ? 'fallback' : 'exact',
+    }));
+  if (curatedDevices.length) return curatedDevices;
   try {
-    const catalogCandidates = await searchIcecatCatalog(query, { limit: 6 });
+    const catalogCandidates = category && category !== 'Smartfony' ? [] : await searchIcecatCatalog(query, { limit: 6 });
     if (catalogCandidates.length) {
       const catalogMatches = (
         await Promise.all(
@@ -303,11 +360,20 @@ async function findDeviceSpecs(query) {
     // The compact local catalog and Wikipedia remain available if the remote index is unavailable.
   }
   try {
-    const remote = await wikipediaSpecs(query);
+    const remote = await wikipediaSpecs(query, category);
     return remote ? [{ ...remote, matchConfidence: 'fallback' }] : [];
   } catch (_error) {
     return [];
   }
+}
+
+async function findDeviceSpecs(query, options = {}) {
+  const key = `${normalize(options.category || '')}:${normalize(query)}`;
+  const cached = lookupCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const value = await lookupDeviceSpecs(query, options);
+  lookupCache.set(key, { value, expiresAt: Date.now() + LOOKUP_CACHE_TTL_MS });
+  return value;
 }
 
 function curatedSpecs(query) {

@@ -279,7 +279,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   }, []);
   useEffect(() => {
     const query = form.title.trim();
-    if (initial || form.category !== 'Smartfony' || query.length < 5 || query === lastLookup.current) return undefined;
+    if (initial || query.length < 5 || query === lastLookup.current) return undefined;
     const timer = window.setTimeout(async () => {
       const requestId = lookupSequence.current + 1;
       lookupSequence.current = requestId;
@@ -287,7 +287,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
       setSpecsBusy(true);
       setSpecNotice('');
       try {
-        const data = await api(`/device-specs?q=${encodeURIComponent(query)}&language=${encodeURIComponent(language)}`);
+        const data = await api(`/device-specs?q=${encodeURIComponent(query)}&category=${encodeURIComponent(form.category)}&language=${encodeURIComponent(language)}`);
         if (requestId !== lookupSequence.current) return;
         const matches = data.results || [];
         if (!matches.length) {
@@ -374,7 +374,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
               }}
               placeholder={language === 'pl' ? 'np. Apple iPhone 15 Pro 256 GB' : language === 'uk' ? 'наприклад Apple iPhone 15 Pro 256 GB' : 'e.g. Apple iPhone 15 Pro 256 GB'}
             />
-            {form.category === 'Smartfony' && <small className={`auto-spec-status${specsBusy ? ' is-loading' : ''}`}>{specsBusy ? c.searchingSpecs : specNotice}</small>}
+            <small className={`auto-spec-status${specsBusy ? ' is-loading' : ''}`}>{specsBusy ? c.searchingSpecs : specNotice}</small>
           </label>
           <label>
             {c.price}
@@ -409,15 +409,19 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
           <div className="listing-model-field auto-resolved-field">
             <label>{c.model}<input required readOnly={Boolean(selectedSpecKey)} value={form.model} onChange={(event) => change('model', event.target.value)} /></label>
           </div>
-          {form.category === 'Smartfony' && specMatches.length > 0 && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0, 4).map((match) => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title); setSpecNotice(c.specsApplied); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '＋'}</span><div><b>{match.title}</b><small>{match.source} · {Object.keys(match.specs || {}).length} {language === 'pl' ? 'parametrów' : language === 'uk' ? 'характеристик' : 'specifications'}{match.specs?.storage ? ` · ${match.specs.storage}` : ''}</small></div></button>)}</div>}
+          {specMatches.length > 0 && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0, 4).map((match) => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title); setSpecNotice(c.specsApplied); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '＋'}</span><div><b>{match.title}</b><small>{match.source} · {Object.keys(match.specs || {}).length} {language === 'pl' ? 'parametrów' : language === 'uk' ? 'характеристик' : 'specifications'}{match.specs?.storage ? ` · ${match.specs.storage}` : ''}</small></div></button>)}</div>}
           <label>
             {c.category}
             <select
               required
               value={form.category}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, category: event.target.value, specs: {}, deviceDetails: { ...current.deviceDetails, specSource: '', specSourceId: '' } }))
-              }
+              onChange={(event) => {
+                setSpecMatches([]);
+                setSelectedSpecKey('');
+                setSpecNotice('');
+                lastLookup.current = '';
+                setForm((current) => ({ ...current, category: event.target.value, specs: {}, deviceDetails: { ...current.deviceDetails, specSource: '', specSourceId: '' } }));
+              }}
             >
               {listingCategories.map((category) => (
                 <option key={category}>{category}</option>

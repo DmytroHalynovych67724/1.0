@@ -79,7 +79,9 @@ function minimax(board, maximizing, depth = 0) {
 function botMove(board) {
   const available = board.map((cell, index) => (cell ? null : index)).filter((value) => value !== null);
   if (!available.length) return null;
-  if (Math.random() < 0.28) return available[Math.floor(Math.random() * available.length)];
+  // The bot now plays an optimal minimax move most of the time. A small error
+  // chance keeps the daily reward achievable without making the board trivial.
+  if (Math.random() < 0.08) return available[Math.floor(Math.random() * available.length)];
   let best = -Infinity;
   let choices = [];
   available.forEach((index) => {
