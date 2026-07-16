@@ -114,7 +114,6 @@ export default function Product() {
   const [offer, setOffer] = useState('');
   const [activeImage, setActiveImage] = useState(0);
   const [related, setRelated] = useState([]);
-  const [market, setMarket] = useState(null);
   const [sellerReviews, setSellerReviews] = useState({ rating: null, count: 0, reviews: [] });
   const [reviewEligibility, setReviewEligibility] = useState(null);
   const [rating, setRating] = useState(5);
@@ -131,14 +130,13 @@ export default function Product() {
     const stored = (() => { try { return JSON.parse(localStorage.getItem('nashary-recent') || '[]'); } catch { return []; } })();
     Promise.all([
       api(`/products/${product.id}/related`).catch(() => []),
-      api(`/products/${product.id}/price-history`).catch(() => null),
       product.sellerId
         ? api(`/trust/sellers/${product.sellerId}/reviews`).catch(() => ({ rating: null, count: 0, reviews: [] }))
         : Promise.resolve({ rating: null, count: 0, reviews: [] }),
       user
         ? api(`/trust/products/${product.id}/review-eligibility`).catch(() => null)
         : Promise.resolve(null),
-    ]).then(([items, priceData, reviewData, eligibility]) => { setRelated(items); setMarket(priceData); setSellerReviews(reviewData); setReviewEligibility(eligibility); setRecent(stored.filter((item) => item.id !== product.id).slice(0, 4)); });
+    ]).then(([items, reviewData, eligibility]) => { setRelated(items); setSellerReviews(reviewData); setReviewEligibility(eligibility); setRecent(stored.filter((item) => item.id !== product.id).slice(0, 4)); });
     localStorage.setItem('nashary-recent', JSON.stringify([product, ...stored.filter((item) => item.id !== product.id)].slice(0, 8)));
     document.title = `${product.title} — NaShary`;
     const script = document.createElement('script'); script.type = 'application/ld+json'; script.dataset.nashary = 'product';
@@ -242,7 +240,6 @@ export default function Product() {
             {formatPrice(product.price, product.currency)}
             {product.oldPrice ? <del>{formatPrice(product.oldPrice, product.currency)}</del> : null}
           </div>
-          {market && <div className={`price-verdict price-verdict--${market.verdict}`}><b>{market.verdict === 'great' ? c.great : market.verdict === 'high' ? c.high : c.fair}</b><span>{formatPrice(market.median, product.currency)}</span></div>}
           <button
             className="primary-button primary-button--wide"
             disabled={product.stock < 1}

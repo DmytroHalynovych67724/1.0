@@ -182,13 +182,6 @@ async function migrateProducts(database) {
 
 async function migrateMarketplace(database) {
   await database.exec(`
-    CREATE TABLE IF NOT EXISTS price_history (
-      id TEXT PRIMARY KEY,
-      productId TEXT NOT NULL,
-      priceCents INTEGER NOT NULL,
-      createdAt INTEGER NOT NULL,
-      FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE
-    );
     CREATE TABLE IF NOT EXISTS saved_searches (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
@@ -271,7 +264,6 @@ async function migrateMarketplace(database) {
       createdAt INTEGER NOT NULL,
       updatedAt INTEGER
     );
-    CREATE INDEX IF NOT EXISTS idx_price_history_product_created ON price_history(productId, createdAt ASC);
     CREATE INDEX IF NOT EXISTS idx_saved_searches_user ON saved_searches(userId, createdAt DESC);
     CREATE INDEX IF NOT EXISTS idx_product_alerts_user ON product_alerts(userId, createdAt DESC);
     CREATE INDEX IF NOT EXISTS idx_reports_status ON listing_reports(status, createdAt DESC);
@@ -280,14 +272,6 @@ async function migrateMarketplace(database) {
     CREATE INDEX IF NOT EXISTS idx_product_questions_product ON product_questions(productId, createdAt DESC);
     CREATE INDEX IF NOT EXISTS idx_newsletter_active ON newsletter_subscribers(active, createdAt DESC);
   `);
-
-  await database
-    .prepare(
-      `INSERT INTO price_history (id, productId, priceCents, createdAt)
-    SELECT 'initial-' || id, id, priceCents, createdAt FROM products
-    WHERE priceCents IS NOT NULL AND NOT EXISTS (SELECT 1 FROM price_history h WHERE h.productId = products.id)`
-    )
-    .run();
 }
 
 async function migrateUsers(database) {

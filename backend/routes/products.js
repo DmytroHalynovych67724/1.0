@@ -187,36 +187,6 @@ router.get(
 );
 
 router.get(
-  '/:id/price-history',
-  asyncHandler(async (req, res) => {
-    const product = await getProduct(req.params.id);
-    if (!product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
-    const db = require('../db').getDB();
-    const history = (
-      await db
-        .prepare(
-          'SELECT priceCents, createdAt FROM price_history WHERE productId = ? ORDER BY createdAt ASC'
-        )
-        .all(product.id)
-    ).map((item) => ({ price: item.priceCents / 100, createdAt: item.createdAt }));
-    const market = await db
-      .prepare(
-        "SELECT priceCents FROM products WHERE region = ? AND category = ? AND brand = ? AND model = ? AND status = 'active' ORDER BY priceCents"
-      )
-      .all(product.region, product.category, product.brand, product.model);
-    const median = market.length
-      ? market[Math.floor(market.length / 2)].priceCents / 100
-      : product.price;
-    res.json({
-      history,
-      median,
-      verdict:
-        product.price <= median * 0.9 ? 'great' : product.price <= median * 1.1 ? 'fair' : 'high',
-    });
-  })
-);
-
-router.get(
   '/model',
   asyncHandler(async (req, res) => {
     const brand = optionalQueryString(req.query, 'brand', 60);

@@ -201,10 +201,6 @@ test('marketplace tools save searches, price watches, trade-ins, reviews and rep
     method: 'PATCH', token: adminToken, body: { price: 2299.5 },
   });
   assert.equal(updated.response.status, 200);
-  const history = await request(`/api/products/${product.id}/price-history`);
-  assert.equal(history.response.status, 200);
-  assert.equal(history.body.history.length >= 2, true);
-  assert.equal(['great', 'fair', 'high'].includes(history.body.verdict), true);
 
   const modelPage = await request('/api/products/model?brand=Google&model=Pixel%209%20Pro&region=pl');
   assert.equal(modelPage.response.status, 200);

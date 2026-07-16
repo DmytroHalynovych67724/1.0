@@ -177,7 +177,6 @@ async function staticDemoApi(path, options) {
       .filter((item) => item.id !== id && (item.category === current.category || item.brand === current.brand))
       .slice(0, 8);
   }
-  if (/^\/products\/[^/]+\/price-history$/.test(pathname)) return null;
   if (/^\/products\/[^/]+$/.test(pathname)) {
     const id = decodeURIComponent(pathname.split('/')[2]);
     const product = catalog.find((item) => item.id === id);

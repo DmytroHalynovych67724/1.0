@@ -63,8 +63,6 @@
 .product-thumbs button { width: 82px; height: 82px; padding: 4px; border: 1px solid transparent; border-radius: 12px; background: var(--soft, #f5f5f6); cursor: pointer; }
 .product-thumbs button.is-active { border-color: var(--accent, #db3f68); }
 .product-thumbs button img { width: 100%; height: 100%; object-fit: contain; }
-.price-verdict { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; padding: 12px 14px; border-radius: 12px; background: #eef8f0; color: #256436; }
-.price-verdict--high { background: #fff2e6; color: #8a4c13; }
 .watch-price-button { min-height: 44px; width: 100%; border: 0; background: transparent; color: inherit; font-weight: 700; cursor: pointer; }
 .inspection-panel { margin-block: 30px; padding: 26px; border: 1px solid var(--line, #e7e7ea); border-radius: 22px; display: grid; grid-template-columns: 260px 1fr; gap: 30px; }
 .inspection-panel > div span { display: block; font-size: 38px; font-weight: 850; color: var(--accent, #db3f68); }
@@ -126,8 +124,6 @@
 .guides-grid article span { color: var(--accent, #db3f68); font-weight: 800; }
 .guides-grid h2 { font-size: 30px; margin: 32px 0 10px; }
 html[data-theme='dark'] .catalog-promo-strip, html[data-theme='dark'] .trade-in-layout aside { background: #08080a; }
-html[data-theme='dark'] .price-verdict { background: #183622; color: #a6e6b8; }
-html[data-theme='dark'] .price-verdict--high { background: #442a16; color: #ffd0a4; }
 html[data-theme='dark'] .product-card-badges span.is-urgent { background: #4e1726; color: #ffafc2; }
 @media (max-width: 800px) {
   .newsletter-card {

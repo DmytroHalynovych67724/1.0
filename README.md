@@ -299,15 +299,20 @@ backend/
   routes/                REST API routes
   utils/                 validation and structured errors
 frontend/
-  index.html             catalog, favorites, cart and checkout
-  product.html           listing details
-  auth.html              login and registration
-  admin.html             seller cabinet and marketplace moderation
-  site-data.js           API client and shared browser state
-  i18n.js                PL/UK/EN localization (Polish by default)
+  index.html             Vite entry point
+  vite.config.mjs        React build and development server configuration
+  assets/                shared product placeholders and category artwork
+  src/
+    components/          reusable React interface components
+    pages/               marketplace routes and screens
+    api.js               API client and GitHub Pages catalog fallback
+    store.jsx            session, cart, favorites, comparison and region state
+    i18n.js              PL/UK/EN localization (Polish by default)
+    styles.css           current application styles
 tests/
   api.test.js            isolated API integration tests
-  site-data.test.js      frontend state unit tests
+  assistant.test.js      catalog assistant behavior
+  icecat.test.js         device specification matching
 ```
 
 ## Межі поточної версії

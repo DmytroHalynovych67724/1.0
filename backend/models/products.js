@@ -235,10 +235,6 @@ async function createProduct(payload, options = {}) {
       urgent: product.urgent ? 1 : 0,
     });
 
-  await db
-    .prepare('INSERT INTO price_history (id, productId, priceCents, createdAt) VALUES (?, ?, ?, ?)')
-    .run(uuidv4(), id, product.priceCents, createdAt);
-
   return getProduct(id);
 }
 
@@ -317,13 +313,6 @@ async function updateProduct(id, payload) {
       updatedAt,
     });
 
-  if (result.changes && priceChanged) {
-    await getDB()
-      .prepare(
-        'INSERT INTO price_history (id, productId, priceCents, createdAt) VALUES (?, ?, ?, ?)'
-      )
-      .run(uuidv4(), id, priceCents, updatedAt);
-  }
   return result.changes ? getProduct(id) : null;
 }
 
