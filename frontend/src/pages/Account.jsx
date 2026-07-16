@@ -35,13 +35,13 @@ const listingCategories = [
 ];
 const listingSpecs = {
   Smartfony: ['color', 'screen', 'displayType', 'resolution', 'refreshRate', 'displayFeatures', 'processor', 'ram', 'ramType', 'storage', 'battery', 'charging', 'mainCamera', 'frontCamera', 'cameraFeatures', 'features', 'sim', 'os', 'connectivity', 'wifi', 'bluetooth', 'weight'],
-  Laptopy: ['color', 'screen', 'processor', 'ram', 'storage', 'gpu', 'os'],
-  Tablety: ['color', 'screen', 'processor', 'ram', 'storage', 'os'],
-  Gaming: ['color', 'platform', 'storage'],
-  Audio: ['color', 'audioType', 'connectivity'],
-  Monitory: ['color', 'screen', 'resolution', 'refreshRate'],
-  Foto: ['color', 'resolution', 'connectivity'],
-  Akcesoria: ['color', 'accessoryType', 'connectivity'],
+  Laptopy: ['color', 'screen', 'displayType', 'resolution', 'refreshRate', 'processor', 'ram', 'ramType', 'storage', 'gpu', 'battery', 'os', 'connectivity', 'wifi', 'bluetooth', 'weight'],
+  Tablety: ['color', 'screen', 'displayType', 'resolution', 'refreshRate', 'processor', 'ram', 'storage', 'battery', 'charging', 'os', 'connectivity', 'wifi', 'bluetooth', 'weight'],
+  Gaming: ['color', 'platform', 'processor', 'ram', 'storage', 'gpu', 'resolution', 'refreshRate', 'connectivity', 'wifi', 'bluetooth'],
+  Audio: ['color', 'audioType', 'connectivity', 'bluetooth', 'battery', 'charging', 'features', 'weight'],
+  Monitory: ['color', 'screen', 'displayType', 'resolution', 'refreshRate', 'displayFeatures', 'connectivity', 'features'],
+  Foto: ['color', 'resolution', 'displayType', 'connectivity', 'wifi', 'bluetooth', 'features', 'weight'],
+  Akcesoria: ['color', 'accessoryType', 'connectivity', 'bluetooth', 'battery', 'charging', 'features', 'weight'],
 };
 const listingSpecLabels = {
   screen: { pl: 'Przekątna ekranu', uk: 'Діагональ екрана', en: 'Screen size' },

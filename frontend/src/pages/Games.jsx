@@ -81,7 +81,7 @@ function botMove(board) {
   if (!available.length) return null;
   // The bot now plays an optimal minimax move most of the time. A small error
   // chance keeps the daily reward achievable without making the board trivial.
-  if (Math.random() < 0.08) return available[Math.floor(Math.random() * available.length)];
+  if (Math.random() < 0.05) return available[Math.floor(Math.random() * available.length)];
   let best = -Infinity;
   let choices = [];
   available.forEach((index) => {

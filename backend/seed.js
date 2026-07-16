@@ -817,6 +817,13 @@ function inferSpecs(product) {
             : 'Apple A-series';
     if (!specs.screen)
       specs.screen = /ipad/.test(title) ? '11″' : /pixel/.test(title) ? '6.2″' : '6.1″';
+    specs.displayType ||= /ipad/.test(title) ? 'IPS' : 'OLED';
+    specs.refreshRate ||= /pro|pixel|galaxy/.test(title) ? '120 Hz' : '60 Hz';
+    specs.resolution ||= /ipad/.test(title) ? '2360 × 1640' : 'Full HD+';
+    specs.battery ||= category === 'Tablety' ? 'do 10 h' : '4000–5000 mAh';
+    specs.connectivity ||= '5G / USB-C';
+    specs.wifi ||= 'Wi-Fi 6';
+    specs.bluetooth ||= '5.3';
   }
   if (category === 'Laptopy') {
     specs.processor = title.includes('m2')
@@ -831,8 +838,16 @@ function inferSpecs(product) {
     specs.ram = /16\s*(gb|\/)/i.test(product.title) ? '16 GB' : '8 GB';
     specs.gpu = /rtx\s*4060/i.test(product.title) ? 'NVIDIA RTX 4060' : 'Zintegrowana';
     specs.os = title.includes('macbook') ? 'macOS' : 'Windows';
+    specs.storage ||= '512 GB';
     if (!specs.screen)
       specs.screen = title.includes('xps 13') || title.includes('macbook') ? '13″' : '15.6″';
+    specs.displayType = title.includes('macbook') ? 'Liquid Retina IPS' : 'IPS';
+    specs.resolution = title.includes('macbook') ? '2560 × 1664' : '1920 × 1080';
+    specs.refreshRate = /gaming|legion|tuf/.test(title) ? '144 Hz' : '60 Hz';
+    specs.battery = title.includes('macbook') ? 'do 18 h' : 'do 10 h';
+    specs.connectivity = title.includes('macbook') ? 'Thunderbolt / USB-C' : 'USB-C / HDMI';
+    specs.wifi = 'Wi-Fi 6';
+    specs.bluetooth = '5.2';
   }
   if (category === 'Gaming') {
     specs.platform = title.includes('playstation')
@@ -843,6 +858,12 @@ function inferSpecs(product) {
           ? 'PC handheld'
           : 'PC';
     specs.storage ||= title.includes('1 tb') ? '1 TB' : '512 GB';
+    specs.ram = '16 GB';
+    specs.resolution = /playstation|xbox/.test(title) ? 'do 4K' : '1920 × 1080';
+    specs.refreshRate = /playstation|xbox/.test(title) ? 'do 120 Hz' : '60 Hz';
+    specs.connectivity = 'HDMI / USB / Ethernet';
+    specs.wifi = 'Wi-Fi';
+    specs.bluetooth = 'Bluetooth';
   }
   if (category === 'Monitory') {
     specs.resolution = /4k|u2723|oled c3/.test(title)
@@ -859,10 +880,17 @@ function inferSpecs(product) {
           : '60 Hz';
     if (!specs.screen)
       specs.screen = title.includes('55') ? '55″' : title.includes('34') ? '34″' : '27″';
+    specs.displayType = /oled/.test(title) ? 'OLED' : 'IPS';
+    specs.displayFeatures = /4k|oled/.test(title) ? 'HDR' : 'Adaptive Sync';
+    specs.connectivity = 'HDMI / DisplayPort';
   }
   if (category === 'Audio') {
     specs.audioType = /airpods|earbuds/.test(title) ? 'Słuchawki douszne' : 'Słuchawki nauszne';
     specs.connectivity = 'Bluetooth';
+    specs.bluetooth = '5.2';
+    specs.battery = /airpods|earbuds/.test(title) ? 'do 30 h z etui' : 'do 30 h';
+    specs.charging = 'USB-C';
+    specs.features = /wh-1000|airpods|earbuds/.test(title) ? 'ANC' : 'Mikrofon';
   }
   if (category === 'Akcesoria') {
     specs.accessoryType = /watch|garmin/.test(title)
@@ -871,10 +899,18 @@ function inferSpecs(product) {
         ? 'Klawiatura'
         : 'Mysz';
     specs.connectivity = /keychron/.test(title) ? 'Bluetooth / USB' : 'Bluetooth';
+    specs.bluetooth = 'Bluetooth Low Energy';
+    specs.battery = /watch|garmin/.test(title) ? 'do 7 dni' : 'do 70 dni';
+    specs.charging = 'USB-C';
+    specs.features = /key|keyboard/.test(title) ? 'Łączność z wieloma urządzeniami' : 'Programowalne przyciski';
   }
   if (category === 'Foto') {
     specs.resolution = /canon/.test(title) ? '24 MP' : /fuji/.test(title) ? '26 MP' : '20 MP';
     specs.connectivity = 'Wi-Fi / Bluetooth';
+    specs.displayType = 'LCD';
+    specs.wifi = 'Wi-Fi';
+    specs.bluetooth = 'Bluetooth';
+    specs.features = 'Nagrywanie 4K';
   }
   return specs;
 }

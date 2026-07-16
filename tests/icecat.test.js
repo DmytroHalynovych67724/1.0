@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { normalizeIcecatProduct } = require('../backend/services/icecat');
-const { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, wikipediaTitleCompatible } = require('../backend/services/deviceSpecs');
+const { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible } = require('../backend/services/deviceSpecs');
 
 function feature(name, value) {
   return {
@@ -100,4 +100,28 @@ test('model-name lookup also covers laptops and audio devices', async () => {
   assert.equal(headphones[0].model, 'WH-1000XM5');
   assert.match(headphones[0].specs.connectivity, /Bluetooth/);
   assert.match(headphones[0].specs.battery, /30 h/);
+});
+
+test('detailed listing titles supply exact laptop configuration fields', () => {
+  const specs = specsFromTitle(
+    'Dell XPS 13 9340 Core Ultra 7 155H 16 GB RAM 512 GB SSD 13.4 inch OLED 120 Hz',
+    'Laptopy'
+  );
+  assert.equal(specs.processor, 'Core Ultra 7 155H');
+  assert.equal(specs.ram, '16 GB');
+  assert.equal(specs.storage, '512 GB');
+  assert.equal(specs.screen, '13.4″');
+  assert.equal(specs.displayType, 'OLED');
+  assert.equal(specs.refreshRate, '120 Hz');
+});
+
+test('ambiguous Wikipedia family values are not applied to another variant', () => {
+  assert.equal(
+    preciseWikipediaValue('Galaxy S24+: 4900 mAh · Galaxy S24 Ultra: 5000 mAh', 'Galaxy S24 Ultra'),
+    '5000 mAh'
+  );
+  assert.equal(
+    preciseWikipediaValue('S24 and S24+ Exynos 2400; S24 Ultra Snapdragon 8 Gen 3', 'Galaxy S24'),
+    ''
+  );
 });

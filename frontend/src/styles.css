@@ -5176,8 +5176,8 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   border: 1px solid var(--line);
   border-radius: 18px;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
   background: color-mix(in srgb, var(--paper) 72%, transparent);
   overflow: hidden;
 }
@@ -5194,10 +5194,10 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   font-size: 10px;
 }
 .catalog-page .brand-rail__track {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
-  overflow-x: auto;
+  overflow: hidden;
   padding: 0;
   scrollbar-width: none;
   scroll-snap-type: x proximity;
@@ -5208,8 +5208,7 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   display: none;
 }
 .catalog-page .brand-rail__track button {
-  flex: 0 0 126px;
-  min-width: 126px;
+  min-width: 0;
   min-height: 44px;
   padding: 6px 9px;
   border-color: transparent;
@@ -5234,8 +5233,9 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   font-size: 15px;
 }
 .catalog-page .model-rail > div {
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
   gap: 6px;
   padding: 0;
   scrollbar-width: none;
@@ -5243,13 +5243,29 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   overscroll-behavior-inline: contain;
 }
 .catalog-page .model-rail button {
+  width: 100%;
+  min-width: 0;
   min-height: 36px;
   padding-inline: 10px;
   border-color: transparent;
   border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   background: var(--canvas-2);
   font-size: 11px;
   scroll-snap-align: start;
+}
+.catalog-page .model-rail button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-page .model-rail button small {
+  flex: 0 0 auto;
+  margin-left: 0;
 }
 .catalog-page .catalog-react-layout {
   grid-template-columns: 268px minmax(0, 1fr);
@@ -5296,4 +5312,21 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
     flex-basis: 116px;
     min-width: 116px;
   }
+  .catalog-page .brand-rail__track,
+  .catalog-page .model-rail > div {
+    display: flex;
+    overflow-x: auto;
+  }
+  .catalog-page .model-rail button {
+    flex: 0 0 132px;
+  }
+}
+
+/* Quick preview must stay centered in the current viewport, even after a long catalogue scroll. */
+.modal-backdrop.quick-view-backdrop {
+  align-items: center;
+  overflow: hidden;
+}
+.modal-backdrop.quick-view-backdrop .quick-view-modal {
+  margin: 0;
 }

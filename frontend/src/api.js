@@ -32,6 +32,11 @@ async function loadDemoCatalog() {
   return demoCatalogPromise;
 }
 
+export async function catalogPreview(path) {
+  const [, search = ''] = String(path || '').split('?');
+  return filterDemoProducts(await loadDemoCatalog(), new URLSearchParams(search));
+}
+
 function textValue(value) {
   if (Array.isArray(value)) return value.join(' ');
   if (value && typeof value === 'object') return Object.values(value).join(' ');

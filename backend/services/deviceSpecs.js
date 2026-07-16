@@ -221,6 +221,72 @@ function modelSearchQuery(query, category) {
   return value.replace(/[|]/g, ' ').replace(/\s*\/\s*/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function specsFromTitle(query, category = '') {
+  const title = String(query || '');
+  const specs = {};
+  const pair = title.match(/\b(4|6|8|12|16|18|24|32|48|64)\s*\/\s*(64|128|256|512|1024|2048)\s*(GB|ГБ|TB|ТБ)?\b/i);
+  const explicitRam = title.match(/\b(4|6|8|12|16|18|24|32|48|64|96|128)\s*(GB|ГБ)\s*(?:RAM|DDR\d?|LPDDR\w*)\b/i);
+  const storageCandidates = [...title.matchAll(/\b(64|128|256|512|1024|2048|1|2|4)\s*(GB|ГБ|TB|ТБ)\s*(SSD|HDD|NVMe|storage|pami[eę][cć])?\b/gi)];
+  const explicitStorage = storageCandidates.find((match) => match[3]) || storageCandidates.at(-1);
+  const processor = title.match(/\b(?:Intel\s+)?Core\s+Ultra\s+[3579]\s+\d{3}[A-Z]{0,2}\b/i)
+    || title.match(/\b(?:Intel\s+)?Core\s+i[3579](?:-\d{4,5}[A-Z]{0,2})?\b/i)
+    || title.match(/\b(?:AMD\s+)?Ryzen\s+[3579](?:\s+\d{4}[A-Z]{0,2})?\b/i)
+    || title.match(/\bApple\s+M[1-4](?:\s+(?:Pro|Max|Ultra))?\b/i)
+    || title.match(/\bSnapdragon\s+[A-Z0-9+ -]{3,24}\b/i)
+    || title.match(/\b(?:MediaTek\s+)?Dimensity\s+\d{3,4}\b/i)
+    || title.match(/\b(?:Google\s+)?Tensor\s+G?\d\b/i)
+    || title.match(/\bExynos\s+\d{3,4}\b/i);
+  const gpu = title.match(/\b(?:NVIDIA\s+)?(?:GeForce\s+)?(?:RTX|GTX)\s*\d{3,4}(?:\s*Ti)?\b/i)
+    || title.match(/\b(?:AMD\s+)?Radeon\s+(?:RX\s*)?\d{3,4}[A-Z]{0,2}\b/i);
+  const screen = title.match(/\b(\d{1,2}(?:[.,]\d)?)\s*(?:inch|inches|″|")\b/i);
+  const refreshRate = title.match(/\b(60|75|90|100|120|144|165|175|180|240|360)\s*Hz\b/i);
+  const resolution = title.match(/\b\d{3,4}\s*[x×]\s*\d{3,4}\b/i)
+    || title.match(/\b(?:Full\s*HD|FHD|QHD\+?|WQHD\+?|UHD|4K|5K|8K)\b/i);
+  const displayType = title.match(/\b(?:Mini[ -]?LED|AMOLED|OLED|IPS|VA|TN)\b/i);
+
+  if (pair) {
+    specs.ram = `${pair[1]} GB`;
+    specs.storage = `${pair[2]} ${/tb|тб/i.test(pair[3] || '') ? 'TB' : 'GB'}`;
+  }
+  if (explicitRam) specs.ram = `${explicitRam[1]} GB`;
+  if (explicitStorage) specs.storage = `${explicitStorage[1]} ${/tb|тб/i.test(explicitStorage[2]) ? 'TB' : 'GB'}`;
+  if (processor) specs.processor = processor[0].replace(/\s+/g, ' ').trim();
+  if (gpu) specs.gpu = gpu[0].replace(/\s+/g, ' ').trim();
+  if (screen) specs.screen = `${screen[1].replace(',', '.')}″`;
+  if (refreshRate) specs.refreshRate = `${refreshRate[1]} Hz`;
+  if (resolution) specs.resolution = resolution[0].replace(/\s*[x×]\s*/i, ' × ');
+  if (displayType) specs.displayType = displayType[0].replace(/mini[ -]?led/i, 'Mini-LED').toUpperCase().replace('MINI-LED', 'Mini-LED');
+  if (category === 'Audio' && /\bANC\b|noise cancel/i.test(title)) specs.features = 'ANC';
+  return specs;
+}
+
+function preciseWikipediaValue(value, query) {
+  if (!value) return '';
+  const strictVariants = new Set(['fe', 'flip', 'fold', 'lite', 'max', 'mini', 'plus', 'pro', 'ultra', 'xl']);
+  const requested = new Set([...variantTokens(query)].filter((token) => strictVariants.has(token)));
+  const present = new Set([...variantTokens(value)].filter((token) => strictVariants.has(token)));
+  const unwanted = [...present].filter((token) => !requested.has(token));
+  if (!unwanted.length) return value;
+  const parts = String(value).split(/\s*[·;]\s*/).filter(Boolean);
+  const exactPart = parts.find((part) => {
+    const variants = new Set([...variantTokens(part)].filter((token) => strictVariants.has(token)));
+    return [...requested].every((token) => variants.has(token))
+      && [...variants].every((token) => requested.has(token));
+  });
+  if (exactPart) return exactPart.replace(/^.*?:\s*/, '').trim();
+  return '';
+}
+
+function mergeTitleSpecs(match, query, category) {
+  if (!match) return match;
+  const parsed = specsFromTitle(query, category);
+  const specs = { ...parsed, ...(match.specs || {}) };
+  for (const key of ['processor', 'ram', 'storage', 'gpu', 'resolution', 'refreshRate', 'displayType']) {
+    if (parsed[key]) specs[key] = parsed[key];
+  }
+  return { ...match, specs };
+}
+
 async function wikipediaSpecs(query, category = '') {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6500);
@@ -257,7 +323,10 @@ async function wikipediaSpecs(query, category = '') {
       connectivity: labelledWikiField(wikitext, ['connectivity', 'input', 'ports'], query),
       weight: labelledWikiField(wikitext, ['weight', 'mass'], query),
     };
-    Object.keys(specs).forEach((key) => { if (!specs[key]) delete specs[key]; });
+    Object.keys(specs).forEach((key) => {
+      specs[key] = preciseWikipediaValue(specs[key], query);
+      if (!specs[key]) delete specs[key];
+    });
     if (Object.keys(specs).length < 2) return null;
     const identity = requestedDeviceIdentity(searchQuery, title);
     return { ...identity, category, specs, source: 'Wikipedia', sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(selected.item.title.replaceAll(' ', '_'))}` };
@@ -272,14 +341,14 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
   const gtin = normalized.match(/(?:^|\D)(\d{8,14})(?:\D|$)/)?.[1];
   if (gtin) {
     const icecatMatch = await fetchIcecatProduct({ gtin });
-    if (icecatMatch) return [icecatMatch];
+    if (icecatMatch) return [mergeTitleSpecs(icecatMatch, query, category)];
   }
   const knownBrand = ['Samsung', 'Apple', 'Lenovo', 'HP', 'Dell', 'ASUS', 'Acer', 'Sony', 'LG', 'Xiaomi', 'Google', 'OnePlus']
     .find((brand) => normalized.includes(brand.toLowerCase()));
   const productCode = String(query).match(/\b(?=[A-Z0-9/-]{6,}\b)(?=[A-Z0-9/-]*\d)(?=[A-Z0-9/-]*[A-Z])[A-Z0-9/-]+\b/i)?.[0];
   if (knownBrand && productCode) {
     const icecatMatch = await fetchIcecatProduct({ brand: knownBrand, productCode });
-    if (icecatMatch) return [icecatMatch];
+    if (icecatMatch) return [mergeTitleSpecs(icecatMatch, query, category)];
   }
   const localPhones = category && category !== 'Smartfony' ? [] : [...CURATED_PHONES]
     .sort((left, right) => right.model.length - left.model.length)
@@ -308,19 +377,19 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
         { icecatId: primary.icecatId },
         { brand: primary.brand, model: primary.model, title: `${primary.brand} ${primary.model}` }
       );
-      if (icecatMatch) return [icecatMatch, ...local.slice(1)];
+      if (icecatMatch) return [mergeTitleSpecs(icecatMatch, query, category), ...local.slice(1).map((item) => mergeTitleSpecs(item, query, category))];
     }
-    return local;
+    return local.map((item) => mergeTitleSpecs(item, query, category));
   }
   const curatedDevices = CURATED_DEVICES
     .filter((device) => !category || device.category === category)
     .filter((device) => modelCompatible(modelSearchQuery(query, category), device.brand, device.model))
-    .map((device) => ({
+    .map((device) => mergeTitleSpecs({
       ...device,
       title: `${device.brand} ${device.model}`,
       source: 'NaShary Open Cache',
       matchConfidence: device.model === 'Legion 5' || device.model === 'TUF Gaming A15' ? 'fallback' : 'exact',
-    }));
+    }, query, category));
   if (curatedDevices.length) return curatedDevices;
   try {
     const catalogCandidates = category && category !== 'Smartfony' ? [] : await searchIcecatCatalog(query, { limit: 6 });
@@ -337,7 +406,7 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
                 title: `${candidate.brand} ${candidate.model}`,
               }
             );
-            return match ? { ...match, matchConfidence: 'exact' } : null;
+            return match ? mergeTitleSpecs({ ...match, matchConfidence: 'exact' }, query, category) : null;
           })
         )
       ).filter(Boolean);
@@ -361,7 +430,13 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
   }
   try {
     const remote = await wikipediaSpecs(query, category);
-    return remote ? [{ ...remote, matchConfidence: 'fallback' }] : [];
+    if (remote) return [mergeTitleSpecs({ ...remote, matchConfidence: 'fallback' }, query, category)];
+    const parsed = specsFromTitle(query, category);
+    if (Object.keys(parsed).length >= 2) {
+      const identity = requestedDeviceIdentity(modelSearchQuery(query, category), query);
+      return [{ ...identity, category, specs: parsed, source: 'NaShary title parser', matchConfidence: 'exact' }];
+    }
+    return [];
   } catch (_error) {
     return [];
   }
@@ -382,4 +457,4 @@ function curatedSpecs(query) {
     .find((phone) => modelCompatible(query, phone.brand, phone.model));
 }
 
-module.exports = { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, wikipediaTitleCompatible };
+module.exports = { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible };

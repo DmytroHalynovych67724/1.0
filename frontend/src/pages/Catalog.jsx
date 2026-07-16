@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, catalogPreview } from '../api';
 import ComparePanel from '../components/ComparePanel';
 import ProductCard from '../components/ProductCard';
 import QuickView from '../components/QuickView';
@@ -262,6 +262,18 @@ export default function Catalog({ favoritesOnly = false }) {
     const cacheKey = `nashary:catalog:${path}`;
     const cached = readCatalogCache(cacheKey);
     let cancelled = false;
+    let liveFinished = false;
+    let previewLoaded = false;
+    const previewTimer = cached ? null : window.setTimeout(() => {
+      catalogPreview(path)
+        .then((items) => {
+          if (cancelled || liveFinished) return;
+          previewLoaded = true;
+          setProducts(items);
+          setLoading(false);
+        })
+        .catch(() => {});
+    }, 900);
     queueMicrotask(() => {
       if (cancelled) return;
       if (cached) {
@@ -274,12 +286,16 @@ export default function Catalog({ favoritesOnly = false }) {
     api(path)
       .then((items) => {
         if (cancelled) return;
+        liveFinished = true;
         setProducts(items);
         writeCatalogCache(cacheKey, items);
       })
-      .catch(() => { if (!cancelled && !cached) setProducts([]); })
+      .catch(() => { if (!cancelled && !cached && !previewLoaded) setProducts([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      if (previewTimer) window.clearTimeout(previewTimer);
+    };
   }, [region, signature, sort]);
 
   useEffect(() => {
@@ -290,15 +306,31 @@ export default function Catalog({ favoritesOnly = false }) {
     const cacheKey = `nashary:catalog-source:${path}`;
     const cached = readCatalogCache(cacheKey);
     let cancelled = false;
+    let liveFinished = false;
+    let previewLoaded = false;
+    const previewTimer = cached ? null : window.setTimeout(() => {
+      catalogPreview(path)
+        .then((items) => {
+          if (!cancelled && !liveFinished) {
+            previewLoaded = true;
+            setSourceProducts(items);
+          }
+        })
+        .catch(() => {});
+    }, 900);
     if (cached) queueMicrotask(() => { if (!cancelled) setSourceProducts(cached); });
     api(path)
       .then((items) => {
         if (cancelled) return;
+        liveFinished = true;
         setSourceProducts(items);
         writeCatalogCache(cacheKey, items);
       })
-      .catch(() => { if (!cancelled && !cached) setSourceProducts([]); });
-    return () => { cancelled = true; };
+      .catch(() => { if (!cancelled && !cached && !previewLoaded) setSourceProducts([]); });
+    return () => {
+      cancelled = true;
+      if (previewTimer) window.clearTimeout(previewTimer);
+    };
   }, [signature, region]);
 
   const set = (key, value) => {
@@ -388,7 +420,7 @@ export default function Catalog({ favoritesOnly = false }) {
                 </div>
               </header>
               <div className="brand-rail__track">
-                {brands.map((brand) => (
+                {brands.slice(0, 4).map((brand) => (
                   <button
                     className={params.get('brand') === brand ? 'is-active' : ''}
                     type="button"
@@ -407,7 +439,7 @@ export default function Catalog({ favoritesOnly = false }) {
           {models.length > 0 && (
             <div className="model-rail">
               <b>{c.models}</b>
-              <div>{models.map((model) => { const sample = sourceProducts.find((item) => item.model === model); return <button type="button" key={model} onClick={() => navigate(`/model/${encodeURIComponent(sample?.brand || '')}/${encodeURIComponent(model)}`)}>{model}<small>{modelCounts[model]}</small></button>; })}</div>
+              <div>{models.slice(0, 4).map((model) => { const sample = sourceProducts.find((item) => item.model === model); return <button type="button" title={model} key={model} onClick={() => navigate(`/model/${encodeURIComponent(sample?.brand || '')}/${encodeURIComponent(model)}`)}><span>{model}</span><small>{modelCounts[model]}</small></button>; })}</div>
             </div>
           )}
         </section>
