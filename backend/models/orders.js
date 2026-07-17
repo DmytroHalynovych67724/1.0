@@ -2,8 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { AppError } = require('../utils/errors');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
-
-const SHIPPING_CENTS = { pl: 1999, ua: 9900, eu: 1499 };
+const { paymentStatusFor, resolveDelivery, resolvePayment } = require('../utils/fulfillment');
 
 function parseItems(value) {
   try {
@@ -60,7 +59,7 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         .prepare(
           `
         SELECT id, title, price, priceCents, stock, brand, condition, images, region, currency,
-               createdBy, sellerType
+               createdBy, seller, sellerType, delivery
         FROM products
         WHERE id = ?
       `
@@ -151,6 +150,8 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         negotiated: Boolean(acceptedOffer),
         acceptedOfferId: acceptedOffer?.id || null,
         sellerId,
+        seller: product.seller || 'NaShary Store',
+        delivery: ['shipping', 'pickup', 'both'].includes(product.delivery) ? product.delivery : 'both',
         qty: item.qty,
         lineTotal: lineTotalCents / 100,
         region: productRegion,
@@ -159,8 +160,52 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
     }
 
     const subtotalCents = totalCents;
-    const deliveryMethod = checkoutData.deliveryMethod === 'shipping' ? 'shipping' : 'pickup';
-    let shippingCents = deliveryMethod === 'shipping' ? SHIPPING_CENTS[orderRegion] : 0;
+    const explicitDeliveryOption = Boolean(checkoutData.deliveryOption);
+    const delivery = resolveDelivery(
+      orderRegion,
+      checkoutData.deliveryOption || checkoutData.deliveryMethod
+    );
+    const deliveryMethod = delivery.kind === 'pickup' ? 'pickup' : 'shipping';
+    const packageCount = new Set(
+      snapshot.map((item) => item.sellerId || `seller:${item.seller}`)
+    ).size;
+    if (deliveryMethod === 'shipping' && snapshot.some((item) => item.delivery === 'pickup')) {
+      throw new AppError(
+        400,
+        'DELIVERY_OPTION_UNAVAILABLE',
+        'At least one item is available only for personal collection'
+      );
+    }
+    if (deliveryMethod === 'pickup' && snapshot.some((item) => item.delivery === 'shipping')) {
+      throw new AppError(
+        400,
+        'DELIVERY_OPTION_UNAVAILABLE',
+        'At least one item is available only with parcel delivery'
+      );
+    }
+    if (deliveryMethod === 'pickup' && packageCount > 1) {
+      throw new AppError(
+        400,
+        'PICKUP_REQUIRES_ONE_SELLER',
+        'Personal collection is available only when all items come from one seller'
+      );
+    }
+    if (explicitDeliveryOption && delivery.kind === 'point' && !checkoutData.deliveryPoint) {
+      throw new AppError(400, 'DELIVERY_POINT_REQUIRED', 'Choose a parcel locker or pickup point');
+    }
+    if (explicitDeliveryOption && delivery.kind === 'courier') {
+      const missingAddress = ['address', 'city', 'postalCode'].find(
+        (field) => !String(checkoutData[field] || '').trim()
+      );
+      if (missingAddress) {
+        throw new AppError(400, 'DELIVERY_ADDRESS_REQUIRED', 'A complete courier address is required', [
+          { field: missingAddress, message: `${missingAddress} is required for courier delivery` },
+        ]);
+      }
+    }
+    const paymentMethod = resolvePayment(orderRegion, checkoutData.paymentMethod, delivery.kind);
+    const paymentStatus = paymentStatusFor(paymentMethod);
+    let shippingCents = delivery.priceCents * (deliveryMethod === 'shipping' ? packageCount : 1);
     let shippingDiscountCents = 0;
     let discountCents = 0;
     let appliedPromo = null;
@@ -317,6 +362,14 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         rewardGift,
         JSON.stringify({
           ...checkoutData,
+          deliveryMethod,
+          deliveryOption: delivery.id,
+          deliveryCarrier: delivery.carrier,
+          deliveryKind: delivery.kind,
+          deliveryEta: { min: delivery.etaMin, max: delivery.etaMax },
+          packageCount,
+          paymentMethod,
+          paymentStatus,
           ...(rewardGift ? { reward: { type: 'gift', key: rewardGift } } : {}),
         }),
         orderRegion,

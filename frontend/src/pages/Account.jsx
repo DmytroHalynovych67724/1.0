@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { api, imageUrl } from '../api';
+import { deliveryNames, localized, paymentNames } from '../checkoutOptions';
 import { useStore } from '../store';
 import MarketplaceCenter from '../components/MarketplaceCenter';
 
@@ -218,6 +219,13 @@ const orderGiftLabels = {
   pl: { care_kit: 'Zestaw do czyszczenia', eco_pack: 'Opakowanie ochronne', usb_c_cable: 'Kabel USB‑C', device_inspection: 'Bezpłatna kontrola urządzenia' },
   uk: { care_kit: 'Набір для чищення', eco_pack: 'Захисне пакування', usb_c_cable: 'Кабель USB‑C', device_inspection: 'Безкоштовна перевірка пристрою' },
   en: { care_kit: 'Care kit', eco_pack: 'Protective packaging', usb_c_cable: 'USB‑C cable', device_inspection: 'Free device inspection' },
+};
+
+const paymentStatusLabels = {
+  awaiting_payment: { pl: 'Oczekuje na płatność', uk: 'Очікує на оплату', en: 'Awaiting payment' },
+  awaiting_transfer: { pl: 'Oczekuje na przelew', uk: 'Очікує на переказ', en: 'Awaiting transfer' },
+  due_on_delivery: { pl: 'Płatność przy odbiorze', uk: 'Оплата при отриманні', en: 'Payment on collection' },
+  paid: { pl: 'Opłacone', uk: 'Оплачено', en: 'Paid' },
 };
 
 const inspectionLabels = {
@@ -839,6 +847,11 @@ export default function Account() {
                       </span>
                     </div>
                   ))}
+                  {order.checkout?.deliveryOption && <div className="order-fulfillment">
+                    <span><small>{language === 'uk' ? 'Доставка' : language === 'en' ? 'Delivery' : 'Dostawa'}</small><b>{localized(deliveryNames, order.checkout.deliveryOption, language)}</b></span>
+                    <span><small>{language === 'uk' ? 'Оплата' : language === 'en' ? 'Payment' : 'Płatność'}</small><b>{localized(paymentNames, order.checkout.paymentMethod, language)}</b></span>
+                    <em>{localized(paymentStatusLabels, order.checkout.paymentStatus, language)}</em>
+                  </div>}
                   {(order.discount > 0 || order.shipping > 0 || order.rewardGift) && <dl className="order-benefits">
                     {order.discount > 0 && <div><dt>Promo</dt><dd>−{formatPrice(order.discount, order.currency)}</dd></div>}
                     {order.shipping > 0 && <div><dt>{language === 'uk' ? 'Доставка' : language === 'en' ? 'Delivery' : 'Dostawa'}</dt><dd>{order.shippingDiscount > 0 ? <><s>{formatPrice(order.shipping, order.currency)}</s> {formatPrice(0, order.currency)}</> : formatPrice(order.shipping, order.currency)}</dd></div>}

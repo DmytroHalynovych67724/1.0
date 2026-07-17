@@ -628,6 +628,58 @@ test('orders calculate totals on the server and enforce ownership', async () => 
   assert.equal(missingProduct.response.status, 409);
 });
 
+test('checkout exposes regional carriers and validates delivery and payment details', async () => {
+  const options = await request('/api/orders/options?region=pl');
+  assert.equal(options.response.status, 200);
+  assert.equal(options.body.region, 'pl');
+  assert.equal(options.body.delivery.some((item) => item.id === 'inpost_locker'), true);
+  assert.equal(options.body.payments.includes('blik'), true);
+
+  const product = await createProduct({
+    title: 'Phone with regional delivery',
+    price: 1000,
+    stock: 2,
+    region: 'pl',
+    delivery: 'both',
+  });
+  const buyer = await registerAndLogin('fulfillment-buyer');
+  const missingPoint = await request('/api/orders', {
+    method: 'POST',
+    token: buyer.token,
+    body: {
+      items: [{ id: product.id, qty: 1 }],
+      checkout: { deliveryOption: 'inpost_locker', paymentMethod: 'card' },
+    },
+  });
+  assert.equal(missingPoint.response.status, 400);
+  assert.equal(missingPoint.body.code, 'DELIVERY_POINT_REQUIRED');
+
+  const created = await request('/api/orders', {
+    method: 'POST',
+    token: buyer.token,
+    body: {
+      items: [{ id: product.id, qty: 1 }],
+      checkout: {
+        customerName: 'Anna Nowak',
+        phone: '+48123123123',
+        email: 'anna@example.com',
+        city: 'Warszawa',
+        deliveryPoint: 'WAW01M',
+        deliveryOption: 'inpost_locker',
+        paymentMethod: 'blik',
+      },
+    },
+  });
+  assert.equal(created.response.status, 201);
+  assert.equal(created.body.shipping, 14.99);
+  assert.equal(created.body.total, 1014.99);
+  assert.equal(created.body.checkout.deliveryCarrier, 'InPost');
+  assert.equal(created.body.checkout.deliveryKind, 'point');
+  assert.equal(created.body.checkout.paymentMethod, 'blik');
+  assert.equal(created.body.checkout.paymentStatus, 'awaiting_payment');
+  assert.equal(created.body.checkout.packageCount, 1);
+});
+
 test('regional promo codes are calculated on the server and can be used once per user', async () => {
   const product = await createProduct({
     title: 'Promo eligible accessory',

@@ -1787,6 +1787,235 @@ textarea:focus {
   background: var(--canvas);
   color: var(--ink);
 }
+.checkout-step {
+  margin-top: 28px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.checkout-step > header {
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.checkout-step > header > span {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 900;
+}
+.checkout-step > header small {
+  color: var(--wine);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.checkout-step > header h2 {
+  margin: 2px 0 0;
+  font-size: 22px;
+}
+.region-chip {
+  margin-left: auto;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.checkout-step label,
+.checkout-comment {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.checkout-step input,
+.checkout-step textarea {
+  width: 100%;
+  margin-top: 7px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--ink);
+}
+.checkout-step input {
+  min-height: 47px;
+  padding: 0 13px;
+}
+.fulfillment-options,
+.payment-options {
+  display: grid;
+  gap: 10px;
+}
+.fulfillment-options > button,
+.payment-options > button {
+  width: 100%;
+  min-height: 82px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  background: var(--canvas);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.fulfillment-options > button:hover,
+.payment-options > button:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--wine) 40%, var(--line));
+}
+.fulfillment-options > button.is-active,
+.payment-options > button.is-active {
+  border-color: var(--wine);
+  background: color-mix(in srgb, var(--rose) 64%, var(--paper));
+  box-shadow: 0 0 0 1px var(--wine);
+}
+.fulfillment-mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .03em;
+}
+.fulfillment-options button > span:nth-child(2),
+.payment-options button > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.fulfillment-options button small,
+.payment-options button small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.fulfillment-price {
+  min-width: 104px;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.checkout-address {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.pickup-explainer {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--canvas);
+}
+.pickup-explainer span {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--wine);
+  color: white;
+  font-size: 10px;
+  font-weight: 900;
+}
+.pickup-explainer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.delivery-meta {
+  margin-top: 16px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.delivery-meta span {
+  display: grid;
+  gap: 4px;
+}
+.delivery-meta small {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.delivery-meta b {
+  font-size: 11px;
+}
+.payment-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.payment-options > button {
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 96px;
+}
+.payment-radio {
+  width: 21px;
+  height: 21px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px var(--canvas);
+  background: transparent;
+}
+.payment-options > button.is-active .payment-radio {
+  border-color: var(--wine);
+  background: var(--wine);
+}
+.checkout-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.checkout-comment {
+  margin-top: 18px;
+  display: block;
+}
+.checkout-comment textarea {
+  min-height: 86px;
+  padding: 12px 13px;
+  resize: vertical;
+}
+.summary-choice {
+  margin: 0 0 18px;
+  padding: 13px;
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  background: var(--canvas);
+}
+.summary-choice span {
+  font-size: 12px;
+  font-weight: 800;
+}
+.summary-choice small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
 .cart-summary {
   position: sticky;
   top: 160px;
@@ -2429,6 +2658,39 @@ textarea:focus {
 .order-item small {
   margin-top: 4px;
   color: var(--muted);
+}
+.order-fulfillment {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: var(--paper);
+}
+.order-fulfillment span {
+  display: grid;
+  gap: 3px;
+}
+.order-fulfillment small {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.order-fulfillment b {
+  font-size: 11px;
+}
+.order-fulfillment em {
+  grid-column: 1 / -1;
+  width: max-content;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--rose);
+  color: var(--wine);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
 }
 .order-benefits {
   margin: 14px 0;
@@ -4265,6 +4527,31 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   }
   .form-grid-react .span-2 {
     grid-column: 1;
+  }
+  .checkout-step {
+    padding: 20px 15px;
+  }
+  .checkout-step > header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .region-chip {
+    width: 100%;
+    margin-left: 55px;
+  }
+  .fulfillment-options > button {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .fulfillment-price {
+    grid-column: 2;
+    min-width: 0;
+    justify-items: start;
+  }
+  .payment-options {
+    grid-template-columns: 1fr;
+  }
+  .delivery-meta {
+    grid-template-columns: 1fr 1fr;
   }
   .game-panel {
     padding: 28px 22px;

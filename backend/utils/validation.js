@@ -334,6 +334,12 @@ function validateOrder(body) {
     ['phone', 6, 30],
     ['email', 5, 120],
     ['address', 3, 240],
+    ['city', 2, 80],
+    ['postalCode', 2, 16],
+    ['country', 2, 80],
+    ['deliveryOption', 2, 40],
+    ['deliveryPoint', 1, 120],
+    ['paymentMethod', 2, 40],
     ['comment', 0, 500],
   ];
   for (const [field, min, max] of optionalCheckoutFields) {

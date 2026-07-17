@@ -2,9 +2,14 @@ const express = require('express');
 const { createOrder, getOrder, listOrders, updateOrderStatus } = require('../models/orders');
 const { requireAdmin, requireAuth } = require('../middleware/auth');
 const { AppError, asyncHandler } = require('../utils/errors');
+const { publicFulfillmentOptions } = require('../utils/fulfillment');
 const { validateOrder, validatePagination } = require('../utils/validation');
 
 const router = express.Router();
+
+router.get('/options', (req, res) => {
+  res.json(publicFulfillmentOptions(req.query.region));
+});
 
 router.use(requireAuth);
 
