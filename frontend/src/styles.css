@@ -1939,12 +1939,25 @@ textarea:focus {
   height: 100%;
   object-fit: contain;
 }
+.fulfillment-wordmark {
+  line-height: 1;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: -.04em;
+}
 .fulfillment-mark--inpost {
   border-color: #f1c400;
   background: #ffd500;
 }
 .fulfillment-mark--inpost .fulfillment-logo {
   transform: scale(.88);
+}
+.fulfillment-mark--inpost .fulfillment-wordmark {
+  padding-right: 4px;
+  color: #111;
+  font-size: 10px;
+  letter-spacing: -.06em;
 }
 .fulfillment-service-icon {
   position: absolute;
@@ -1982,20 +1995,20 @@ textarea:focus {
   border-color: #1026b3;
   background: #1026b3;
 }
-.fulfillment-mark--gls .fulfillment-logo {
-  width: 73%;
-  height: 73%;
+.fulfillment-mark--gls .fulfillment-wordmark {
+  color: #ffdf00;
+  font-size: 14px;
+  letter-spacing: -.08em;
 }
 .fulfillment-mark--dhl {
   border-color: #ffcc00;
-  border-radius: 50%;
   background: #ffcc00;
 }
-.fulfillment-mark--dhl .fulfillment-logo {
-  width: 118%;
-  height: 118%;
-  max-width: none;
-  object-fit: cover;
+.fulfillment-mark--dhl .fulfillment-wordmark {
+  color: #d40511;
+  font-size: 15px;
+  font-style: italic;
+  letter-spacing: -.11em;
 }
 .fulfillment-mark--pickup {
   border-color: var(--wine);

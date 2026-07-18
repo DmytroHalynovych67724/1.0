@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, imageUrl } from '../api';
-import dhlLogo from '../../assets/carriers/dhl.png';
 import dpdLogo from '../../assets/carriers/dpd.png';
-import glsLogo from '../../assets/carriers/gls.png';
-import inpostLogo from '../../assets/carriers/inpost.png';
 import novaPoshtaLogo from '../../assets/carriers/nova-poshta.png';
 import ukrposhtaLogo from '../../assets/carriers/ukrposhta.png';
 import parcelLockerIcon from '../../assets/carriers/parcel-locker.png';
@@ -42,17 +39,17 @@ const regionNames = {
 };
 
 const deliveryVisuals = {
-  inpost_locker: { src: inpostLogo, tone: 'inpost', serviceIcon: parcelLockerIcon },
+  inpost_locker: { label: 'InPost', tone: 'inpost', serviceIcon: parcelLockerIcon },
   dpd_courier: { src: dpdLogo, tone: 'dpd' },
   dpd_parcelshop: { src: dpdLogo, tone: 'dpd' },
-  gls_parcelshop: { src: glsLogo, tone: 'gls' },
+  gls_parcelshop: { label: 'GLS', tone: 'gls' },
   nova_poshta_locker: { src: novaPoshtaLogo, tone: 'nova' },
   nova_poshta_branch: { src: novaPoshtaLogo, tone: 'nova' },
   nova_poshta_courier: { src: novaPoshtaLogo, tone: 'nova' },
   ukrposhta_branch: { src: ukrposhtaLogo, tone: 'ukrposhta' },
   ukrposhta_courier: { src: ukrposhtaLogo, tone: 'ukrposhta' },
-  dhl_standard: { src: dhlLogo, tone: 'dhl' },
-  dhl_express: { src: dhlLogo, tone: 'dhl' },
+  dhl_standard: { label: 'DHL', tone: 'dhl' },
+  dhl_express: { label: 'DHL', tone: 'dhl' },
 };
 
 function DeliveryMark({ option, compact = false }) {
@@ -66,7 +63,9 @@ function DeliveryMark({ option, compact = false }) {
   if (!visual) return <span className={`fulfillment-mark${compact ? ' is-compact' : ''}`} aria-hidden="true">{option?.carrier?.slice(0, 3).toUpperCase()}</span>;
 
   return <span className={`fulfillment-mark fulfillment-mark--${visual.tone}${compact ? ' is-compact' : ''}`} aria-hidden="true">
-    <img className="fulfillment-logo" src={visual.src} alt="" />
+    {visual.src
+      ? <img className="fulfillment-logo" src={visual.src} alt="" />
+      : <strong className="fulfillment-wordmark">{visual.label}</strong>}
     {visual.serviceIcon && <span className="fulfillment-service-icon"><img src={visual.serviceIcon} alt="" /></span>}
   </span>;
 }
