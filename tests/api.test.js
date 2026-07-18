@@ -634,6 +634,11 @@ test('checkout exposes regional carriers and validates delivery and payment deta
   assert.equal(options.body.region, 'pl');
   assert.equal(options.body.delivery.some((item) => item.id === 'inpost_locker'), true);
   assert.equal(options.body.payments.includes('blik'), true);
+  assert.equal(options.body.payments.includes('google_pay'), true);
+
+  const euOptions = await request('/api/orders/options?region=eu');
+  assert.equal(euOptions.response.status, 200);
+  assert.equal(euOptions.body.delivery.some((item) => item.id === 'gls_parcelshop'), true);
 
   const product = await createProduct({
     title: 'Phone with regional delivery',

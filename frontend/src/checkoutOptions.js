@@ -5,7 +5,7 @@ export const fulfillmentFallback = {
       { id: 'dpd_courier', carrier: 'DPD', kind: 'courier', priceCents: 1999, etaMin: 1, etaMax: 2 },
       { id: 'pickup_seller', carrier: 'Seller', kind: 'pickup', priceCents: 0, etaMin: 0, etaMax: 0 },
     ],
-    payments: ['card', 'blik', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
+    payments: ['card', 'blik', 'google_pay', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
   },
   ua: {
     delivery: [
@@ -14,16 +14,17 @@ export const fulfillmentFallback = {
       { id: 'nova_poshta_courier', carrier: 'Nova Poshta', kind: 'courier', priceCents: 14000, etaMin: 1, etaMax: 3 },
       { id: 'pickup_seller', carrier: 'Seller', kind: 'pickup', priceCents: 0, etaMin: 0, etaMax: 0 },
     ],
-    payments: ['card', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
+    payments: ['card', 'google_pay', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
   },
   eu: {
     delivery: [
       { id: 'dpd_parcelshop', carrier: 'DPD Pickup', kind: 'point', priceCents: 799, etaMin: 2, etaMax: 4 },
+      { id: 'gls_parcelshop', carrier: 'GLS', kind: 'point', priceCents: 999, etaMin: 2, etaMax: 4 },
       { id: 'dhl_standard', carrier: 'DHL', kind: 'courier', priceCents: 1299, etaMin: 2, etaMax: 5 },
       { id: 'dhl_express', carrier: 'DHL Express', kind: 'courier', priceCents: 1999, etaMin: 1, etaMax: 2 },
       { id: 'pickup_seller', carrier: 'Seller', kind: 'pickup', priceCents: 0, etaMin: 0, etaMax: 0 },
     ],
-    payments: ['card', 'paypal', 'sepa_transfer', 'cash_on_pickup'],
+    payments: ['card', 'google_pay', 'paypal', 'sepa_transfer', 'cash_on_pickup'],
   },
 };
 
@@ -34,6 +35,7 @@ export const deliveryNames = {
   nova_poshta_branch: { pl: 'Oddział Nova Poshta', uk: 'Відділення Нової пошти', en: 'Nova Poshta branch' },
   nova_poshta_courier: { pl: 'Kurier Nova Poshta', uk: 'Кур’єр Нової пошти', en: 'Nova Poshta courier' },
   dpd_parcelshop: { pl: 'Punkt DPD Pickup', uk: 'Пункт DPD Pickup', en: 'DPD Pickup point' },
+  gls_parcelshop: { pl: 'Punkt GLS ParcelShop', uk: 'Пункт GLS ParcelShop', en: 'GLS ParcelShop' },
   dhl_standard: { pl: 'Kurier DHL Standard', uk: 'Кур’єр DHL Standard', en: 'DHL Standard courier' },
   dhl_express: { pl: 'DHL Express', uk: 'DHL Express', en: 'DHL Express' },
   pickup_seller: { pl: 'Odbiór od sprzedawcy', uk: 'Самовивіз у продавця', en: 'Collection from seller' },
@@ -60,6 +62,7 @@ export const deliveryDescriptions = {
 export const paymentNames = {
   card: { pl: 'Karta płatnicza', uk: 'Банківська картка', en: 'Payment card' },
   blik: { pl: 'BLIK', uk: 'BLIK', en: 'BLIK' },
+  google_pay: { pl: 'Google Pay', uk: 'Google Pay', en: 'Google Pay' },
   paypal: { pl: 'PayPal', uk: 'PayPal', en: 'PayPal' },
   bank_transfer: { pl: 'Przelew bankowy', uk: 'Банківський переказ', en: 'Bank transfer' },
   sepa_transfer: { pl: 'Przelew SEPA', uk: 'Переказ SEPA', en: 'SEPA transfer' },
@@ -70,6 +73,7 @@ export const paymentNames = {
 export const paymentDescriptions = {
   card: { pl: 'Visa lub Mastercard — płatność po utworzeniu zamówienia.', uk: 'Visa або Mastercard — оплата після створення замовлення.', en: 'Visa or Mastercard — pay after the order is created.' },
   blik: { pl: 'Potwierdzenie kodem BLIK w aplikacji banku.', uk: 'Підтвердження кодом BLIK у банківському застосунку.', en: 'Confirm with a BLIK code in your banking app.' },
+  google_pay: { pl: 'Szybka płatność kartą zapisaną w portfelu Google.', uk: 'Швидка оплата карткою, збереженою в гаманці Google.', en: 'Quick payment with a card saved in Google Wallet.' },
   paypal: { pl: 'Płatność z salda PayPal lub podpiętej karty.', uk: 'Оплата з балансу PayPal або прив’язаної картки.', en: 'Pay using your PayPal balance or linked card.' },
   bank_transfer: { pl: 'Dane do przelewu pojawią się po zamówieniu.', uk: 'Реквізити з’являться після оформлення.', en: 'Transfer details appear after placing the order.' },
   sepa_transfer: { pl: 'Przelew w EUR na rachunek sprzedawcy.', uk: 'Переказ у EUR на рахунок продавця.', en: 'EUR transfer to the seller account.' },

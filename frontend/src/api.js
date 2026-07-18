@@ -149,6 +149,32 @@ async function staticDemoApi(path, options) {
   const [pathname, search = ''] = path.split('?');
   const params = new URLSearchParams(search);
 
+  if (pathname === '/marketplace/assistant' && ['GET', 'POST'].includes(method)) {
+    let body = {};
+    if (method === 'POST' && options.body) {
+      try {
+        body = JSON.parse(options.body);
+      } catch {
+        body = {};
+      }
+    }
+    const query = method === 'POST' ? body.q || '' : params.get('q') || '';
+    const region = method === 'POST' ? body.region || '' : params.get('region') || '';
+    const products = filterDemoProducts(
+      await loadDemoCatalog(),
+      new URLSearchParams({ q: query, region })
+    ).slice(0, 4);
+    return {
+      reply: products.length
+        ? `Znalazłem ${products.length} pasujące oferty w katalogu demonstracyjnym.`
+        : 'Nie znalazłem dokładnego dopasowania. Spróbuj podać markę lub kategorię.',
+      results: products,
+      total: products.length,
+      assistantMode: 'local',
+      catalogQuery: new URLSearchParams({ q: query }).toString(),
+    };
+  }
+
   if (method === 'POST' && pathname === '/marketplace/newsletter') {
     return { ok: true, demo: true };
   }
@@ -184,18 +210,6 @@ async function staticDemoApi(path, options) {
     return product;
   }
   if (pathname === '/marketplace/questions') return [];
-  if (pathname === '/marketplace/assistant') {
-    const query = params.get('q') || '';
-    const products = filterDemoProducts(catalog, new URLSearchParams({ q: query, region: params.get('region') || '' })).slice(0, 4);
-    return {
-      reply: products.length
-        ? `Znalazłem ${products.length} pasujące oferty w katalogu demonstracyjnym.`
-        : 'Nie znalazłem dokładnego dopasowania. Spróbuj podać markę lub kategorię.',
-      products,
-      total: products.length,
-      catalogQuery: new URLSearchParams({ q: query }).toString(),
-    };
-  }
   if (pathname === '/health') return { status: 'demo', service: 'nashary-pages' };
   throw new ApiError(
     'Ta funkcja wymaga uruchomionego serwera NaShary.',

@@ -15,6 +15,7 @@ const DELIVERY_OPTIONS = Object.freeze({
   ],
   eu: [
     { id: 'dpd_parcelshop', carrier: 'DPD Pickup', kind: 'point', priceCents: 799, etaMin: 2, etaMax: 4 },
+    { id: 'gls_parcelshop', carrier: 'GLS', kind: 'point', priceCents: 999, etaMin: 2, etaMax: 4 },
     { id: 'dhl_standard', carrier: 'DHL', kind: 'courier', priceCents: 1299, etaMin: 2, etaMax: 5 },
     { id: 'dhl_express', carrier: 'DHL Express', kind: 'courier', priceCents: 1999, etaMin: 1, etaMax: 2 },
     { id: 'pickup_seller', carrier: 'Seller', kind: 'pickup', priceCents: 0, etaMin: 0, etaMax: 0 },
@@ -22,9 +23,9 @@ const DELIVERY_OPTIONS = Object.freeze({
 });
 
 const PAYMENT_OPTIONS = Object.freeze({
-  pl: ['card', 'blik', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
-  ua: ['card', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
-  eu: ['card', 'paypal', 'sepa_transfer', 'cash_on_pickup'],
+  pl: ['card', 'blik', 'google_pay', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
+  ua: ['card', 'google_pay', 'bank_transfer', 'cash_on_delivery', 'cash_on_pickup'],
+  eu: ['card', 'google_pay', 'paypal', 'sepa_transfer', 'cash_on_pickup'],
 });
 
 const LEGACY_DEFAULTS = Object.freeze({

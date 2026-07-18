@@ -6,6 +6,7 @@ const { listProducts, getProduct } = require('../models/products');
 const { AppError, asyncHandler } = require('../utils/errors');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
 const { searchCatalogWithAssistant } = require('../services/catalogAssistant');
+const { enhanceAssistantResult } = require('../services/groqAssistant');
 
 const router = express.Router();
 const clean = (value, max = 120) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
@@ -17,17 +18,26 @@ const parse = (value) => {
   }
 };
 
-router.get(
-  '/assistant',
-  asyncHandler(async (req, res) => {
-    const query = clean(req.query?.q, 180);
-    const language = ['pl', 'uk', 'en'].includes(req.query?.language) ? req.query.language : 'pl';
-    const region = normalizeRegion(req.query?.region);
-    if (query.length < 2)
-      throw new AppError(400, 'VALIDATION_ERROR', 'Search request is too short');
-    res.json(await searchCatalogWithAssistant(query, { region, language }));
-  })
-);
+async function assistantHandler(req, res) {
+  const source = req.method === 'POST' ? req.body : req.query;
+  const query = clean(source?.q, 180);
+  const language = ['pl', 'uk', 'en'].includes(source?.language) ? source.language : 'pl';
+  const region = normalizeRegion(source?.region);
+  if (query.length < 2)
+    throw new AppError(400, 'VALIDATION_ERROR', 'Search request is too short');
+
+  const catalogResult = await searchCatalogWithAssistant(query, { region, language });
+  res.json(
+    await enhanceAssistantResult(query, catalogResult, {
+      region,
+      language,
+      history: req.method === 'POST' ? source?.history : [],
+    })
+  );
+}
+
+router.get('/assistant', asyncHandler(assistantHandler));
+router.post('/assistant', asyncHandler(assistantHandler));
 
 router.post(
   '/newsletter',

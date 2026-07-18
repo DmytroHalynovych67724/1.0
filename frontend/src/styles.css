@@ -1829,6 +1829,18 @@ textarea:focus {
   font-size: 11px;
   font-weight: 900;
 }
+.checkout-step > header > .checkout-step-icon {
+  overflow: hidden;
+  border: 1px solid var(--wine);
+  border-radius: 50%;
+  background: var(--wine);
+}
+.checkout-step-icon img {
+  width: 126%;
+  height: 126%;
+  max-width: none;
+  object-fit: cover;
+}
 .checkout-step > header small {
   color: var(--wine);
   font-size: 9px;
@@ -1901,16 +1913,92 @@ textarea:focus {
   box-shadow: 0 0 0 1px var(--wine);
 }
 .fulfillment-mark {
-  width: 46px;
-  height: 46px;
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  overflow: hidden;
   border-radius: 13px;
   display: grid;
   place-items: center;
-  background: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  background: #fff;
   color: var(--paper);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: .03em;
+}
+.fulfillment-mark.is-compact {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border-radius: 11px;
+}
+.fulfillment-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fulfillment-mark--inpost {
+  border-color: #f1c400;
+  background: #ffd500;
+}
+.fulfillment-mark--inpost .fulfillment-logo {
+  transform: scale(.88);
+}
+.fulfillment-service-icon {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border: 1px solid rgba(0, 0, 0, .14);
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, .16);
+}
+.fulfillment-service-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fulfillment-mark--dpd .fulfillment-logo,
+.fulfillment-mark--nova .fulfillment-logo {
+  width: 72%;
+  height: 72%;
+}
+.fulfillment-mark--gls {
+  border-color: #1026b3;
+  background: #1026b3;
+}
+.fulfillment-mark--gls .fulfillment-logo {
+  width: 73%;
+  height: 73%;
+}
+.fulfillment-mark--dhl {
+  border-color: #ffcc00;
+  border-radius: 50%;
+  background: #ffcc00;
+}
+.fulfillment-mark--dhl .fulfillment-logo {
+  width: 118%;
+  height: 118%;
+  max-width: none;
+  object-fit: cover;
+}
+.fulfillment-mark--pickup {
+  border-color: var(--wine);
+  border-radius: 50%;
+  background: var(--wine);
+}
+.fulfillment-mark--pickup .fulfillment-logo {
+  width: 108%;
+  height: 108%;
+  max-width: none;
+  object-fit: cover;
 }
 .fulfillment-options button > span:nth-child(2),
 .payment-options button > span:nth-child(2) {
@@ -1944,18 +2032,6 @@ textarea:focus {
   gap: 12px;
   background: var(--canvas);
 }
-.pickup-explainer span {
-  flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  background: var(--wine);
-  color: white;
-  font-size: 10px;
-  font-weight: 900;
-}
 .pickup-explainer p {
   margin: 0;
   color: var(--muted);
@@ -1986,8 +2062,44 @@ textarea:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .payment-options > button {
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 54px minmax(0, 1fr) auto;
   min-height: 96px;
+}
+.payment-mark {
+  width: 54px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #17171a;
+}
+.payment-mark img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+}
+.payment-mark--google_pay img {
+  width: 94%;
+}
+.payment-mark svg {
+  width: 29px;
+  height: 29px;
+  stroke: var(--wine);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.payment-mark strong {
+  color: #1473e6;
+  font-size: 23px;
+  font-style: italic;
+}
+.payment-options > button.is-active .payment-mark {
+  border-color: color-mix(in srgb, var(--wine) 65%, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--wine) 30%, transparent);
 }
 .payment-radio {
   width: 21px;
@@ -2020,15 +2132,21 @@ textarea:focus {
   margin: 0 0 18px;
   padding: 13px;
   border-radius: 12px;
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
   background: var(--canvas);
 }
-.summary-choice span {
+.summary-choice > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.summary-choice > div > span {
   font-size: 12px;
   font-weight: 800;
 }
-.summary-choice small {
+.summary-choice > div > small {
   color: var(--muted);
   font-size: 9px;
   line-height: 1.4;

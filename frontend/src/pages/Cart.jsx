@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, imageUrl } from '../api';
+import dhlLogo from '../../assets/carriers/dhl.png';
+import dpdLogo from '../../assets/carriers/dpd.png';
+import glsLogo from '../../assets/carriers/gls.png';
+import inpostLogo from '../../assets/carriers/inpost.png';
+import novaPoshtaLogo from '../../assets/carriers/nova-poshta.png';
+import parcelLockerIcon from '../../assets/carriers/parcel-locker.png';
+import pickupSellerLogo from '../../assets/carriers/pickup-seller.png';
+import checkoutContactIcon from '../../assets/carriers/checkout-contact.png';
+import checkoutDeliveryIcon from '../../assets/carriers/checkout-delivery.png';
+import blikLogo from '../../assets/payments/blik.png';
+import googlePayLogo from '../../assets/payments/google-pay.png';
 import {
   deliveryDescriptions,
   deliveryNames,
@@ -28,6 +39,59 @@ const regionNames = {
   ua: { pl: 'Ukraina', uk: 'Україна', en: 'Ukraine' },
   eu: { pl: 'Europa', uk: 'Європа', en: 'Europe' },
 };
+
+const deliveryVisuals = {
+  inpost_locker: { src: inpostLogo, tone: 'inpost', serviceIcon: parcelLockerIcon },
+  dpd_courier: { src: dpdLogo, tone: 'dpd' },
+  dpd_parcelshop: { src: dpdLogo, tone: 'dpd' },
+  gls_parcelshop: { src: glsLogo, tone: 'gls' },
+  nova_poshta_locker: { src: novaPoshtaLogo, tone: 'nova' },
+  nova_poshta_branch: { src: novaPoshtaLogo, tone: 'nova' },
+  nova_poshta_courier: { src: novaPoshtaLogo, tone: 'nova' },
+  dhl_standard: { src: dhlLogo, tone: 'dhl' },
+  dhl_express: { src: dhlLogo, tone: 'dhl' },
+};
+
+function DeliveryMark({ option, compact = false }) {
+  if (option?.kind === 'pickup') {
+    return <span className={`fulfillment-mark fulfillment-mark--pickup${compact ? ' is-compact' : ''}`} aria-hidden="true">
+      <img className="fulfillment-logo" src={pickupSellerLogo} alt="" />
+    </span>;
+  }
+
+  const visual = deliveryVisuals[option?.id];
+  if (!visual) return <span className={`fulfillment-mark${compact ? ' is-compact' : ''}`} aria-hidden="true">{option?.carrier?.slice(0, 3).toUpperCase()}</span>;
+
+  return <span className={`fulfillment-mark fulfillment-mark--${visual.tone}${compact ? ' is-compact' : ''}`} aria-hidden="true">
+    <img className="fulfillment-logo" src={visual.src} alt="" />
+    {visual.serviceIcon && <span className="fulfillment-service-icon"><img src={visual.serviceIcon} alt="" /></span>}
+  </span>;
+}
+
+const paymentBrandAssets = {
+  blik: blikLogo,
+  google_pay: googlePayLogo,
+};
+
+function PaymentMark({ method }) {
+  const brandAsset = paymentBrandAssets[method];
+  if (brandAsset) return <span className={`payment-mark payment-mark--${method}`} aria-hidden="true"><img src={brandAsset} alt="" /></span>;
+
+  const type = method === 'card'
+    ? 'card'
+    : ['bank_transfer', 'sepa_transfer'].includes(method)
+      ? 'bank'
+      : ['cash_on_delivery', 'cash_on_pickup'].includes(method)
+        ? 'cash'
+        : 'wallet';
+
+  return <span className={`payment-mark payment-mark--${type}`} aria-hidden="true">
+    {type === 'card' && <svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 9h19M6 15h5" /></svg>}
+    {type === 'bank' && <svg viewBox="0 0 24 24" fill="none"><path d="M3 9h18L12 3 3 9ZM5 20h14M7 9v8M12 9v8M17 9v8" /></svg>}
+    {type === 'cash' && <svg viewBox="0 0 24 24" fill="none"><path d="M3 7.5h18v10H3zM7 12.5h.01M17 12.5h.01" /><circle cx="12" cy="12.5" r="2.5" /></svg>}
+    {type === 'wallet' && <strong>P</strong>}
+  </span>;
+}
 
 function paymentFitsDelivery(method, kind) {
   if (method === 'cash_on_pickup') return kind === 'pickup';
@@ -137,7 +201,7 @@ export default function Cart() {
         </article>)}
 
         <section className="checkout-step">
-          <header><span>01</span><div><small>{c.contact}</small><h2>{c.receiver}</h2></div></header>
+          <header><span className="checkout-step-icon"><img src={checkoutContactIcon} alt="" /></span><div><small>{c.contact}</small><h2>{c.receiver}</h2></div></header>
           <div className="form-grid-react">
             <label>{c.name}<input required autoComplete="name" value={checkout.name} onChange={change('name')} /></label>
             <label>{c.phone}<input required type="tel" autoComplete="tel" value={checkout.phone} onChange={change('phone')} /></label>
@@ -146,11 +210,11 @@ export default function Cart() {
         </section>
 
         <section className="checkout-step">
-          <header><span>02</span><div><small>{c.deliveryTitle}</small><h2>{c.deliveryTitle.replace(/^\d+\s·\s/, '')}</h2></div><b className="region-chip">{region.toUpperCase()} · {localized(regionNames, region, language)}</b></header>
+          <header><span className="checkout-step-icon"><img src={checkoutDeliveryIcon} alt="" /></span><div><small>{c.deliveryTitle}</small><h2>{c.deliveryTitle.replace(/^\d+\s·\s/, '')}</h2></div><b className="region-chip">{region.toUpperCase()} · {localized(regionNames, region, language)}</b></header>
           {!pickupAllowed && packageCount > 1 && <p className="checkout-note">{c.pickupMulti}</p>}
           <div className="fulfillment-options">
             {deliveryOptions.map((option) => <button type="button" key={option.id} className={selectedDelivery?.id === option.id ? 'is-active' : ''} onClick={() => setCheckout((value) => ({ ...value, deliveryOption: option.id }))}>
-              <span className="fulfillment-mark">{option.kind === 'pickup' ? 'NS' : option.carrier.slice(0, 3).toUpperCase()}</span>
+              <DeliveryMark option={option} />
               <span><b>{localized(deliveryNames, option.id, language)}</b><small>{localized(deliveryDescriptions, option.kind, language)}</small></span>
               <span className="fulfillment-price"><b>{option.priceCents ? formatPrice(option.priceCents / 100, currency) : c.free}</b><small>{option.etaMax ? `${option.etaMin}–${option.etaMax} ${c.days}` : '—'}</small></span>
             </button>)}
@@ -163,7 +227,7 @@ export default function Cart() {
             <label>{c.postal}<input required autoComplete="postal-code" value={checkout.postalCode} onChange={change('postalCode')} /></label>
             {region === 'eu' && <label className="span-2">{c.country}<input required autoComplete="country-name" value={checkout.country} onChange={change('country')} /></label>}
           </div>}
-          {selectedDelivery?.kind === 'pickup' && <div className="pickup-explainer"><span>NS</span><p>{localized(deliveryDescriptions, 'pickup', language)}</p></div>}
+          {selectedDelivery?.kind === 'pickup' && <div className="pickup-explainer"><DeliveryMark option={selectedDelivery} compact /><p>{localized(deliveryDescriptions, 'pickup', language)}</p></div>}
           {selectedDelivery && selectedDelivery.kind !== 'pickup' && <div className="delivery-meta"><span><small>{c.eta}</small><b>{selectedDelivery.etaMin}–{selectedDelivery.etaMax} {c.days}</b></span><span><small>{c.deliveryFor}</small><b>{packageCount} {packageCount === 1 ? c.package : c.packages}</b></span><span><small>{c.secure}</small><b>Tracking ✓</b></span></div>}
         </section>
 
@@ -171,7 +235,7 @@ export default function Cart() {
           <header><span>03</span><div><small>{c.paymentTitle}</small><h2>{c.paymentTitle.replace(/^\d+\s·\s/, '')}</h2></div></header>
           <div className="payment-options">
             {paymentOptions.map((method) => <button type="button" key={method} className={selectedPayment === method ? 'is-active' : ''} onClick={() => setCheckout((value) => ({ ...value, paymentMethod: method }))}>
-              <span className="payment-radio" /><span><b>{localized(paymentNames, method, language)}</b><small>{localized(paymentDescriptions, method, language)}</small></span>
+              <PaymentMark method={method} /><span><b>{localized(paymentNames, method, language)}</b><small>{localized(paymentDescriptions, method, language)}</small></span><span className="payment-radio" />
             </button>)}
           </div>
           <p className="checkout-note">{selectedPayment?.startsWith('cash_') ? c.cashInfo : c.onlinePending}</p>
@@ -182,7 +246,7 @@ export default function Cart() {
       <aside className="cart-summary">
         <span className="section-label">{t('summary')}</span><h2>{t('total')}</h2>
         <dl><div><dt>{t('subtotal')}</dt><dd>{formatPrice(subtotal, currency)}</dd></div><div><dt>{c.shippingPrice}</dt><dd>{shipping ? formatPrice(shipping, currency) : c.free}</dd></div><div className="summary-total"><dt>{t('total')}</dt><dd>{formatPrice(total, currency)}</dd></div></dl>
-        {selectedDelivery && <div className="summary-choice"><span>{selectedDelivery.carrier}</span><small>{packageCount} {packageCount === 1 ? c.package : c.packages} · {c.serverTariff}</small></div>}
+        {selectedDelivery && <div className="summary-choice"><DeliveryMark option={selectedDelivery} compact /><div><span>{selectedDelivery.carrier}</span><small>{packageCount} {packageCount === 1 ? c.package : c.packages} · {c.serverTariff}</small></div></div>}
         <label>{t('promo')}<div className="promo-input"><input value={promoCode} onChange={(event) => setPromoCode(event.target.value.toUpperCase())} placeholder="KOD-123" /><span>✓</span></div></label>
         <button className="primary-button primary-button--wide" disabled={busy || !selectedDelivery || !selectedPayment} type="submit">{user ? (busy ? '…' : c.order) : t('login')}</button>
         <small>{c.check}</small>

@@ -78,7 +78,17 @@ export default function Assistant() {
     setQuery('');
     setBusy(true);
     try {
-      const response = await api(`/marketplace/assistant?q=${encodeURIComponent(text)}&region=${region}&language=${language}`);
+      const history = messages
+        .slice(-6)
+        .map((message) => ({
+          role: message.role,
+          content: message.role === 'user' ? message.text : message.reply,
+        }))
+        .filter((message) => message.content);
+      const response = await api('/marketplace/assistant', {
+        method: 'POST',
+        body: JSON.stringify({ q: text, region, language, history }),
+      });
       if (requestId !== requestRef.current) return;
       setMessages((current) => [...current, { id: `${messageId}-assistant`, role: 'assistant', ...response }]);
     } catch (_error) {
