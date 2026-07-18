@@ -47,6 +47,7 @@ jobs:
         run: |
           node scripts/export-demo-catalog.js frontend/dist/demo-products.json
           cp -R frontend/assets/. frontend/dist/assets/
+          cp frontend/dist/index.html frontend/dist/404.html
           touch frontend/dist/.nojekyll
 
       - name: Upload Pages artifact
