@@ -730,6 +730,20 @@ main {
 .icon-button:hover {
   background: var(--canvas);
 }
+.account-indicator {
+  position: relative;
+}
+.account-indicator.is-authenticated::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--wine);
+}
 .cart-indicator {
   position: relative;
 }
@@ -749,6 +763,9 @@ main {
 }
 .locale {
   position: relative;
+}
+.locale-current {
+  display: none;
 }
 .locale-panel {
   position: absolute;
@@ -4259,32 +4276,83 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
     display: inline-grid !important;
   }
   .app-header__main {
-    height: 70px;
+    height: 128px;
     grid-template-columns: 44px auto 1fr;
+    grid-template-rows: 70px 46px;
     gap: 7px;
+    align-content: start;
+  }
+  .app-header__main > .mobile-only,
+  .app-header__main > .brand-logo,
+  .app-header__main > .header-tools {
+    grid-row: 1;
   }
   .app-header__main .brand-logo {
     justify-self: center;
   }
   .global-search {
-    position: absolute;
-    top: 76px;
-    left: 15px;
-    right: 15px;
-    box-shadow: 0 8px 30px rgba(30, 25, 23, 0.12);
+    position: static;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    box-shadow: 0 6px 22px rgba(30, 25, 23, 0.08);
   }
   .global-search button {
     display: none;
   }
   .header-tools {
     grid-column: 3;
+    max-width: 100%;
+    gap: 0;
+  }
+  .header-tools .theme-toggle,
+  .header-tools .account-indicator,
+  .header-tools .favorites-indicator {
+    display: none;
   }
   .header-tools .locale {
-    display: none;
+    display: block;
+  }
+  .header-tools .locale > .icon-button {
+    width: auto;
+    min-width: 72px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    display: flex;
+    gap: 6px;
+  }
+  .header-tools .locale .icon {
+    width: 17px;
+    height: 17px;
+  }
+  .locale-current {
+    display: inline;
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: .04em;
+  }
+  .locale-panel {
+    position: fixed;
+    top: 126px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    z-index: 80;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .locale-panel span {
+    grid-column: 1 / -1;
+  }
+  .locale-panel button {
+    min-width: 0;
+    text-align: center;
   }
   .app-nav {
     position: absolute;
-    top: 70px;
+    top: 128px;
     left: 0;
     right: 0;
     display: none;
@@ -4309,8 +4377,48 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
   .app-nav .nav-sell {
     margin-left: 0;
   }
+  .mobile-nav-extras {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    display: grid !important;
+    gap: 3px;
+  }
+  .mobile-nav-extras > a,
+  .mobile-nav-extras > button {
+    width: 100%;
+    min-height: 48px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    display: grid;
+    grid-template-columns: 30px 1fr auto;
+    align-items: center;
+    color: var(--ink);
+    background: transparent;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .mobile-nav-extras > a:hover,
+  .mobile-nav-extras > button:hover {
+    background: var(--canvas);
+  }
+  .mobile-nav-extras .icon {
+    width: 19px;
+    height: 19px;
+  }
+  .mobile-nav-extras b {
+    max-width: 125px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .intro-hero {
-    padding-top: 110px;
+    padding-top: 50px;
   }
   .intro-grid {
     min-height: auto;
@@ -4438,7 +4546,14 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
     padding: 6px 9px;
     border-radius: 10px;
   }
-  .header-tools .icon-button:first-of-type {
+  .header-tools .locale > .icon-button {
+    min-width: 60px;
+    padding-inline: 9px;
+  }
+  .header-tools .locale .icon {
+    display: none;
+  }
+  .header-tools .cart-indicator {
     display: none;
   }
   .hero-metrics {

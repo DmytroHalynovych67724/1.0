@@ -66,6 +66,7 @@ export default function Header() {
   }, []);
   const search = (event) => {
     event.preventDefault();
+    setMenuOpen(false);
     navigate(`/catalog${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
   };
   const links = [
@@ -87,7 +88,11 @@ export default function Header() {
           className="icon-button mobile-only"
           type="button"
           aria-label="Menu"
-          onClick={() => setMenuOpen((value) => !value)}
+          aria-expanded={menuOpen}
+          onClick={() => {
+            setLocaleOpen(false);
+            setMenuOpen((value) => !value);
+          }}
         >
           <Icon name="menu" />
         </button>
@@ -115,9 +120,14 @@ export default function Header() {
               className="icon-button"
               type="button"
               aria-label="Language and region"
-              onClick={() => setLocaleOpen((value) => !value)}
+              aria-expanded={localeOpen}
+              onClick={() => {
+                setMenuOpen(false);
+                setLocaleOpen((value) => !value);
+              }}
             >
               <Icon name="globe" />
+              <span className="locale-current">{language.toUpperCase()} · {region.toUpperCase()}</span>
             </button>
             {localeOpen && (
               <div className="locale-panel">
@@ -147,11 +157,11 @@ export default function Header() {
             )}
           </div>
           <Link
-            className={`icon-button${user?.avatar ? ' user-avatar-button' : ''}`}
+            className={`icon-button account-indicator${user ? ' is-authenticated' : ''}`}
             to={user ? '/account' : '/auth'}
             aria-label={t('account')}
           >
-            {user?.avatar ? <img src={user.avatar} alt="" /> : <Icon name="user" />}
+            <Icon name="user" />
           </Link>
           <Link
             className="icon-button favorites-indicator"
@@ -181,6 +191,27 @@ export default function Header() {
           >
             ＋ {t('sell')}
           </NavLink>
+          <div className="mobile-nav-extras mobile-only">
+            <Link to={user ? '/account' : '/auth'} onClick={() => setMenuOpen(false)}>
+              <Icon name="user" />
+              <span>{t('account')}</span>
+              {user && <b>{user.username}</b>}
+            </Link>
+            <Link to="/favorites" onClick={() => setMenuOpen(false)}>
+              <Icon name="heart" />
+              <span>{language === 'pl' ? 'Ulubione' : language === 'uk' ? 'Обране' : 'Favourites'}</span>
+              {favorites.length > 0 && <b>{favorites.length}</b>}
+            </Link>
+            <Link to="/cart" onClick={() => setMenuOpen(false)}>
+              <Icon name="bag" />
+              <span>{t('cart')}</span>
+              {cart.length > 0 && <b>{cart.reduce((sum, item) => sum + item.qty, 0)}</b>}
+            </Link>
+            <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+              <span>{theme === 'dark' ? (language === 'pl' ? 'Tryb jasny' : language === 'uk' ? 'Світла тема' : 'Light mode') : (language === 'pl' ? 'Tryb ciemny' : language === 'uk' ? 'Темна тема' : 'Dark mode')}</span>
+            </button>
+          </div>
         </nav>
       </div>
     </header>
