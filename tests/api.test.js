@@ -636,6 +636,11 @@ test('checkout exposes regional carriers and validates delivery and payment deta
   assert.equal(options.body.payments.includes('blik'), true);
   assert.equal(options.body.payments.includes('google_pay'), true);
 
+  const uaOptions = await request('/api/orders/options?region=ua');
+  assert.equal(uaOptions.response.status, 200);
+  assert.equal(uaOptions.body.delivery.some((item) => item.id === 'ukrposhta_branch'), true);
+  assert.equal(uaOptions.body.delivery.some((item) => item.id === 'ukrposhta_courier'), true);
+
   const euOptions = await request('/api/orders/options?region=eu');
   assert.equal(euOptions.response.status, 200);
   assert.equal(euOptions.body.delivery.some((item) => item.id === 'gls_parcelshop'), true);

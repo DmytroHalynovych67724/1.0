@@ -1970,6 +1970,14 @@ textarea:focus {
   width: 72%;
   height: 72%;
 }
+.fulfillment-mark--ukrposhta {
+  border-color: #ffbd27;
+  background: #050505;
+}
+.fulfillment-mark--ukrposhta .fulfillment-logo {
+  width: 84%;
+  height: 84%;
+}
 .fulfillment-mark--gls {
   border-color: #1026b3;
   background: #1026b3;

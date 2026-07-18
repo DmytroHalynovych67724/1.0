@@ -6,6 +6,7 @@ import dpdLogo from '../../assets/carriers/dpd.png';
 import glsLogo from '../../assets/carriers/gls.png';
 import inpostLogo from '../../assets/carriers/inpost.png';
 import novaPoshtaLogo from '../../assets/carriers/nova-poshta.png';
+import ukrposhtaLogo from '../../assets/carriers/ukrposhta.png';
 import parcelLockerIcon from '../../assets/carriers/parcel-locker.png';
 import pickupSellerLogo from '../../assets/carriers/pickup-seller.png';
 import checkoutContactIcon from '../../assets/carriers/checkout-contact.png';
@@ -48,6 +49,8 @@ const deliveryVisuals = {
   nova_poshta_locker: { src: novaPoshtaLogo, tone: 'nova' },
   nova_poshta_branch: { src: novaPoshtaLogo, tone: 'nova' },
   nova_poshta_courier: { src: novaPoshtaLogo, tone: 'nova' },
+  ukrposhta_branch: { src: ukrposhtaLogo, tone: 'ukrposhta' },
+  ukrposhta_courier: { src: ukrposhtaLogo, tone: 'ukrposhta' },
   dhl_standard: { src: dhlLogo, tone: 'dhl' },
   dhl_express: { src: dhlLogo, tone: 'dhl' },
 };

@@ -11,6 +11,8 @@ const DELIVERY_OPTIONS = Object.freeze({
     { id: 'nova_poshta_locker', carrier: 'Nova Poshta', kind: 'point', priceCents: 7000, etaMin: 1, etaMax: 2 },
     { id: 'nova_poshta_branch', carrier: 'Nova Poshta', kind: 'point', priceCents: 8000, etaMin: 1, etaMax: 3 },
     { id: 'nova_poshta_courier', carrier: 'Nova Poshta', kind: 'courier', priceCents: 14000, etaMin: 1, etaMax: 3 },
+    { id: 'ukrposhta_branch', carrier: 'Ukrposhta', kind: 'point', priceCents: 6000, etaMin: 2, etaMax: 5 },
+    { id: 'ukrposhta_courier', carrier: 'Ukrposhta', kind: 'courier', priceCents: 10000, etaMin: 2, etaMax: 5 },
     { id: 'pickup_seller', carrier: 'Seller', kind: 'pickup', priceCents: 0, etaMin: 0, etaMax: 0 },
   ],
   eu: [
