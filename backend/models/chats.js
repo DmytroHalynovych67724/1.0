@@ -143,8 +143,12 @@ async function listMessages({ conversationId, userId }) {
 }
 
 async function sendMessage({ conversationId, userId, body }) {
-  if (!(await conversationForUser(conversationId, userId))) {
+  const conversation = await conversationForUser(conversationId, userId);
+  if (!conversation) {
     throw new AppError(404, 'CONVERSATION_NOT_FOUND', 'Conversation not found');
+  }
+  if (conversation.buyerId === conversation.sellerId) {
+    throw new AppError(403, 'SELF_MESSAGE_DENIED', 'You cannot message yourself');
   }
   const id = uuidv4();
   const createdAt = Date.now();
@@ -204,6 +208,7 @@ async function createOffer({ conversationId, userId, amount, parentOfferId = nul
   }
   const recipientId =
     conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId;
+  if (recipientId === userId) throw new AppError(403, 'SELF_OFFER_DENIED', 'You cannot make a price offer to yourself');
   const now = Date.now();
   const id = uuidv4();
   const expiresAt = now + 48 * 60 * 60 * 1000;

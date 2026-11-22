@@ -1,0 +1,51 @@
+.listing-section-nav { display: flex; gap: 28px; border-bottom: 1px solid var(--line); margin-bottom: 24px; overflow-x: auto; }
+.listing-section-nav a { padding: 14px 0; white-space: nowrap; font-weight: 650; color: var(--muted); border-bottom: 2px solid transparent; }
+.listing-section-nav a:hover, .listing-section-nav a:focus-visible { color: var(--wine); border-color: currentColor; }
+#listing-overview, #listing-specs, #listing-reviews { scroll-margin-top: 155px; }
+.product-page-react .product-react-grid { grid-template-columns: minmax(0, 1.1fr) minmax(360px, .9fr); gap: 28px; }
+.product-page-react .product-main-image { background: var(--paper); min-height: 540px; }
+.product-page-react .product-main-image img { max-height: 540px; }
+.product-page-react .buy-panel { background: var(--paper); padding: 28px; }
+.product-page-react .buy-panel h1 { font-size: clamp(26px, 2.5vw, 36px); line-height: 1.15; letter-spacing: -.035em; margin-bottom: 16px; }
+.listing-status-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.listing-status-row span { padding: 6px 10px; border-radius: 7px; background: var(--canvas); font-size: 12px; font-weight: 650; }
+.listing-status-row .is-available { background: color-mix(in srgb, #2d8a52 12%, var(--paper)); color: #2d8a52; }
+.listing-highlights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.listing-highlights:empty { display: none; }
+.listing-highlights > div { min-width: 0; border-left: 2px solid var(--line); padding-left: 12px; }
+.listing-highlights small, .listing-fulfillment small { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+.listing-highlights b { display: block; font-size: 13px; overflow-wrap: anywhere; line-height: 1.5; }
+.listing-photo-caption { display: flex; justify-content: space-between; padding: 14px 4px; color: var(--muted); font-size: 12px; }
+.product-page-react .product-thumbs { overflow-x: auto; padding: 2px; }
+.product-thumbs button { flex-shrink: 0; }
+.product-page-react .model-offers-link { display: inline-block; margin-bottom: 18px; }
+.listing-buyer-actions { display: grid; gap: 10px; }
+.listing-buyer-actions > button { width: 100%; }
+.listing-fixed-price { color: var(--muted); text-align: center; }
+.listing-owner-panel { border: 1px solid color-mix(in srgb, var(--wine) 25%, var(--line)); border-radius: 14px; background: var(--rose); color: var(--ink); padding: 20px; display: grid; gap: 12px; }
+.listing-owner-panel p { margin: 0; font-size: 13px; line-height: 1.65; }
+.listing-owner-panel a { text-align: center; }
+.listing-fulfillment { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.listing-fulfillment b { font-size: 12px; line-height: 1.5; }
+.product-page-react .product-info-react > section { background: var(--paper); }
+.product-page-react .product-info-react dl { grid-template-columns: minmax(0, 1fr); }
+.product-page-react .product-info-react dl div { padding: 13px 10px; gap: 20px; }
+.product-page-react .product-info-react dl div:nth-child(odd) { background: var(--canvas); }
+.product-page-react .product-info-react dt { flex: 0 0 40%; font-size: 13px; }
+.product-page-react .product-info-react dd { font-size: 13px; text-align: right; overflow-wrap: anywhere; }
+.product-page-react .product-description-card p { overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .product-page-react .product-react-grid { grid-template-columns: minmax(0, 1fr); }
+  .product-page-react .product-gallery-react { position: static; }
+  .product-page-react .product-main-image { min-height: 360px; }
+  .product-page-react .product-main-image img { max-height: 400px; }
+  .product-page-react .product-info-react { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .listing-section-nav { gap: 20px; font-size: 13px; }
+  .product-page-react .buy-panel { padding: 20px; }
+  .product-page-react .product-main-image { min-height: 300px; }
+  .product-page-react .product-main-image img { max-height: 330px; padding: 22px; }
+  .product-page-react .product-info-react > section { padding: 20px 16px; }
+  .listing-owner-panel { padding: 16px; }
+}

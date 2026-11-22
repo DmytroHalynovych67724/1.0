@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
 import ProductCard from '../components/ProductCard';
+import { ownsListing, canBuyListing, ownerCopy } from '../listingPolicy.mjs';
+import '../productDetails.css';
 
 const words = {
   pl: {
@@ -106,9 +108,14 @@ const detailValues = {
 
 export default function Product() {
   const { id } = useParams();
+  return <ProductDetails key={id} id={id} />;
+}
+
+function ProductDetails({ id }) {
   const navigate = useNavigate();
   const { t, user, formatPrice, addToCart, flash, language } = useStore();
   const c = words[language] || words.pl;
+  const oc = ownerCopy[language] || ownerCopy.pl;
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [offer, setOffer] = useState('');
@@ -119,11 +126,15 @@ export default function Product() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [recent, setRecent] = useState([]);
+  const own = ownsListing(user, product);
+  const tabs = language === 'uk' ? ['Огляд', 'Характеристики', 'Відгуки', 'Фото продавця', 'Ключові характеристики', 'Без торгу', 'Доставка або самовивіз', 'Доставка', 'Самовивіз'] : language === 'en' ? ['Overview', 'Specifications', 'Reviews', 'Seller photos', 'At a glance', 'Fixed price', 'Delivery or pickup', 'Delivery', 'Pickup'] : ['Przegląd', 'Specyfikacja', 'Opinie', 'Zdjęcia sprzedawcy', 'Najważniejsze parametry', 'Cena bez negocjacji', 'Dostawa lub odbiór', 'Dostawa', 'Odbiór osobisty'];
   useEffect(() => {
+    let cancelled = false;
     api(`/products/${encodeURIComponent(id)}`)
-      .then(setProduct)
-      .catch(() => setProduct(null))
-      .finally(() => setLoading(false));
+      .then((value) => { if (!cancelled) setProduct(value); })
+      .catch(() => { if (!cancelled) setProduct(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [id]);
   useEffect(() => {
     if (!product) return;
@@ -145,8 +156,11 @@ export default function Product() {
     return () => script.remove();
   }, [product, user]);
   const watchPrice = async () => {
+    if (own) return flash(oc.text);
     if (!user) return navigate('/auth', { state: { from: `/product/${id}` } });
-    await api('/marketplace/alerts', { method: 'POST', body: JSON.stringify({ productId: id, targetPrice: Math.round(product.price * 0.9) }) }); flash(c.watched);
+    try {
+      await api('/marketplace/alerts', { method: 'POST', body: JSON.stringify({ productId: id, targetPrice: Math.round(product.price * 0.9) }) }); flash(c.watched);
+    } catch (error) { flash(error.message); }
   };
   const report = async () => {
     if (!user) return navigate('/auth', { state: { from: `/product/${id}` } });
@@ -165,6 +179,8 @@ export default function Product() {
     setComment('');
   };
   const openChat = async (withOffer = false) => {
+    if (own) return flash(oc.text);
+    if (withOffer && (!product.negotiable || !Number.isFinite(Number(offer)) || Number(offer) <= 0)) return;
     if (!user) return navigate('/auth', { state: { from: `/product/${id}` } });
     try {
       const conversation = await api('/chats', {
@@ -196,7 +212,8 @@ export default function Product() {
         <span>/</span>
         <span>{product.category}</span>
       </div>
-      <div className="shell product-react-grid">
+      <nav className="shell listing-section-nav" aria-label={product.title}><a href="#listing-overview">{tabs[0]}</a><a href="#listing-specs">{tabs[1]}</a><a href="#listing-reviews">{tabs[2]} ({sellerReviews.count})</a></nav>
+      <div className="shell product-react-grid" id="listing-overview">
         <section className="product-gallery-react">
           <div className="product-main-image">
             <img src={imageUrl(product.images?.[activeImage])} alt={product.title} />
@@ -207,16 +224,19 @@ export default function Product() {
           {product.images?.length > 1 && (
             <div className="product-thumbs">
               {product.images.slice(0, 8).map((image, index) => (
-                <button className={activeImage === index ? 'is-active' : ''} type="button" key={`${image}-${index}`} onClick={() => setActiveImage(index)}><img src={imageUrl(image)} alt="" /></button>
+                <button className={activeImage === index ? 'is-active' : ''} type="button" aria-label={`${tabs[3]} ${index + 1}`} aria-pressed={activeImage === index} key={`${image}-${index}`} onClick={() => setActiveImage(index)}><img src={imageUrl(image)} alt="" /></button>
               ))}
             </div>
           )}
+          <div className="listing-photo-caption"><span>{tabs[3]}</span><b>{activeImage + 1} / {Math.max(1, product.images?.length || 0)}</b></div>
         </section>
         <aside className="buy-panel">
           <span className="product-kicker">
             {product.category} · {product.location}
           </span>
           <h1>{product.title}</h1>
+          <div className="listing-status-row"><span className={canBuyListing(null, product) ? 'is-available' : ''}>{product.stock > 0 ? (detailValues.status[product.status]?.[language] || c.available) : detailValues.status.sold[language]}</span><span>{t(product.condition === 'new' ? 'new' : 'used')}</span>{product.isDemo && <span>DEMO</span>}</div>
+          <div className="listing-highlights" aria-label={tabs[4]}>{['storage', 'ram', 'screen', 'processor'].filter((key) => product.specs?.[key]).map((key) => <div key={key}><small>{specWords[key]?.[language]}</small><b>{product.specs[key]}</b></div>)}</div>
           <Link className="model-offers-link" to={`/model/${encodeURIComponent(product.brand)}/${encodeURIComponent(product.model)}`}>{c.modelOffers}</Link>
           <div className="seller-line">
             <span className="avatar">
@@ -240,9 +260,10 @@ export default function Product() {
             {formatPrice(product.price, product.currency)}
             {product.oldPrice ? <del>{formatPrice(product.oldPrice, product.currency)}</del> : null}
           </div>
+          {own ? <div className="listing-owner-panel"><span className="section-label">{oc.own}</span><p>{oc.text}</p><Link className="primary-button primary-button--wide" to={`/account?tab=listings&edit=${product.id}`}>{oc.edit}</Link><Link className="quiet-button quiet-button--wide" to="/account?tab=messages">{oc.messages}</Link></div> : <div className="listing-buyer-actions">
           <button
             className="primary-button primary-button--wide"
-            disabled={product.stock < 1 || product.isDemo || product.moderationStatus === 'hidden'}
+            disabled={!canBuyListing(user, product)}
             type="button"
             onClick={() => addToCart(product)}
           >
@@ -256,7 +277,7 @@ export default function Product() {
           >
             {t('message')}
           </button>
-          <div className="offer-box">
+          {product.negotiable && canBuyListing(user, product) ? <div className="offer-box">
             <label>
               {t('negotiate')}
               <div>
@@ -266,18 +287,15 @@ export default function Product() {
                   onChange={(event) => setOffer(event.target.value)}
                   placeholder={String(Math.round(product.price * 0.9))}
                 />
-                <button type="button" onClick={() => openChat(true)}>
+                <button type="button" aria-label={t('negotiate')} disabled={!Number.isFinite(Number(offer)) || Number(offer) <= 0} onClick={() => openChat(true)}>
                   →
                 </button>
               </div>
             </label>
             <small>{c.offerTime}</small>
-          </div>
-          <ul className="purchase-points">
-            <li>✓ {c.safeChat}</li>
-            <li>✓ {c.negotiated}</li>
-            <li>✓ {c.history}</li>
-          </ul>
+          </div> : <small className="listing-fixed-price">{tabs[5]}</small>}
+          </div>}
+          <div className="listing-fulfillment"><div><small>{c.warranty}</small><b>{detailValues.warranty[product.warranty]?.[language] || detailValues.warranty.none[language]}</b></div><div><small>{product.location}</small><b>{product.delivery === 'pickup' ? tabs[8] : product.delivery === 'shipping' ? tabs[7] : tabs[6]}</b></div></div>
         </aside>
       </div>
       <div className={`shell product-info-react${product.description?.trim() ? '' : ' product-info-react--specs-only'}`}>
@@ -286,7 +304,7 @@ export default function Product() {
           <h2>{t('description')}</h2>
           <p>{product.description}</p>
         </section>}
-        <section>
+        <section id="listing-specs">
           <span className="section-label">Info</span>
           <h2>{c.details}</h2>
           <dl>
@@ -320,7 +338,7 @@ export default function Product() {
         </section>
       </div>
       {product.inspectionScore > 0 && <section className="shell inspection-panel"><div><span>{product.inspectionScore}/6</span><h2>{c.inspection}</h2></div><ul>{Object.entries(product.inspection).map(([key, value]) => <li className={value ? 'is-ok' : ''} key={key}>{value ? '✓' : '–'} {inspectionWords[key]?.[language] || key}</li>)}</ul></section>}
-      <section className="shell model-reviews-section seller-reviews-section">
+      <section className="shell model-reviews-section seller-reviews-section" id="listing-reviews">
         <header>
           <div><span className="section-label">Trust</span><h2>{c.reviews}</h2><p>{c.reviewHint}</p></div>
           <strong>{sellerReviews.rating ? `${Number(sellerReviews.rating).toFixed(1)} ★` : '—'}</strong>
@@ -334,7 +352,7 @@ export default function Product() {
       <section className="shell product-faq"><span className="section-label">FAQ</span><h2>{c.faq}</h2><details><summary>{language === 'pl' ? 'Jak bezpiecznie sprawdzić urządzenie?' : language === 'uk' ? 'Як безпечно перевірити пристрій?' : 'How to inspect the device safely?'}</summary><p>{language === 'pl' ? 'Sprawdź numer seryjny, baterię, ekran, aparaty i wykonaj płatność przez zapisane zamówienie.' : language === 'uk' ? 'Перевірте серійний номер, батарею, екран, камери та оплачуйте через оформлене замовлення.' : 'Check the serial number, battery, display and cameras, then pay through a recorded order.'}</p></details><details><summary>{language === 'pl' ? 'Co daje weryfikacja?' : language === 'uk' ? 'Що дає верифікація?' : 'What does verification mean?'}</summary><p>{language === 'pl' ? 'Potwierdza profil sprzedawcy, ale nadal warto zachować standardowe zasady bezpieczeństwa.' : language === 'uk' ? 'Вона підтверджує профіль продавця, але стандартних правил безпеки все одно слід дотримуватися.' : 'It confirms the seller profile, while normal safety rules still apply.'}</p></details></section>
       {related.length > 0 && <section className="shell product-recommendations"><header><h2>{c.similar}</h2></header><div className="product-grid-react">{related.slice(0, 4).map((item) => <ProductCard key={item.id} product={item} />)}</div></section>}
       {recent.length > 0 && <section className="shell product-recommendations"><header><h2>{c.recent}</h2></header><div className="product-grid-react">{recent.map((item) => <ProductCard key={item.id} product={item} />)}</div></section>}
-      <div className="shell report-listing"><button type="button" onClick={report}>⚑ {c.report}</button></div>
+      {!own && <div className="shell report-listing"><button type="button" onClick={report}>⚑ {c.report}</button></div>}
     </div>
   );
 }

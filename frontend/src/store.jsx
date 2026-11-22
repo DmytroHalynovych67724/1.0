@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from './api';
 import { languages, translate } from './i18n';
+import { ownsListing, canBuyListing, ownerCopy } from './listingPolicy.mjs';
 
 const StoreContext = createContext(null);
 const regions = {
@@ -102,7 +103,11 @@ export function StoreProvider({ children }) {
   };
   const addToCart = useCallback(
     (product, qty = 1) => {
-      if (product.isDemo || product.stock < 1 || product.moderationStatus === 'hidden') {
+      if (ownsListing(user, product)) {
+        flash((ownerCopy[language] || ownerCopy.pl).text);
+        return;
+      }
+      if (!canBuyListing(user, product)) {
         flash(language === 'uk' ? 'Цей товар недоступний для покупки.' : language === 'pl' ? 'Ten produkt nie jest dostępny do zakupu.' : 'This product cannot be purchased.');
         return;
       }
@@ -118,7 +123,7 @@ export function StoreProvider({ children }) {
       });
       flash(translate(language, 'added'));
     },
-    [flash, language]
+    [flash, language, user]
   );
   const updateQty = (id, qty) =>
     setCart((items) =>

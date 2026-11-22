@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
+import { ownsListing, canBuyListing, ownerCopy } from '../listingPolicy.mjs';
 
 const words = {
   pl: { title: 'Szybki podgląd', details: 'Pełne ogłoszenie', chat: 'Napisz', alert: 'Obserwuj cenę', saved: 'Obserwowanie ceny włączone', condition: 'Stan', delivery: 'Dostawa', trade: 'Możliwa negocjacja', both: 'Dostawa lub odbiór', shipping: 'Dostawa', pickup: 'Odbiór osobisty' },
@@ -21,6 +22,8 @@ const specLabels = {
 export default function QuickView({ product, onClose }) {
   const { language, formatPrice, addToCart, user, flash, t } = useStore();
   const c = words[language] || words.pl;
+  const own = ownsListing(user, product);
+  const oc = ownerCopy[language] || ownerCopy.pl;
   const navigate = useNavigate();
   const [image, setImage] = useState(0);
   useEffect(() => {
@@ -36,14 +39,20 @@ export default function QuickView({ product, onClose }) {
     };
   }, [onClose]);
   const watch = async () => {
+    if (own) return flash(oc.text);
     if (!user) return navigate('/auth', { state: { from: '/catalog' } });
-    await api('/marketplace/alerts', { method: 'POST', body: JSON.stringify({ productId: product.id, targetPrice: Math.round(product.price * 0.9) }) });
-    flash(c.saved);
+    try {
+      await api('/marketplace/alerts', { method: 'POST', body: JSON.stringify({ productId: product.id, targetPrice: Math.round(product.price * 0.9) }) });
+      flash(c.saved);
+    } catch (error) { flash(error.message); }
   };
   const chat = async () => {
+    if (own) return flash(oc.text);
     if (!user) return navigate('/auth', { state: { from: `/product/${product.id}` } });
-    const conversation = await api('/chats', { method: 'POST', body: JSON.stringify({ productId: product.id }) });
-    navigate(`/account?tab=messages&conversation=${conversation.id}`);
+    try {
+      const conversation = await api('/chats', { method: 'POST', body: JSON.stringify({ productId: product.id }) });
+      navigate(`/account?tab=messages&conversation=${conversation.id}`);
+    } catch (error) { flash(error.message); }
   };
   const images = product.images?.length ? product.images : [''];
   return createPortal(
@@ -60,8 +69,7 @@ export default function QuickView({ product, onClose }) {
             <h2>{product.title}</h2>
             <strong>{formatPrice(product.price, product.currency)}</strong>
             <dl><div><dt>{c.condition}</dt><dd>{t(product.condition === 'new' ? 'new' : 'used')}</dd></div><div><dt>{c.delivery}</dt><dd>{c[product.delivery] || product.delivery}</dd></div>{product.negotiable && <div><dt>{c.trade}</dt><dd>✓</dd></div>}{Object.entries(product.specs || {}).slice(0, 4).map(([key, value]) => <div key={key}><dt>{specLabels[key]?.[language] || key}</dt><dd>{value}</dd></div>)}</dl>
-            <div className="quick-view-actions"><button className="primary-button" type="button" onClick={() => addToCart(product)}>{t('add')}</button><button className="quiet-button" type="button" onClick={chat}>{c.chat}</button></div>
-            <button className="text-button" type="button" onClick={watch}>♡ {c.alert}</button>
+            {own ? <div className="listing-owner-panel"><b>{oc.own}</b><p>{oc.text}</p><Link className="primary-button" to={`/account?tab=listings&edit=${product.id}`}>{oc.edit}</Link></div> : <><div className="quick-view-actions"><button className="primary-button" disabled={!canBuyListing(user, product)} type="button" onClick={() => addToCart(product)}>{t('add')}</button><button className="quiet-button" type="button" onClick={chat}>{c.chat}</button></div><button className="text-button" type="button" onClick={watch}>♡ {c.alert}</button></>}
             <Link to={`/product/${product.id}`}>{c.details}</Link>
           </div>
         </div>

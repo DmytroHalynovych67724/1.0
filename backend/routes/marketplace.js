@@ -144,7 +144,7 @@ router.get(
     const rows = await getDB()
       .prepare(
         `SELECT a.*, p.title, p.priceCents, p.oldPriceCents, p.currency, p.images, p.status
-    FROM product_alerts a JOIN products p ON p.id = a.productId WHERE a.userId = ? ORDER BY a.createdAt DESC`
+    FROM product_alerts a JOIN products p ON p.id = a.productId WHERE a.userId = ? AND (p.createdBy IS NULL OR p.createdBy != a.userId) ORDER BY a.createdAt DESC`
       )
       .all(req.user.id);
     res.json(
@@ -166,6 +166,9 @@ router.post(
     const productId = clean(req.body?.productId, 100);
     const product = await getProduct(productId);
     if (!product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
+    if (product.sellerId === req.user.id) {
+      throw new AppError(403, 'OWN_PRODUCT_ALERT', 'You cannot watch the price of your own listing');
+    }
     const target = Number(req.body?.targetPrice);
     await getDB()
       .prepare(

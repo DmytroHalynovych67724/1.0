@@ -88,6 +88,9 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
           },
         ]);
       }
+      if (product.createdBy === userId) {
+        throw new AppError(403, 'OWN_PRODUCT_PURCHASE', 'You cannot purchase your own listing');
+      }
 
       const productRegion = normalizeRegion(product.region);
       if (orderRegion && productRegion !== orderRegion) {

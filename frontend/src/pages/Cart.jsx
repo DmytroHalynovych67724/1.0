@@ -19,6 +19,7 @@ import {
   paymentNames,
 } from '../checkoutOptions';
 import { useStore } from '../store';
+import { ownsListing, ownerCopy } from '../listingPolicy.mjs';
 
 const words = {
   pl: {
@@ -104,6 +105,8 @@ function paymentFitsDelivery(method, kind) {
 export default function Cart() {
   const { t, cart, updateQty, removeFromCart, formatPrice, user, setCart, flash, language, region: selectedRegion } = useStore();
   const c = words[language] || words.pl;
+  const oc = ownerCopy[language] || ownerCopy.pl;
+  const containsOwn = cart.some((item) => ownsListing(user, item.product));
   const navigate = useNavigate();
   const [promoCode, setPromoCode] = useState('');
   const [checkout, setCheckout] = useState({ name: '', phone: '', email: '', deliveryOption: '', paymentMethod: '', address: '', city: '', postalCode: '', country: '', deliveryPoint: '', comment: '' });
@@ -137,6 +140,7 @@ export default function Cart() {
   const change = (field) => (event) => setCheckout((value) => ({ ...value, [field]: event.target.value }));
   const submit = async (event) => {
     event.preventDefault();
+    if (containsOwn) return flash(oc.cart);
     if (!user) return navigate('/auth', { state: { from: '/cart' } });
     if (!selectedDelivery || !selectedPayment) return flash(c.unavailable);
     const checkoutPayload = {
@@ -195,6 +199,7 @@ export default function Cart() {
     <form className="cart-page-react shell" onSubmit={submit}>
       <section className="cart-lines">
         <div className="page-heading page-heading--compact"><span className="section-label">Checkout</span><h1>{t('cartTitle')}</h1></div>
+        {containsOwn && <div className="listing-owner-panel" role="alert"><p>{oc.cart}</p><button className="quiet-button" type="button" onClick={() => setCart((items) => items.filter((item) => !ownsListing(user, item.product)))}>{oc.remove}</button></div>}
         {cart.map((item) => <article className="cart-line" key={item.id}>
           <img src={imageUrl(item.product.images?.[0])} alt="" />
           <div><Link to={`/product/${item.id}`}>{item.product.title}</Link><small>{t(item.product.condition === 'new' ? 'new' : 'used')} · {item.product.location} · {item.product.seller}</small><button type="button" onClick={() => removeFromCart(item.id)}>{c.remove}</button></div>
@@ -250,7 +255,7 @@ export default function Cart() {
         <dl><div><dt>{t('subtotal')}</dt><dd>{formatPrice(subtotal, currency)}</dd></div><div><dt>{c.shippingPrice}</dt><dd>{shipping ? formatPrice(shipping, currency) : c.free}</dd></div><div className="summary-total"><dt>{t('total')}</dt><dd>{formatPrice(total, currency)}</dd></div></dl>
         {selectedDelivery && <div className="summary-choice"><DeliveryMark option={selectedDelivery} compact /><div><span>{selectedDelivery.carrier}</span><small>{packageCount} {packageCount === 1 ? c.package : c.packages} · {c.serverTariff}</small></div></div>}
         <label>{t('promo')}<div className="promo-input"><input value={promoCode} onChange={(event) => setPromoCode(event.target.value.toUpperCase())} placeholder="KOD-123" /><span>✓</span></div></label>
-        <button className="primary-button primary-button--wide" disabled={busy || !selectedDelivery || !selectedPayment} type="submit">{user ? (busy ? '…' : c.order) : t('login')}</button>
+        <button className="primary-button primary-button--wide" disabled={busy || containsOwn || !selectedDelivery || !selectedPayment} type="submit">{user ? (busy ? '…' : c.order) : t('login')}</button>
         <small>{c.check}</small>
       </aside>
     </form>

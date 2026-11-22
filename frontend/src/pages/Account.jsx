@@ -658,6 +658,7 @@ export default function Account() {
   const [orders, setOrders] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [editing, setEditing] = useState(undefined);
+  const activeEditing = editing !== undefined ? editing : listings.find((item) => item.id === params.get('edit'));
   const [staffRevision, setStaffRevision] = useState(0);
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -933,17 +934,17 @@ export default function Account() {
       {tab === 'security' && <AccountSettings key="security" security />}
       {(tab === 'access' || (tab === 'moderation' && !['admin', 'moderator'].includes(user.role))) && <AccountAccess />}
       {tab === 'moderation' && ['admin', 'moderator'].includes(user.role) && <StaffPanel key={staffRevision} onEdit={setEditing} />}
-      {editing !== undefined && (
+      {activeEditing !== undefined && (
         <ListingForm
-          initial={editing}
-          region={editing?.region || region}
+          initial={activeEditing}
+          region={activeEditing?.region || region}
           language={language}
           c={c}
-          onClose={() => setEditing(undefined)}
+          onClose={() => { setEditing(undefined); if (params.has('edit')) { const next = new URLSearchParams(params); next.delete('edit'); setParams(next, { replace: true }); } }}
           onSaved={(saved) => {
             setStaffRevision((n) => n + 1);
             setListings((items) =>
-              editing
+              activeEditing
                 ? items.map((item) => (item.id === saved.id ? saved : item))
                 : [saved, ...items]
             );

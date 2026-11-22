@@ -4,6 +4,7 @@ import { imageUrl } from '../api';
 import { useStore } from '../store';
 import { categoryLabel } from '../catalogTaxonomy';
 import { accountCopy } from '../accountCopy';
+import { ownsListing, ownerCopy } from '../listingPolicy.mjs';
 
 const copy = {
   pl: { compare: 'Porównaj', low: 'Ostatnie sztuki', verified: 'Zweryfikowany', quick: 'Szybki podgląd', urgent: 'Pilne', reserved: 'Zarezerwowane', model: 'Wszystkie oferty modelu' },
@@ -54,8 +55,11 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
     comparison,
     toggleCompare,
     language,
+    user,
   } = useStore();
   const c = copy[language] || copy.pl;
+  const own = ownsListing(user, product);
+  const oc = ownerCopy[language] || ownerCopy.pl;
   const demoLabel = (accountCopy[language] || accountCopy.pl).demo;
   const sold = product.stock < 1 || product.status === 'sold';
   const images = product.images?.length ? product.images : [''];
@@ -103,6 +107,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
             onClick={() => toggleFavorite(product.id)}
             aria-label={favorite ? (language === 'pl' ? 'Usuń z ulubionych' : language === 'uk' ? 'Видалити з обраного' : 'Remove from favourites') : (language === 'pl' ? 'Dodaj do ulubionych' : language === 'uk' ? 'Додати до обраного' : 'Add to favourites')}
             aria-pressed={favorite}
+            disabled={own}
           >
             {favorite ? '♥' : '♡'}
           </button>
@@ -145,14 +150,14 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
             <strong>{formatPrice(product.price, product.currency)}</strong>
             {product.oldPrice ? <del>{formatPrice(product.oldPrice, product.currency)}</del> : null}
           </div>
-          <button
+          {own ? <Link className="quiet-button" to={`/account?tab=listings&edit=${product.id}`}>{oc.manage}</Link> : <button
             className="primary-button"
             type="button"
             disabled={sold || product.isDemo}
             onClick={() => addToCart(product)}
           >
             {product.isDemo ? demoLabel : sold ? t('out') : t('add')}
-          </button>
+          </button>}
         </div>
       </div>
     </article>

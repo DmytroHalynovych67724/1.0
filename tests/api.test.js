@@ -590,6 +590,25 @@ test('users manage their own validated listings while admins can moderate them',
   assert.equal(missing.response.status, 404);
 });
 
+test('listing owners cannot buy, watch or open a chat with themselves, including admins', async () => {
+  const product = await createProduct();
+  const buyer = await registerAndLogin('self-action-buyer');
+  for (const [path, body, status] of [
+    ['/api/orders', { items: [{ id: product.id, qty: 1 }] }, 403],
+    ['/api/marketplace/alerts', { productId: product.id, targetPrice: 2000 }, 403],
+    ['/api/chats', { productId: product.id }, 400],
+  ]) {
+    const rejected = await request(path, { method: 'POST', token: adminToken, body });
+    assert.equal(rejected.response.status, status, JSON.stringify(rejected.body));
+  }
+  const unchanged = await request(`/api/products/${product.id}`);
+  assert.equal(unchanged.body.stock, product.stock);
+  const chat = await request('/api/chats', { method: 'POST', token: buyer.token, body: { productId: product.id } });
+  assert.equal(chat.response.status, 201);
+  const alert = await request('/api/marketplace/alerts', { method: 'POST', token: buyer.token, body: { productId: product.id, targetPrice: 2000 } });
+  assert.equal(alert.response.status, 201);
+});
+
 test('orders calculate totals on the server and enforce ownership', async () => {
   const product = await createProduct({
     title: 'Sony WH-1000XM5',
