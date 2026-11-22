@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
+import ComparePanel from './ComparePanel';
 import { useStore } from '../store';
 import { languages } from '../i18n';
 
@@ -50,11 +51,12 @@ function Icon({ name }) {
 }
 
 export default function Header() {
-  const { t, language, setLanguage, region, setRegion, regions, theme, setTheme, user, cart, favorites } =
+  const { t, language, setLanguage, region, setRegion, regions, theme, setTheme, user, cart, favorites, comparison } =
     useStore();
   const [query, setQuery] = useState('');
   const [localeOpen, setLocaleOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const localeRef = useRef(null);
   const navigate = useNavigate();
   useEffect(() => {
@@ -103,10 +105,15 @@ export default function Header() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('search')}
+            aria-label={t('search')}
           />
           <button type="submit">{t('catalog')}</button>
         </form>
         <div className="header-tools">
+          <button className="icon-button header-compare" type="button" aria-label={language === 'uk' ? 'Порівняти товари' : language === 'pl' ? 'Porównaj produkty' : 'Compare products'} onClick={() => setCompareOpen(true)}>
+            <svg className="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20V7" /></svg>
+            {comparison.length > 0 && <b>{comparison.length}</b>}
+          </button>
           <button
             className="icon-button theme-toggle"
             type="button"
@@ -214,6 +221,7 @@ export default function Header() {
           </div>
         </nav>
       </div>
+      {compareOpen && <ComparePanel onClose={() => setCompareOpen(false)} />}
     </header>
   );
 }

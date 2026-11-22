@@ -75,7 +75,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
           onMouseMove={selectImage}
           onMouseLeave={() => setActiveImage(0)}
         >
-          <img src={imageUrl(images[activeImage])} alt={product.title} />
+          <img src={imageUrl(images[activeImage] || images[0])} alt={product.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = imageUrl('/assets/product-placeholder.svg'); }} />
         </Link>
         <span className={`condition condition--${product.condition}`}>
           {t(product.condition === 'new' ? 'new' : 'used')}
@@ -90,6 +90,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
             onClick={() => toggleCompare(product)}
             aria-label={c.compare}
             title={c.compare}
+            aria-pressed={compared}
           >
             <CompareIcon />
           </button>
