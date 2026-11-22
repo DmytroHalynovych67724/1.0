@@ -39,7 +39,7 @@
 .category-menu summary::-webkit-details-marker { display: none; }
 .category-menu-panel { position: absolute; top: calc(100% + 16px); left: 0; width: min(760px, calc(100vw - 48px)); display: grid; grid-template-columns: 1.4fr 1fr; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 18px 45px #17101824; padding: 20px; z-index: 60; }
 .category-menu-panel > div { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.app-nav .category-menu-panel a { margin: 0; padding: 10px; border: 0; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.app-nav .category-menu-panel a { height: auto; min-height: 44px; margin: 0; padding: 10px; border: 0; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-size: 11px; }
 .app-nav .category-menu-panel a:hover { background: var(--canvas); }
 .category-menu-panel img { width: 35px; height: 35px; object-fit: contain; }
 .category-menu-panel aside { padding: 20px; margin-left: 14px; background: var(--canvas); border-radius: 12px; }
