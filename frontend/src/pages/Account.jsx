@@ -258,6 +258,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const [lookupQuery, setLookupQuery] = useState('');
   const [specMetadata, setSpecMetadata] = useState(null);
   const [replaceSpecs, setReplaceSpecs] = useState(false);
+  const replaceSpecsRef = useRef(false);
   const manualSpecKeys = useRef(new Set(initial ? Object.keys(initial.specs || {}) : []));
   const lastLookup = useRef('');
   const lookupSequence = useRef(0);
@@ -285,7 +286,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const applySpecMatch = useCallback((match, query) => {
     setSelectedSpecKey(specKey(match));
     setSpecMetadata(match);
-    if (replaceSpecs) manualSpecKeys.current.clear();
+    if (replaceSpecsRef.current) manualSpecKeys.current.clear();
     setForm((current) => ({
       ...current,
       brand: match.brand || current.brand,
@@ -297,10 +298,10 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
         specSourceId: match.source === 'Open Icecat' ? String(match.icecatId || '') : '',
       },
     }));
-  }, [replaceSpecs]);
+  }, []);
   useEffect(() => {
     const query = (lookupQuery || form.title).trim();
-    const lookupKey = `${form.category}:${query}:${lookupAttempt}`;
+    const lookupKey = `${form.category}:${query}:${lookupAttempt}:${language}`;
     if ((initial && !lookupAttempt) || query.length < 3 || lookupKey === lastLookup.current) return undefined;
     const timer = window.setTimeout(async () => {
       const requestId = lookupSequence.current + 1;
@@ -438,7 +439,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
             <label>{c.model}<input required value={form.model} onChange={(event) => change('model', event.target.value)} /></label>
             <button className="quiet-button" type="button" disabled={specsBusy} onClick={() => { setLookupQuery([form.brand, form.model].filter(Boolean).join(' ') || form.title); setLookupAttempt((n) => n + 1); }}>{c.autoSpecs}</button>
           </div>
-          <label className="check-filter span-2"><input type="checkbox" checked={replaceSpecs} onChange={(event) => setReplaceSpecs(event.target.checked)} /><span>{sc.replace}</span></label>
+          <label className="check-filter span-2"><input type="checkbox" checked={replaceSpecs} onChange={(event) => { replaceSpecsRef.current = event.target.checked; setReplaceSpecs(event.target.checked); }} /><span>{sc.replace}</span></label>
           {specMatches.length > 0 && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0, 4).map((match) => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title); setSpecNotice(c.specsApplied); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '＋'}</span><div><b>{match.title}</b><small>{match.source} · {Object.keys(match.specs || {}).length} {language === 'pl' ? 'parametrów' : language === 'uk' ? 'характеристик' : 'specifications'}{match.specs?.storage ? ` · ${match.specs.storage}` : ''}</small></div></button>)}</div>}
           <label>
             {c.category}
