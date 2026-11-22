@@ -13,7 +13,11 @@ export function configurationFromQuery(query = '') {
   return fields;
 }
 
-export function mergeDetectedSpecs(current, detected, query, manualKeys = []) {
-  const manual = Object.fromEntries(manualKeys.filter((key) => key in current).map((key) => [key, current[key]]));
-  return { ...detected, ...configurationFromQuery(query), ...manual };
+export function mergeDetectedSpecs(current, detected, query, manualKeys = [], choices = {}) {
+  const manual = Object.fromEntries(manualKeys.map((key) => [key, current[key] || '']));
+  const explicit = configurationFromQuery(query);
+  for (const key of Object.keys(explicit)) {
+    if (choices[key]?.length && !choices[key].includes(explicit[key])) delete explicit[key];
+  }
+  return Object.fromEntries(Object.entries({ ...detected, ...explicit, ...manual }).filter(([, value]) => value));
 }

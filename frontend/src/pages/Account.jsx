@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { api, imageUrl } from '../api';
@@ -10,6 +10,8 @@ import StaffPanel from '../components/StaffPanel';
 import { accountCopy } from '../accountCopy';
 import { mergeDetectedSpecs } from '../specAutofill.mjs';
 import { categoryLabel } from '../catalogTaxonomy';
+import { specCopy } from '../specCopy';
+import AccountAccess, { accessLabel } from '../components/AccountAccess';
 
 const blankListing = {
   title: '',
@@ -240,6 +242,8 @@ const inspectionLabels = {
 };
 
 export function ListingForm({ initial, onClose, onSaved, region, language, c, page = false }) {
+  const sc = specCopy[language] || specCopy.pl;
+  const specInputPrefix = useId();
   const [form, setForm] = useState(
     initial
       ? { ...blankListing, ...initial, specs: initial.specs || {}, images: initial.images || [], inspection: { ...blankListing.inspection, ...(initial.inspection || {}) }, deviceDetails: { ...blankListing.deviceDetails, ...(initial.deviceDetails || {}) } }
@@ -252,6 +256,8 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const [specNotice, setSpecNotice] = useState('');
   const [lookupAttempt, setLookupAttempt] = useState(0);
   const [lookupQuery, setLookupQuery] = useState('');
+  const [specMetadata, setSpecMetadata] = useState(null);
+  const [replaceSpecs, setReplaceSpecs] = useState(false);
   const manualSpecKeys = useRef(new Set(initial ? Object.keys(initial.specs || {}) : []));
   const lastLookup = useRef('');
   const lookupSequence = useRef(0);
@@ -278,18 +284,20 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const specKey = (match) => String(match.icecatId || `${match.source}:${match.title}`);
   const applySpecMatch = useCallback((match, query) => {
     setSelectedSpecKey(specKey(match));
+    setSpecMetadata(match);
+    if (replaceSpecs) manualSpecKeys.current.clear();
     setForm((current) => ({
       ...current,
       brand: match.brand || current.brand,
       model: match.model || current.model,
-      specs: mergeDetectedSpecs(current.specs || {}, match.specs || {}, query, [...manualSpecKeys.current]),
+      specs: mergeDetectedSpecs(current.specs || {}, match.specs || {}, query, [...manualSpecKeys.current], match.choices || {}),
       deviceDetails: {
         ...current.deviceDetails,
         specSource: match.source === 'Open Icecat' ? 'icecat' : match.source?.toLowerCase() || '',
         specSourceId: match.source === 'Open Icecat' ? String(match.icecatId || '') : '',
       },
     }));
-  }, []);
+  }, [replaceSpecs]);
   useEffect(() => {
     const query = (lookupQuery || form.title).trim();
     const lookupKey = `${form.category}:${query}:${lookupAttempt}`;
@@ -391,6 +399,12 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
             />
             <small className={`auto-spec-status${specsBusy ? ' is-loading' : ''}`}>{specsBusy ? c.searchingSpecs : specNotice}</small>
           </label>
+          {specMetadata && <aside className="span-2 spec-coverage" aria-live="polite">
+            <b>{sc.filled}: {(listingSpecs[form.category] || []).filter((key) => form.specs?.[key]).length} / {(listingSpecs[form.category] || []).length}</b>
+            <p>{sc.hint}</p>
+            {(listingSpecs[form.category] || []).some((key) => !form.specs?.[key]) && <p>{sc.missing}: {(listingSpecs[form.category] || []).filter((key) => !form.specs?.[key]).map((key) => listingSpecLabels[key]?.[language] || key).join(', ')}</p>}
+            <div className="spec-sources"><span>{sc.source}:</span>{(specMetadata.sources || (specMetadata.sourceUrl ? [{ title: specMetadata.source, url: specMetadata.sourceUrl }] : [])).filter((source) => /^https?:\/\//.test(source.url || '')).map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.title} ↗</a>)}</div>
+          </aside>}
           <label>
             {c.price}
             <input
@@ -424,6 +438,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
             <label>{c.model}<input required value={form.model} onChange={(event) => change('model', event.target.value)} /></label>
             <button className="quiet-button" type="button" disabled={specsBusy} onClick={() => { setLookupQuery([form.brand, form.model].filter(Boolean).join(' ') || form.title); setLookupAttempt((n) => n + 1); }}>{c.autoSpecs}</button>
           </div>
+          <label className="check-filter span-2"><input type="checkbox" checked={replaceSpecs} onChange={(event) => setReplaceSpecs(event.target.checked)} /><span>{sc.replace}</span></label>
           {specMatches.length > 0 && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0, 4).map((match) => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title); setSpecNotice(c.specsApplied); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '＋'}</span><div><b>{match.title}</b><small>{match.source} · {Object.keys(match.specs || {}).length} {language === 'pl' ? 'parametrów' : language === 'uk' ? 'характеристик' : 'specifications'}{match.specs?.storage ? ` · ${match.specs.storage}` : ''}</small></div></button>)}</div>}
           <label>
             {c.category}
@@ -434,6 +449,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
                 setSpecMatches([]);
                 setSelectedSpecKey('');
                 setSpecNotice('');
+                setSpecMetadata(null);
                 lastLookup.current = '';
                 manualSpecKeys.current.clear();
                 setForm((current) => ({ ...current, category: event.target.value, specs: {}, deviceDetails: { ...current.deviceDetails, specSource: '', specSourceId: '' } }));
@@ -470,11 +486,15 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
           <fieldset className="span-2 inspection-form"><legend>{c.inspection}</legend><p>{language === 'pl' ? 'Zaznacz tylko to, co naprawdę zostało sprawdzone.' : language === 'uk' ? 'Позначте лише те, що справді перевірено.' : 'Select only what you have actually checked.'}</p>{Object.keys(blankListing.inspection).map((key) => <label className="check-filter" key={key}><input type="checkbox" checked={Boolean(form.inspection?.[key])} onChange={(event) => change('inspection', { ...form.inspection, [key]: event.target.checked })}/><span>{inspectionLabels[language]?.[key] || inspectionLabels.pl[key]}</span></label>)}</fieldset>
           {form.condition === 'used' && <fieldset className="span-2 device-details-form"><legend>{c.deviceState}</legend><label>{c.batteryHealth}<input type="number" min="1" max="100" value={form.deviceDetails.batteryHealth} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, batteryHealth: Number(event.target.value) })}/></label><label>{c.grade}<select value={form.deviceDetails.grade} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, grade: event.target.value })}>{['A','B','C','D'].map((item) => <option key={item}>{item}</option>)}</select></label><label>{c.displayState}<input value={form.deviceDetails.display} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, display: event.target.value })}/></label><label>{c.bodyState}<input value={form.deviceDetails.body} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, body: event.target.value })}/></label><label>{c.completeness}<input value={form.deviceDetails.completeness} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, completeness: event.target.value })}/></label><label>{c.defects}<input value={form.deviceDetails.defects} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, defects: event.target.value })}/></label><label className="check-filter"><input type="checkbox" checked={Boolean(form.deviceDetails.serialChecked)} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, serialChecked: event.target.checked })}/><span>{c.serialChecked}</span></label></fieldset>}
           {(listingSpecs[form.category] || []).length > 0 && <details className="span-2 auto-spec-review" open={!specMatches.length}>
-            <summary><span>{language === 'pl' ? 'Dane techniczne' : language === 'uk' ? 'Технічні характеристики' : 'Technical specifications'}</span><small>{Object.values(form.specs || {}).filter(Boolean).length} / {(listingSpecs[form.category] || []).length}</small></summary>
+            <summary><span>{language === 'pl' ? 'Dane techniczne' : language === 'uk' ? 'Технічні характеристики' : 'Technical specifications'}</span><small>{(listingSpecs[form.category] || []).filter((key) => form.specs?.[key]).length} / {(listingSpecs[form.category] || []).length}</small></summary>
             <div className="form-grid-react">{(listingSpecs[form.category] || []).map((key) => (
               <label key={key}>
                 {listingSpecLabels[key][language] || listingSpecLabels[key].pl}
-                <input value={form.specs?.[key] || ''} onChange={(event) => changeSpec(key, event.target.value)} />
+                <input maxLength={80} list={specMetadata?.choices?.[key]?.length ? specInputPrefix + key : undefined} placeholder={specMetadata ? (specMetadata.choices?.[key]?.length ? sc.choose : sc.manual) : ''} value={form.specs?.[key] || ''} onChange={(event) => changeSpec(key, event.target.value)} />
+                {specMetadata?.choices?.[key]?.length > 0 && <>
+                  <datalist id={specInputPrefix + key}>{specMetadata.choices[key].map((option) => <option value={option} key={option} />)}</datalist>
+                  <div className="spec-choice-buttons" aria-label={sc.choices}>{specMetadata.choices[key].map((option) => <button type="button" key={option} className={form.specs?.[key] === option ? 'is-active' : ''} onClick={() => changeSpec(key, option)}>{option}</button>)}</div>
+                </>}
               </label>
             ))}</div>
           </details>}
@@ -690,6 +710,7 @@ export default function Account() {
     ['saved', c.saved],
     ['profile', details.profile],
     ['security', details.security],
+    ['access', accessLabel(language)],
     ...(['admin', 'moderator'].includes(user.role) ? [['moderation', c.moderation]] : []),
   ];
   return (
@@ -909,6 +930,7 @@ export default function Account() {
       {tab === 'saved' && <section className="account-section"><MarketplaceCenter /></section>}
       {tab === 'profile' && <AccountSettings key="profile" />}
       {tab === 'security' && <AccountSettings key="security" security />}
+      {(tab === 'access' || (tab === 'moderation' && !['admin', 'moderator'].includes(user.role))) && <AccountAccess />}
       {tab === 'moderation' && ['admin', 'moderator'].includes(user.role) && <StaffPanel key={staffRevision} onEdit={setEditing} />}
       {editing !== undefined && (
         <ListingForm

@@ -1,4 +1,6 @@
 const { fetchIcecatProduct } = require('./icecat');
+const phoneProfiles = require('./phoneProfiles');
+const { normalizeDeviceQuery, normalizePhoneMatch } = require('./phoneSpecs');
 const {
   identityTokens,
   normalize,
@@ -7,6 +9,7 @@ const {
 } = require('./icecatCatalog');
 
 const CURATED_PHONES = [
+  ...phoneProfiles,
   // Manufacturer reference pages; memory/battery values not published by Apple are omitted.
   { brand: 'Apple', model: 'iPhone 15 Pro Max', sourceUrl: 'https://support.apple.com/en-us/111828', specs: { screen: '6.7″ OLED', resolution: '2796 × 1290', refreshRate: '120 Hz', processor: 'Apple A17 Pro', storage: '256 GB / 512 GB / 1 TB', mainCamera: '48 MP + 12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', displayType: 'OLED', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C 3', weight: '221 g' } },
   { brand: 'Samsung', model: 'Galaxy S24 Ultra', sourceUrl: 'https://www.samsungmobilepress.com/media-assets/galaxy-s24-ultra?tab=specs', specs: { screen: '6.8″ Dynamic AMOLED 2X', resolution: '3120 × 1440', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3 for Galaxy', ram: '12 GB', storage: '256 GB / 512 GB / 1 TB', battery: '5000 mAh', mainCamera: '200 MP + 50 MP + 12 MP + 10 MP', frontCamera: '12 MP', os: 'Android', displayType: 'AMOLED', charging: '45 W', weight: '232 g', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.3, NFC, USB‑C' } },
@@ -60,7 +63,8 @@ function simplifyWikiTemplates(value = '') {
 function cleanWiki(value = '') {
   return simplifyWikiTemplates(value)
     .replace(/<!--.*?-->/gs, '')
-    .replace(/<ref[^>]*>.*?<\/ref>|<ref[^/]*\/>/gs, '')
+    .replace(/<ref\b[^>]*\/\s*>/gi, '')
+    .replace(/<ref\b[^>]*>[\s\S]*?<\/ref\s*>/gi, '')
     .replace(/[{}]/g, ' ')
     .replace(/\[\[(?:[^\]|]*\|)?([^\]]+)\]\]/g, '$1')
     .replace(/&nbsp;|\{\{nbsp\}\}/gi, ' ')
@@ -76,9 +80,9 @@ function cleanWiki(value = '') {
 }
 
 function modelCompatible(query, brand, model) {
-  const candidate = normalize(`${brand} ${model}`);
+  const candidate = new Set(identityTokens(`${brand} ${model}`, brand));
   const required = identityTokens(query, brand);
-  if (!required.length || required.some((token) => !candidate.includes(token))) return false;
+  if (!required.length || required.some((token) => !candidate.has(token))) return false;
   const requestedVariants = variantTokens(query);
   const candidateVariants = variantTokens(model);
   if ([...requestedVariants].some((token) => !candidateVariants.has(token))) return false;
@@ -213,7 +217,7 @@ function wikipediaKeyword(category) {
 function modelSearchQuery(query, category) {
   let value = String(query)
     .replace(/\b\d+\s*\/\s*\d+\s*(?:GB|ГБ|TB|ТБ)?\b/gi, ' ')
-    .replace(/\b(?:32|64|128|256|512|1024|2048)\s*(?:GB|ГБ|TB|ТБ)\b/gi, ' ')
+    .replace(/\b(?:1|2|4|32|64|128|256|512|1024|2048)\s*(?:GB|ГБ|TB|ТБ)(?=\s|$|[,;])/gi, ' ')
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:inch|inches|″|")\b/gi, ' ')
     .replace(/\b(?:black|white|blue|green|silver|graphite|gold|purple|red)\b/gi, ' ');
   if (category === 'Laptopy') {
@@ -315,16 +319,25 @@ async function wikipediaSpecs(query, category = '') {
     const specs = {
       screen: labelledWikiField(wikitext, ['display', 'screen'], query),
       displayType: labelledWikiField(wikitext, ['display_type', 'panel'], query),
+      refreshRate: labelledWikiField(wikitext, ['refresh_rate', 'display_refresh_rate'], query),
+      displayFeatures: labelledWikiField(wikitext, ['display_features'], query),
       resolution: labelledWikiField(wikitext, ['display_resolution', 'resolution'], query),
       processor: labelledWikiField(wikitext, ['soc', 'cpu', 'processor'], query),
       ram: labelledWikiField(wikitext, ['memory'], query),
+      ramType: labelledWikiField(wikitext, ['memory_type', 'ram_type'], query),
       storage: labelledWikiField(wikitext, ['storage'], query),
       gpu: labelledWikiField(wikitext, ['graphics', 'gpu'], query),
       battery: labelledWikiField(wikitext, ['battery'], query),
+      charging: labelledWikiField(wikitext, ['charging'], query),
       mainCamera: labelledWikiField(wikitext, ['rear_camera', 'camera'], query),
       frontCamera: labelledWikiField(wikitext, ['front_camera'], query),
+      cameraFeatures: labelledWikiField(wikitext, ['camera_features'], query),
+      features: labelledWikiField(wikitext, ['sensors', 'features'], query),
+      sim: labelledWikiField(wikitext, ['sim', 'sim_card'], query),
       os: labelledWikiField(wikitext, ['os', 'operating_system'], query),
       connectivity: labelledWikiField(wikitext, ['connectivity', 'input', 'ports'], query),
+      wifi: labelledWikiField(wikitext, ['wifi', 'wi_fi'], query),
+      bluetooth: labelledWikiField(wikitext, ['bluetooth'], query),
       weight: labelledWikiField(wikitext, ['weight', 'mass'], query),
     };
     Object.keys(specs).forEach((key) => {
@@ -350,13 +363,13 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
   const knownBrand = ['Samsung', 'Apple', 'Lenovo', 'HP', 'Dell', 'ASUS', 'Acer', 'Sony', 'LG', 'Xiaomi', 'Google', 'OnePlus']
     .find((brand) => normalized.includes(brand.toLowerCase()));
   const productCode = String(query).match(/\b(?=[A-Z0-9/-]{6,}\b)(?=[A-Z0-9/-]*\d)(?=[A-Z0-9/-]*[A-Z])[A-Z0-9/-]+\b/i)?.[0];
-  if (knownBrand && productCode) {
+  if (knownBrand && productCode && !CURATED_PHONES.some((phone) => modelCompatible(modelSearchQuery(query, category), phone.brand, phone.model))) {
     const icecatMatch = await fetchIcecatProduct({ brand: knownBrand, productCode });
     if (icecatMatch) return [mergeTitleSpecs(icecatMatch, query, category)];
   }
   const localPhones = category && category !== 'Smartfony' ? [] : [...CURATED_PHONES]
     .sort((left, right) => right.model.length - left.model.length)
-    .filter((phone) => modelCompatible(query, phone.brand, phone.model))
+    .filter((phone) => modelCompatible(modelSearchQuery(query, category), phone.brand, phone.model))
     .slice(0, 5);
   const local = localPhones.map((phone) => {
     const connectivity = phone.specs.connectivity || '';
@@ -364,12 +377,13 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
     const bluetooth = connectivity.match(/Bluetooth\s*[\d.]+/i)?.[0] || '';
     return {
       ...phone,
+      category: 'Smartfony',
       title: `${phone.brand} ${phone.model}`,
       specs: {
         ...phone.specs,
         ...(wifi ? { wifi } : {}),
         ...(bluetooth ? { bluetooth: bluetooth.replace(/Bluetooth\s*/i, '') } : {}),
-        ...(connectivity.includes('NFC') ? { features: 'NFC' } : {}),
+        ...(connectivity.includes('NFC') && !phone.specs.features ? { features: 'NFC' } : {}),
       },
       source: 'NaShary Open Cache',
     };
@@ -381,7 +395,11 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
         { icecatId: primary.icecatId },
         { brand: primary.brand, model: primary.model, title: `${primary.brand} ${primary.model}` }
       );
-      if (icecatMatch) return [mergeTitleSpecs(icecatMatch, query, category), ...local.slice(1).map((item) => mergeTitleSpecs(item, query, category))];
+      if (icecatMatch) return [mergeTitleSpecs({
+        ...local[0], ...icecatMatch, brand: primary.brand, model: primary.model, category: 'Smartfony',
+        specs: { ...local[0].specs, ...Object.fromEntries(Object.entries(icecatMatch.specs || {}).filter(([, value]) => String(value || '').trim())) },
+        sources: [{ title: 'Open Icecat', url: icecatMatch.sourceUrl }, ...(primary.sourceUrl ? [{ title: 'Model reference', url: primary.sourceUrl }] : [])],
+      }, query, category), ...local.slice(1).map((item) => mergeTitleSpecs(item, query, category))];
     }
     return local.map((item) => mergeTitleSpecs(item, query, category));
   }
@@ -447,11 +465,13 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
 }
 
 async function findDeviceSpecs(query, options = {}) {
+  query = normalizeDeviceQuery(query);
   const key = `${normalize(options.category || '')}:${normalize(query)}`;
   const cached = lookupCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   if (inFlightLookups.has(key)) return inFlightLookups.get(key);
   const pending = lookupDeviceSpecs(query, options).then((value) => {
+    value = value.map((match) => (options.category === 'Smartfony' || match.category === 'Smartfony' || /iphone|galaxy|pixel/i.test(match.title || '')) ? normalizePhoneMatch(match, query) : match);
     if (lookupCache.size >= 256) lookupCache.delete(lookupCache.keys().next().value);
     lookupCache.set(key, { value, expiresAt: Date.now() + (value.length ? LOOKUP_CACHE_TTL_MS : 60_000) });
     return value;

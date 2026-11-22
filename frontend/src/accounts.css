@@ -1,4 +1,17 @@
 .role-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 750; border-radius: 6px; padding: 6px 9px; background: var(--rose); color: var(--wine); }
+.spec-coverage { padding: 16px 18px; background: var(--rose); border: 1px solid var(--line); border-radius: 12px; font-size: 12px; }
+.spec-coverage p { color: var(--muted); line-height: 1.6; font-size: 11px; margin: 9px 0; }
+.spec-sources { display: flex; gap: 8px 14px; flex-wrap: wrap; font-size: 10px; }
+.spec-sources a { color: var(--wine); text-decoration: underline; }
+.spec-choice-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.spec-choice-buttons button { background: var(--canvas); border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; font-size: 10px; color: var(--ink); cursor: pointer; }
+.spec-choice-buttons button.is-active { border-color: var(--wine); background: var(--rose); color: var(--wine); }
+.access-role-grid { display: grid; gap: 10px; margin: 22px 0; }
+.access-role-grid article { border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.access-role-grid article.is-current { border-color: var(--wine); background: var(--rose); }
+.access-role-grid h3 { font-size: 14px; margin: 0 0 8px; }
+.access-role-grid p { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 0; }
+.account-access > .primary-button { margin: 8px; font-size: 12px; }
 .account-workspace { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 24px; align-items: start; }
 .account-workspace .account-hero { grid-column: 1 / -1; margin-bottom: 4px; }
 .account-workspace .account-tabs { grid-column: 1; grid-row: 2 / span 5; position: sticky; top: 150px; display: flex; flex-direction: column; align-items: stretch; overflow: visible; gap: 5px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); margin: 0; }

@@ -12,3 +12,14 @@ test('autofill preserves manual fields and removes outdated automatic specificat
   assert.equal(specs.color, 'Blue');
   assert.equal(specs.gpu, undefined);
 });
+
+test('explicit storage respects model options and manually cleared fields stay cleared', async () => {
+  const { mergeDetectedSpecs } = await import('../frontend/src/specAutofill.mjs');
+  const options = { storage: ['64 GB', '128 GB', '256 GB'] };
+  const unsupported = mergeDetectedSpecs({}, { ram: '4 GB' }, 'iPhone 11 512 GB', [], options);
+  assert.equal(unsupported.storage, undefined);
+  const cleared = mergeDetectedSpecs({}, { color: 'Blue', ram: '4 GB' }, 'Phone', ['color']);
+  assert.equal(cleared.color, undefined);
+  const selected = mergeDetectedSpecs({ storage: '256 GB' }, { ram: '4 GB' }, 'iPhone 11 128 GB', ['storage'], options);
+  assert.equal(selected.storage, '256 GB');
+});
