@@ -81,6 +81,7 @@ app.use('/api/trust', trustRouter);
 app.use('/api/rewards', rewardsRouter);
 app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/device-specs', deviceSpecsRouter);
+app.use('/api/staff', require('./routes/staff'));
 
 app.get('/api', (_req, res) => {
   res.json({

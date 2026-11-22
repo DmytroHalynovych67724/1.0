@@ -242,11 +242,11 @@ export default function Product() {
           </div>
           <button
             className="primary-button primary-button--wide"
-            disabled={product.stock < 1}
+            disabled={product.stock < 1 || product.isDemo || product.moderationStatus === 'hidden'}
             type="button"
             onClick={() => addToCart(product)}
           >
-            {t('add')}
+            {product.isDemo ? (language === 'uk' ? 'Демонстраційне оголошення' : language === 'pl' ? 'Oferta demonstracyjna' : 'Example listing') : t('add')}
           </button>
           <button className="watch-price-button" type="button" onClick={watchPrice}>♡ {c.watch}</button>
           <button

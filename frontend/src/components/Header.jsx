@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 import ComparePanel from './ComparePanel';
+import CategoryMenu from './CategoryMenu';
 import { useStore } from '../store';
 import { languages } from '../i18n';
 
@@ -186,6 +187,7 @@ export default function Header() {
       </div>
       <div className={`app-nav${menuOpen ? ' is-open' : ''}`}>
         <nav className="shell">
+          <CategoryMenu />
           {links.map(([to, label]) => (
             <NavLink key={to} to={to} end={to === '/'} onClick={() => setMenuOpen(false)}>
               {label}

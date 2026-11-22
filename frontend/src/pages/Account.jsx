@@ -5,6 +5,11 @@ import { api, imageUrl } from '../api';
 import { deliveryNames, localized, paymentNames } from '../checkoutOptions';
 import { useStore } from '../store';
 import MarketplaceCenter from '../components/MarketplaceCenter';
+import AccountSettings from '../components/AccountSettings';
+import StaffPanel from '../components/StaffPanel';
+import { accountCopy } from '../accountCopy';
+import { mergeDetectedSpecs } from '../specAutofill.mjs';
+import { categoryLabel } from '../catalogTaxonomy';
 
 const blankListing = {
   title: '',
@@ -245,16 +250,21 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const [specMatches, setSpecMatches] = useState([]);
   const [selectedSpecKey, setSelectedSpecKey] = useState('');
   const [specNotice, setSpecNotice] = useState('');
+  const [lookupAttempt, setLookupAttempt] = useState(0);
+  const [lookupQuery, setLookupQuery] = useState('');
+  const manualSpecKeys = useRef(new Set(initial ? Object.keys(initial.specs || {}) : []));
   const lastLookup = useRef('');
   const lookupSequence = useRef(0);
   const change = (field, value) => setForm((current) => ({ ...current, [field]: value }));
-  const changeSpec = (field, value) =>
+  const changeSpec = (field, value) => {
+    manualSpecKeys.current.add(field);
     setForm((current) => {
       const specs = { ...current.specs };
       if (value) specs[field] = value;
       else delete specs[field];
       return { ...current, specs };
     });
+  };
   const addPhotoFiles = async (selectedFiles) => {
     const files = [...selectedFiles].slice(0, 8 - form.images.length);
     const acceptable = files.filter((file) => file.size <= 750_000 && /^image\/(png|jpeg|webp)$/.test(file.type));
@@ -267,17 +277,12 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   };
   const specKey = (match) => String(match.icecatId || `${match.source}:${match.title}`);
   const applySpecMatch = useCallback((match, query) => {
-    const storage = query.match(/\b(32|64|128|256|512|1024)\s*(GB|ГБ|TB|ТБ)\b/i);
     setSelectedSpecKey(specKey(match));
     setForm((current) => ({
       ...current,
       brand: match.brand || current.brand,
       model: match.model || current.model,
-      specs: {
-        ...match.specs,
-        ...(storage ? { storage: `${storage[1]} ${/tb|тб/i.test(storage[2]) ? 'TB' : 'GB'}` } : {}),
-        ...(current.specs?.color ? { color: current.specs.color } : {}),
-      },
+      specs: mergeDetectedSpecs(current.specs || {}, match.specs || {}, query, [...manualSpecKeys.current]),
       deviceDetails: {
         ...current.deviceDetails,
         specSource: match.source === 'Open Icecat' ? 'icecat' : match.source?.toLowerCase() || '',
@@ -286,12 +291,13 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
     }));
   }, []);
   useEffect(() => {
-    const query = form.title.trim();
-    if (initial || query.length < 5 || query === lastLookup.current) return undefined;
+    const query = (lookupQuery || form.title).trim();
+    const lookupKey = `${form.category}:${query}:${lookupAttempt}`;
+    if ((initial && !lookupAttempt) || query.length < 3 || lookupKey === lastLookup.current) return undefined;
     const timer = window.setTimeout(async () => {
       const requestId = lookupSequence.current + 1;
       lookupSequence.current = requestId;
-      lastLookup.current = query;
+      lastLookup.current = lookupKey;
       setSpecsBusy(true);
       setSpecNotice('');
       try {
@@ -307,7 +313,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
         setSpecMatches(matches);
         const requestedStorage = query.match(/\b(32|64|128|256|512|1024)\s*(?:GB|ГБ|TB|ТБ)\b/i)?.[1];
         const match = matches.find((item) => requestedStorage && String(item.specs?.storage || '').includes(requestedStorage)) || matches[0];
-        if (match.matchConfidence === 'fallback') {
+        if (match.matchConfidence === 'fallback' || matches.length > 1) {
           setSelectedSpecKey('');
           setSpecNotice(c.chooseModel);
         } else {
@@ -325,7 +331,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
       window.clearTimeout(timer);
       lookupSequence.current += 1;
     };
-  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language]);
+  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language, lookupAttempt, lookupQuery]);
   const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
@@ -378,6 +384,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
                 setSelectedSpecKey('');
                 setSpecNotice('');
                 lastLookup.current = '';
+                setLookupQuery('');
                 change('title', event.target.value);
               }}
               placeholder={language === 'pl' ? 'np. Apple iPhone 15 Pro 256 GB' : language === 'uk' ? 'наприклад Apple iPhone 15 Pro 256 GB' : 'e.g. Apple iPhone 15 Pro 256 GB'}
@@ -409,13 +416,13 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
             {c.brand}
             <input
               required
-              readOnly={Boolean(selectedSpecKey)}
               value={form.brand}
               onChange={(event) => change('brand', event.target.value)}
             />
           </label>
           <div className="listing-model-field auto-resolved-field">
-            <label>{c.model}<input required readOnly={Boolean(selectedSpecKey)} value={form.model} onChange={(event) => change('model', event.target.value)} /></label>
+            <label>{c.model}<input required value={form.model} onChange={(event) => change('model', event.target.value)} /></label>
+            <button className="quiet-button" type="button" disabled={specsBusy} onClick={() => { setLookupQuery([form.brand, form.model].filter(Boolean).join(' ') || form.title); setLookupAttempt((n) => n + 1); }}>{c.autoSpecs}</button>
           </div>
           {specMatches.length > 0 && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0, 4).map((match) => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title); setSpecNotice(c.specsApplied); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '＋'}</span><div><b>{match.title}</b><small>{match.source} · {Object.keys(match.specs || {}).length} {language === 'pl' ? 'parametrów' : language === 'uk' ? 'характеристик' : 'specifications'}{match.specs?.storage ? ` · ${match.specs.storage}` : ''}</small></div></button>)}</div>}
           <label>
@@ -428,11 +435,12 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
                 setSelectedSpecKey('');
                 setSpecNotice('');
                 lastLookup.current = '';
+                manualSpecKeys.current.clear();
                 setForm((current) => ({ ...current, category: event.target.value, specs: {}, deviceDetails: { ...current.deviceDetails, specSource: '', specSourceId: '' } }));
               }}
             >
               {listingCategories.map((category) => (
-                <option key={category}>{category}</option>
+                <option key={category} value={category}>{categoryLabel(category, language)}</option>
               ))}
             </select>
           </label>
@@ -622,12 +630,16 @@ function Messages({ conversations, c, user, formatPrice, preferred, language, on
 export default function Account() {
   const { user, language, region, formatPrice, signOut, updateProfile, flash, t } = useStore();
   const c = words[language] || words.pl;
+  const details = accountCopy[language] || accountCopy.pl;
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') || 'overview';
   const [listings, setListings] = useState([]);
   const [orders, setOrders] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [editing, setEditing] = useState(undefined);
+  const [staffRevision, setStaffRevision] = useState(0);
+  const [loadError, setLoadError] = useState('');
+  const [loading, setLoading] = useState(true);
   const avatarInput = useRef(null);
   const uploadAvatar = async (event) => {
     const file = event.target.files?.[0];
@@ -656,8 +668,10 @@ export default function Account() {
         setListings(mine);
         setOrders(orderList);
         setConversations(chatList);
+        setLoadError('');
+        setLoading(false);
       }
-    );
+    ).catch((error) => { setLoadError(error.message); setLoading(false); });
   }, [user]);
   useEffect(() => {
     refresh();
@@ -674,10 +688,12 @@ export default function Account() {
     ['orders', c.orders],
     ['messages', c.messages],
     ['saved', c.saved],
-    ...(user.role === 'admin' ? [['moderation', c.moderation]] : []),
+    ['profile', details.profile],
+    ['security', details.security],
+    ...(['admin', 'moderator'].includes(user.role) ? [['moderation', c.moderation]] : []),
   ];
   return (
-    <main className="account-page shell">
+    <div className="account-page account-workspace shell">
       <header className="account-hero">
         <div className="account-identity">
           <button
@@ -703,12 +719,13 @@ export default function Account() {
           <div>
             <span className="eyebrow">NaShary ID</span>
             <h1>
-              {c.hello}, {user.username}
+              {c.hello}, {user.displayName || user.username}
             </h1>
             <p>{c.accountText}</p>
+            <span className="role-badge">{details.role[user.role] || details.role.user} · @{user.username}</span>
           </div>
         </div>
-        <button className="quiet-button" type="button" onClick={signOut}>
+        <button className="quiet-button" type="button" onClick={async () => { try { await api('/auth/logout', { method: 'POST' }); } catch (error) { flash(error.message); } finally { signOut(); } }}>
           {t('logout')}
         </button>
       </header>
@@ -733,6 +750,8 @@ export default function Account() {
           </button>
         ))}
       </nav>
+      {loadError && <div className="account-load-error" role="alert">{loadError} <button type="button" onClick={refresh}>{details.retry}</button></div>}
+      {loading && <p className="account-loading" role="status">{details.loading}</p>}
       {tab === 'overview' && (
         <section className="account-overview">
           <article>
@@ -799,6 +818,7 @@ export default function Account() {
                     <small>
                       {item.condition === 'new' ? c.new : c.used} · {item.stock} {c.pieces}
                     </small>
+                    {item.moderationStatus === 'hidden' && <small className="moderation-warning">{details.hidden}: {item.moderationReason}</small>}
                   </div>
                   <strong>{formatPrice(item.price, item.currency)}</strong>
                   <div className="row-actions">
@@ -887,23 +907,26 @@ export default function Account() {
         </section>
       )}
       {tab === 'saved' && <section className="account-section"><MarketplaceCenter /></section>}
-      {tab === 'moderation' && user.role === 'admin' && <section className="account-section"><MarketplaceCenter admin /></section>}
+      {tab === 'profile' && <AccountSettings key="profile" />}
+      {tab === 'security' && <AccountSettings key="security" security />}
+      {tab === 'moderation' && ['admin', 'moderator'].includes(user.role) && <StaffPanel key={staffRevision} onEdit={setEditing} />}
       {editing !== undefined && (
         <ListingForm
           initial={editing}
-          region={region}
+          region={editing?.region || region}
           language={language}
           c={c}
           onClose={() => setEditing(undefined)}
-          onSaved={(saved) =>
+          onSaved={(saved) => {
+            setStaffRevision((n) => n + 1);
             setListings((items) =>
               editing
                 ? items.map((item) => (item.id === saved.id ? saved : item))
                 : [saved, ...items]
-            )
-          }
+            );
+          }}
         />
       )}
-    </main>
+    </div>
   );
 }

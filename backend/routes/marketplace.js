@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
-const { requireAdmin, requireAuth } = require('../middleware/auth');
+const { requireAuth, requireModerator } = require('../middleware/auth');
 const { listProducts, getProduct } = require('../models/products');
 const { AppError, asyncHandler } = require('../utils/errors');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
@@ -224,7 +224,7 @@ router.post(
 router.get(
   '/reports',
   requireAuth,
-  requireAdmin,
+  requireModerator,
   asyncHandler(async (_req, res) => {
     res.json(
       await getDB()
@@ -239,14 +239,19 @@ router.get(
 router.patch(
   '/reports/:id',
   requireAuth,
-  requireAdmin,
+  requireModerator,
   asyncHandler(async (req, res) => {
     const status = clean(req.body?.status, 20);
     if (!['new', 'reviewing', 'resolved', 'rejected'].includes(status))
       throw new AppError(400, 'VALIDATION_ERROR', 'Invalid report status');
-    await getDB()
-      .prepare('UPDATE listing_reports SET status = ?, updatedAt = ? WHERE id = ?')
-      .run(status, Date.now(), req.params.id);
+    const db = getDB();
+    await db.transaction(async () => {
+      const result = await db.prepare('UPDATE listing_reports SET status = ?, updatedAt = ? WHERE id = ?')
+        .run(status, Date.now(), req.params.id);
+      if (!result.changes) throw new AppError(404, 'REPORT_NOT_FOUND', 'Report not found');
+      await db.prepare('INSERT INTO moderation_log (id, actorId, action, targetId, reason, createdAt) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(uuidv4(), req.user.id, 'report.' + status, req.params.id, clean(req.body?.reason, 500), Date.now());
+    })();
     res.json({ id: req.params.id, status });
   })
 );

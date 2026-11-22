@@ -7,6 +7,9 @@ const {
 } = require('./icecatCatalog');
 
 const CURATED_PHONES = [
+  // Manufacturer reference pages; memory/battery values not published by Apple are omitted.
+  { brand: 'Apple', model: 'iPhone 15 Pro Max', sourceUrl: 'https://support.apple.com/en-us/111828', specs: { screen: '6.7″ OLED', resolution: '2796 × 1290', refreshRate: '120 Hz', processor: 'Apple A17 Pro', storage: '256 GB / 512 GB / 1 TB', mainCamera: '48 MP + 12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', displayType: 'OLED', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C 3', weight: '221 g' } },
+  { brand: 'Samsung', model: 'Galaxy S24 Ultra', sourceUrl: 'https://www.samsungmobilepress.com/media-assets/galaxy-s24-ultra?tab=specs', specs: { screen: '6.8″ Dynamic AMOLED 2X', resolution: '3120 × 1440', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3 for Galaxy', ram: '12 GB', storage: '256 GB / 512 GB / 1 TB', battery: '5000 mAh', mainCamera: '200 MP + 50 MP + 12 MP + 10 MP', frontCamera: '12 MP', os: 'Android', displayType: 'AMOLED', charging: '45 W', weight: '232 g', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.3, NFC, USB‑C' } },
   { brand: 'Apple', model: 'iPhone 15', specs: { screen: '6.1″ OLED', resolution: '2556 × 1179', refreshRate: '60 Hz', processor: 'Apple A16 Bionic', ram: '6 GB', storage: '128 GB / 256 GB / 512 GB', battery: '3349 mAh', mainCamera: '48 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', connectivity: '5G, Wi‑Fi 6, Bluetooth 5.3, NFC, USB‑C', displayType: 'OLED', charging: '20 W', weight: '171 g' } },
   { brand: 'Apple', model: 'iPhone 15 Pro', specs: { screen: '6.1″ LTPO OLED', resolution: '2556 × 1179', refreshRate: '120 Hz', processor: 'Apple A17 Pro', ram: '8 GB', storage: '128 GB / 256 GB / 512 GB / 1 TB', battery: '3274 mAh', mainCamera: '48 MP + 12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C 3', displayType: 'LTPO OLED', charging: '20 W', weight: '187 g' } },
   { brand: 'Apple', model: 'iPhone 14', specs: { screen: '6.1″ OLED', resolution: '2532 × 1170', refreshRate: '60 Hz', processor: 'Apple A15 Bionic', ram: '6 GB', storage: '128 GB / 256 GB / 512 GB', battery: '3279 mAh', mainCamera: '12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', connectivity: '5G, Wi‑Fi 6, Bluetooth 5.3, NFC, Lightning', displayType: 'OLED', charging: '20 W', weight: '172 g' } },
@@ -31,6 +34,7 @@ const CURATED_DEVICES = [
 ];
 const LOOKUP_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const lookupCache = new Map();
+const inFlightLookups = new Map();
 
 function simplifyWikiTemplates(value = '') {
   let cleaned = String(value);
@@ -446,9 +450,14 @@ async function findDeviceSpecs(query, options = {}) {
   const key = `${normalize(options.category || '')}:${normalize(query)}`;
   const cached = lookupCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const value = await lookupDeviceSpecs(query, options);
-  lookupCache.set(key, { value, expiresAt: Date.now() + LOOKUP_CACHE_TTL_MS });
-  return value;
+  if (inFlightLookups.has(key)) return inFlightLookups.get(key);
+  const pending = lookupDeviceSpecs(query, options).then((value) => {
+    if (lookupCache.size >= 256) lookupCache.delete(lookupCache.keys().next().value);
+    lookupCache.set(key, { value, expiresAt: Date.now() + (value.length ? LOOKUP_CACHE_TTL_MS : 60_000) });
+    return value;
+  }).finally(() => inFlightLookups.delete(key));
+  inFlightLookups.set(key, pending);
+  return pending;
 }
 
 function curatedSpecs(query) {

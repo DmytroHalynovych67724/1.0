@@ -67,8 +67,21 @@ test('phone model matching never replaces a requested suffix with the base model
   assert.equal(modelCompatible('Apple iPhone 15 Pro Max', 'Apple', 'iPhone 15 Pro Max'), true);
   assert.equal(modelCompatible('Google Pixel 9 Pro XL', 'Google', 'Pixel 9 Pro'), false);
   assert.equal(modelCompatible('Google Pixel 9 Pro XL', 'Google', 'Pixel 9 Pro XL'), true);
-  assert.equal(curatedSpecs('Samsung S24 Ultra'), undefined);
+  assert.equal(curatedSpecs('Samsung S24 Ultra').model, 'Galaxy S24 Ultra');
   assert.equal(curatedSpecs('Samsung Galaxy S24 256 GB').model, 'Galaxy S24');
+});
+
+test('exact Pro Max and Ultra model lookup keeps the requested configuration', async () => {
+  const { findDeviceSpecs } = require('../backend/services/deviceSpecs');
+  const apple = await findDeviceSpecs('Apple iPhone 15 Pro Max 1 TB', { category: 'Smartfony' });
+  assert.equal(apple[0].model, 'iPhone 15 Pro Max');
+  assert.equal(apple[0].specs.storage, '1 TB');
+  assert.equal(apple[0].specs.resolution, '2796 × 1290');
+  assert.ok(apple[0].sourceUrl.startsWith('https://support.apple.com/'));
+  const samsung = await findDeviceSpecs('Samsung Galaxy S24 Ultra 12/512 GB', { category: 'Smartfony' });
+  assert.equal(samsung[0].model, 'Galaxy S24 Ultra');
+  assert.equal(samsung[0].specs.ram, '12 GB');
+  assert.equal(samsung[0].specs.storage, '512 GB');
 });
 
 test('Wikipedia family specifications are reduced to the requested phone variant', () => {

@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
+const { demoCatalogEnabled, SHOWCASE_IDS } = require('../utils/catalog');
 
 function parseImages(value) {
   if (!value) return [];
@@ -59,6 +60,10 @@ function normalizeProduct(row) {
     currency: currencyForRegion(region),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt || null,
+    moderationStatus: row.moderationStatus || 'approved',
+    moderationReason: row.moderationReason || '',
+    sellerAccountStatus: row.sellerAccountStatus || 'active',
+    isDemo: row.id.startsWith('demo-'),
   };
 }
 
@@ -66,6 +71,13 @@ async function listProducts(filters = {}) {
   const db = getDB();
   const where = [];
   const params = {};
+  if (!filters.includeModerated) {
+    where.push("p.moderationStatus = 'approved'");
+    where.push("(u.accountStatus IS NULL OR u.accountStatus = 'active')");
+  }
+  if (!filters.includeDemo && !demoCatalogEnabled()) {
+    where.push("(p.id NOT LIKE 'demo-%' OR p.id IN (" + SHOWCASE_IDS.map((id) => "'" + id + "'").join(',') + "))");
+  }
 
   if (filters.q) {
     where.push(
@@ -140,7 +152,7 @@ async function listProducts(filters = {}) {
     stock_desc: 'p.stock DESC, p.createdAt DESC',
     title_asc: 'p.title COLLATE NOCASE ASC',
   }[filters.sort || 'newest'];
-  const sql = `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar,
+  const sql = `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar, u.accountStatus AS sellerAccountStatus,
     (SELECT AVG(r.rating) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerRating,
     (SELECT COUNT(*) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerReviewCount
     FROM products p LEFT JOIN users u ON u.id = p.createdBy${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY ${orderBy}`;
@@ -158,7 +170,7 @@ async function getProduct(id) {
   return normalizeProduct(
     await getDB()
       .prepare(
-        `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar,
+        `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar, u.accountStatus AS sellerAccountStatus,
     (SELECT AVG(r.rating) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerRating,
     (SELECT COUNT(*) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerReviewCount
     FROM products p LEFT JOIN users u ON u.id = p.createdBy WHERE p.id = ?`

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { imageUrl } from '../api';
 import { useStore } from '../store';
+import { categoryLabel } from '../catalogTaxonomy';
+import { accountCopy } from '../accountCopy';
 
 const copy = {
   pl: { compare: 'Porównaj', low: 'Ostatnie sztuki', verified: 'Zweryfikowany', quick: 'Szybki podgląd', urgent: 'Pilne', reserved: 'Zarezerwowane', model: 'Wszystkie oferty modelu' },
@@ -54,6 +56,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
     language,
   } = useStore();
   const c = copy[language] || copy.pl;
+  const demoLabel = (accountCopy[language] || accountCopy.pl).demo;
   const sold = product.stock < 1 || product.status === 'sold';
   const images = product.images?.length ? product.images : [''];
   const [activeImage, setActiveImage] = useState(0);
@@ -114,13 +117,14 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
       </div>
       <div className="product-card-react__body">
         <span className="product-kicker">
-          {product.category} · {product.location}
+          {categoryLabel(product.category, language)} · {product.location}
         </span>
         <Link className="product-title" to={`/product/${product.id}`}>
           {product.title}
         </Link>
         {product.model && <Link className="product-model-link" to={`/model/${encodeURIComponent(product.brand)}/${encodeURIComponent(product.model)}`}>{c.model}</Link>}
         <div className="product-card-badges">
+          {product.isDemo && <span className="demo-badge">{demoLabel}</span>}
           {product.urgent && <span className="is-urgent">{c.urgent}</span>}
           {product.status === 'reserved' && <span>{c.reserved}</span>}
           {product.sellerVerified && <span>{c.verified}</span>}
@@ -144,10 +148,10 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
           <button
             className="primary-button"
             type="button"
-            disabled={sold}
+            disabled={sold || product.isDemo}
             onClick={() => addToCart(product)}
           >
-            {sold ? t('out') : t('add')}
+            {product.isDemo ? demoLabel : sold ? t('out') : t('add')}
           </button>
         </div>
       </div>

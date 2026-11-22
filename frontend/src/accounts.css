@@ -1,0 +1,63 @@
+.role-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 750; border-radius: 6px; padding: 6px 9px; background: var(--rose); color: var(--wine); }
+.account-workspace { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 24px; align-items: start; }
+.account-workspace .account-hero { grid-column: 1 / -1; margin-bottom: 4px; }
+.account-workspace .account-tabs { grid-column: 1; grid-row: 2 / span 5; position: sticky; top: 150px; display: flex; flex-direction: column; align-items: stretch; overflow: visible; gap: 5px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); margin: 0; }
+.account-workspace .account-tabs button { text-align: left; display: flex; justify-content: space-between; border: 0; border-radius: 9px; padding: 13px; background: transparent; color: var(--muted); font-size: 12px; }
+.account-workspace .account-tabs button.is-active { background: var(--rose); color: var(--wine); }
+.account-workspace > section, .account-workspace > .account-load-error, .account-workspace > .account-loading { grid-column: 2; min-width: 0; margin: 0; }
+.account-workspace .account-overview { grid-template-columns: 1fr; }
+.account-workspace .account-overview article { padding: 26px; }
+.account-workspace .account-overview .metric { font-size: 36px; }
+.account-settings { padding: 30px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); }
+.account-settings h2, .staff-panel h2 { margin: 0 0 12px; font-size: 27px; letter-spacing: -.04em; }
+.account-settings > p, .staff-panel > p { font-size: 12px; line-height: 1.7; color: var(--muted); max-width: 650px; }
+.account-settings form { max-width: 580px; display: grid; gap: 18px; margin-top: 25px; }
+.account-settings label, .staff-confirm label { display: grid; gap: 8px; font-size: 12px; font-weight: 650; }
+.account-settings input, .staff-search, .staff-confirm textarea { border: 1px solid var(--line); border-radius: 9px; min-height: 46px; padding: 12px 14px; background: var(--canvas); color: var(--ink); width: 100%; min-width: 0; }
+.account-settings form > button { justify-self: start; }
+.account-load-error { padding: 16px; border: 1px solid var(--wine); border-radius: 12px; background: var(--rose); color: var(--wine); font-size: 12px; }
+.account-load-error button { border: 0; background: transparent; text-decoration: underline; cursor: pointer; }
+.staff-panel { padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); }
+.staff-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 16px; }
+.staff-tabs button { border: 1px solid var(--line); background: var(--canvas); border-radius: 8px; padding: 10px 13px; font-size: 11px; cursor: pointer; }
+.staff-tabs button.is-active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.staff-list { margin-top: 20px; }
+.staff-list article { padding: 18px 0; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.staff-list article > div { flex: 1; min-width: 140px; overflow-wrap: anywhere; }
+.staff-list article > img { width: 64px; height: 64px; object-fit: contain; border-radius: 10px; background: var(--canvas); }
+.staff-list b { display: block; font-size: 13px; }
+.staff-list small { display: block; margin: 7px 0; color: var(--muted); font-size: 10px; }
+.staff-list p { font-size: 12px; line-height: 1.5; }
+.staff-list button, .staff-list select { min-height: 36px; border: 1px solid var(--line); background: var(--canvas); color: var(--ink); border-radius: 7px; padding: 7px 10px; font-size: 11px; cursor: pointer; }
+.staff-confirm { padding: 18px; background: var(--rose); border-radius: 12px; margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.staff-confirm label { flex-basis: 100%; }
+.password-visibility { display: flex !important; align-items: center; gap: 10px; font-size: 11px; }
+.password-visibility input { width: 16px !important; min-height: 16px !important; height: 16px; accent-color: var(--wine); }
+.moderation-warning { color: var(--wine) !important; }
+.category-menu { position: relative; }
+.category-menu summary { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 10px; background: var(--wine); color: white; cursor: pointer; font-size: 12px; font-weight: 750; list-style: none; }
+.category-menu summary::-webkit-details-marker { display: none; }
+.category-menu-panel { position: absolute; top: calc(100% + 16px); left: 0; width: min(760px, calc(100vw - 48px)); display: grid; grid-template-columns: 1.4fr 1fr; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 18px 45px #17101824; padding: 20px; z-index: 60; }
+.category-menu-panel > div { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.app-nav .category-menu-panel a { margin: 0; padding: 10px; border: 0; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-size: 11px; }
+.app-nav .category-menu-panel a:hover { background: var(--canvas); }
+.category-menu-panel img { width: 35px; height: 35px; object-fit: contain; }
+.category-menu-panel aside { padding: 20px; margin-left: 14px; background: var(--canvas); border-radius: 12px; }
+.category-menu-panel h3 { font-size: 22px; letter-spacing: -.035em; margin: 0 0 15px; }
+.app-nav .category-menu-panel aside a { border-bottom: 1px solid var(--line); border-radius: 0; }
+.listing-model-field { display: flex; align-items: end; gap: 10px; }
+.listing-model-field label { flex: 1; min-width: 0; }
+.listing-model-field > button { flex-shrink: 0; font-size: 10px; padding: 8px 12px; }
+@media (max-width: 900px) {
+  .account-workspace { grid-template-columns: 170px minmax(0, 1fr); gap: 16px; }
+  .account-settings, .staff-panel { padding: 20px; }
+  .listing-model-field { flex-wrap: wrap; }
+}
+@media (max-width: 760px) {
+  .account-workspace { display: block; }
+  .account-workspace .account-tabs { position: static; display: flex; flex-direction: row; flex-wrap: wrap; margin: 20px 0; }
+  .account-workspace .account-tabs button { padding: 10px; font-size: 11px; gap: 8px; }
+  .account-workspace > section { margin-top: 18px; }
+  .category-menu-panel { position: static; width: 100%; box-shadow: none; grid-template-columns: 1fr; margin-top: 10px; padding: 12px; }
+  .category-menu-panel aside { margin: 10px 0 0; padding: 16px; }
+}

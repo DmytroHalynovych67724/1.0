@@ -89,6 +89,8 @@ async function migrateProducts(database) {
   await addColumnIfMissing(database, 'products', 'inspection', "TEXT NOT NULL DEFAULT '{}'");
   await addColumnIfMissing(database, 'products', 'oldPriceCents', 'INTEGER');
   await addColumnIfMissing(database, 'products', 'deviceDetails', "TEXT NOT NULL DEFAULT '{}'");
+  await addColumnIfMissing(database, 'products', 'moderationStatus', "TEXT NOT NULL DEFAULT 'approved'");
+  await addColumnIfMissing(database, 'products', 'moderationReason', "TEXT NOT NULL DEFAULT ''");
 
   const now = Date.now();
   await database.prepare("UPDATE products SET description = '' WHERE description IS NULL").run();
@@ -300,9 +302,23 @@ async function migrateUsers(database) {
   await addColumnIfMissing(database, 'users', 'verifiedAt', 'INTEGER');
   await addColumnIfMissing(database, 'users', 'createdAt', 'INTEGER');
   await addColumnIfMissing(database, 'users', 'updatedAt', 'INTEGER');
+  await addColumnIfMissing(database, 'users', 'displayName', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'users', 'email', 'TEXT');
+  await addColumnIfMissing(database, 'users', 'phone', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'users', 'city', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'users', 'address', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'users', 'accountStatus', "TEXT NOT NULL DEFAULT 'active'");
+  await addColumnIfMissing(database, 'users', 'sessionVersion', 'INTEGER NOT NULL DEFAULT 0');
+  await database.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email COLLATE NOCASE);
+    CREATE TABLE IF NOT EXISTS moderation_log (
+      id TEXT PRIMARY KEY, actorId TEXT NOT NULL, action TEXT NOT NULL,
+      targetId TEXT NOT NULL, reason TEXT NOT NULL DEFAULT '', createdAt INTEGER NOT NULL
+    );
+  `);
 
   await database
-    .prepare("UPDATE users SET role = 'user' WHERE role IS NULL OR role NOT IN ('user', 'admin')")
+    .prepare("UPDATE users SET role = 'user' WHERE role IS NULL OR role NOT IN ('user', 'moderator', 'admin')")
     .run();
   await database.prepare("UPDATE users SET avatar = '' WHERE avatar IS NULL").run();
   await database.prepare('UPDATE users SET createdAt = ? WHERE createdAt IS NULL').run(Date.now());

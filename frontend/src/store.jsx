@@ -27,7 +27,7 @@ export function StoreProvider({ children }) {
       localStorage.getItem('nashary-theme') ||
       (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   );
-  const [user, setUser] = useState(() => read('nashary-user', null));
+  const [user, setUser] = useState(() => localStorage.getItem('nashary-token') ? read('nashary-user', null) : null);
   const [cart, setCart] = useState(() => read('nashary-react-cart', []));
   const [favorites, setFavorites] = useState(() => read('nashary-react-favorites', []));
   const [comparison, setComparison] = useState(() => read('nashary-react-comparison', []));
@@ -58,7 +58,8 @@ export function StoreProvider({ children }) {
         setUser(currentUser);
         localStorage.setItem('nashary-user', JSON.stringify(currentUser));
       })
-      .catch(() => {
+      .catch((error) => {
+        if (error.status !== 401 && error.status !== 403) return;
         localStorage.removeItem('nashary-token');
         localStorage.removeItem('nashary-user');
         setUser(null);
@@ -101,6 +102,10 @@ export function StoreProvider({ children }) {
   };
   const addToCart = useCallback(
     (product, qty = 1) => {
+      if (product.isDemo || product.stock < 1 || product.moderationStatus === 'hidden') {
+        flash(language === 'uk' ? 'Цей товар недоступний для покупки.' : language === 'pl' ? 'Ten produkt nie jest dostępny do zakupu.' : 'This product cannot be purchased.');
+        return;
+      }
       setCart((items) => {
         const current = items.find((item) => item.id === product.id);
         if (current)

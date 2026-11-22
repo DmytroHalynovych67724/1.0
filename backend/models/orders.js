@@ -3,6 +3,7 @@ const { getDB } = require('../db');
 const { AppError } = require('../utils/errors');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
 const { paymentStatusFor, resolveDelivery, resolvePayment } = require('../utils/fulfillment');
+const { demoCatalogEnabled } = require('../utils/catalog');
 
 function parseItems(value) {
   try {
@@ -59,14 +60,16 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         .prepare(
           `
         SELECT id, title, price, priceCents, stock, brand, condition, images, region, currency,
-               createdBy, seller, sellerType, delivery
+               createdBy, seller, sellerType, delivery, status, moderationStatus,
+               (SELECT accountStatus FROM users WHERE users.id = products.createdBy) AS sellerAccountStatus
         FROM products
         WHERE id = ?
       `
         )
         .get(item.id);
 
-      if (!product) {
+      if (!product || product.status !== 'active' || product.moderationStatus !== 'approved' ||
+          product.sellerAccountStatus === 'suspended' || (!demoCatalogEnabled() && product.id.startsWith('demo-'))) {
         throw new AppError(
           409,
           'PRODUCT_UNAVAILABLE',

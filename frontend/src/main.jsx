@@ -4,6 +4,7 @@ import App from './App';
 import { StoreProvider } from './store';
 import './styles.css';
 import './storefront.css';
+import './accounts.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

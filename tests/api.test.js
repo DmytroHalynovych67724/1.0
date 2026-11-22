@@ -16,6 +16,7 @@ const developmentDatabasePath = path.resolve(__dirname, '..', 'data', 'db.sqlite
 assert.notEqual(path.resolve(testDatabasePath), developmentDatabasePath);
 
 process.env.NODE_ENV = 'test';
+process.env.DEMO_CATALOG_ENABLED = 'true';
 process.env.DB_PATH = testDatabasePath;
 process.env.DB_FILE = testDatabasePath;
 process.env.DATABASE_PATH = testDatabasePath;
@@ -225,6 +226,83 @@ test('API tests use a temporary SQLite database', () => {
   assert.equal(path.resolve(database.getConfiguredFile()), path.resolve(testDatabasePath));
   assert.equal(fs.existsSync(testDatabasePath), true);
   assert.equal(path.dirname(path.resolve(testDatabasePath)), path.resolve(tempDirectory));
+});
+test('profiles support email sign-in and password changes revoke prior sessions', async () => {
+  const person = await registerAndLogin('profile');
+  const email = person.username + '@example.com';
+  const saved = await request('/api/auth/me', { method: 'PATCH', token: person.token, body: {
+    displayName: 'Test Person', email, phone: '+48 123 456 789', city: 'Warszawa', address: 'Test Street 1', role: 'admin',
+  } });
+  assert.equal(saved.response.status, 200);
+  assert.equal(saved.body.user.role, 'user');
+  assert.equal(saved.body.user.email, email);
+  assert.equal('password' in saved.body.user, false);
+  const login = await request('/api/auth/login', { method: 'POST', body: { username: email.toUpperCase(), password: person.password } });
+  assert.equal(login.response.status, 200);
+  const other = await registerAndLogin('duplicate-email');
+  assert.equal((await request('/api/auth/me', { method: 'PATCH', token: other.token, body: { email: email.toUpperCase() } })).response.status, 409);
+  assert.equal((await request('/api/auth/password', { method: 'POST', token: person.token, body: { currentPassword: 'incorrect', newPassword: 'UpdatedPassword123!' } })).response.status, 400);
+  const changed = await request('/api/auth/password', { method: 'POST', token: person.token, body: { currentPassword: person.password, newPassword: 'UpdatedPassword123!' } });
+  assert.equal(changed.response.status, 200);
+  assert.equal((await request('/api/auth/me', { token: person.token })).response.status, 401);
+  assert.equal((await request('/api/auth/me', { token: login.body.token })).response.status, 401);
+  assert.equal((await request('/api/auth/login', { method: 'POST', body: { username: email, password: person.password } })).response.status, 401);
+  const fresh = await request('/api/auth/login', { method: 'POST', body: { username: email, password: 'UpdatedPassword123!' } });
+  assert.equal(fresh.response.status, 200);
+  assert.equal((await request('/api/auth/logout', { method: 'POST', token: fresh.body.token })).response.status, 200);
+  assert.equal((await request('/api/auth/me', { token: fresh.body.token })).response.status, 401);
+});
+
+test('three roles enforce moderation rights, account suspension and listing visibility', async () => {
+  const moderator = await registerAndLogin('moderator');
+  const owner = await registerAndLogin('moderated-owner');
+  assert.equal((await request('/api/staff/users', { token: owner.token })).response.status, 403);
+  assert.equal((await request('/api/staff/users/' + owner.user.id, { method: 'PATCH', token: moderator.token, body: { role: 'moderator', reason: 'Attempt elevation' } })).response.status, 403);
+  const promoted = await request('/api/staff/users/' + moderator.user.id, { method: 'PATCH', token: adminToken, body: { role: 'moderator', reason: 'Appointed by administrator' } });
+  assert.equal(promoted.response.status, 200);
+  assert.equal((await request('/api/auth/me', { token: moderator.token })).response.status, 401);
+  const relog = await request('/api/auth/login', { method: 'POST', body: { username: moderator.username, password: moderator.password } });
+  const token = relog.body.token;
+  assert.equal(relog.body.user.role, 'moderator');
+  assert.equal((await request('/api/staff/users', { token })).response.status, 403);
+  assert.equal((await request('/api/staff/products', { token })).response.status, 200);
+  const product = await request('/api/products', { method: 'POST', token: owner.token, body: productPayload() });
+  assert.equal(product.response.status, 201);
+  const id = product.body.id;
+  assert.equal((await request('/api/staff/products/' + id + '/moderation', { method: 'PATCH', token, body: { status: 'hidden', reason: 'Misleading listing details' } })).response.status, 200);
+  assert.equal((await request('/api/products/' + id)).response.status, 404);
+  assert.equal((await request('/api/products/' + id, { token: owner.token })).response.status, 200);
+  assert.equal((await request('/api/products')).body.some((p) => p.id === id), false);
+  assert.equal((await request('/api/orders', { method: 'POST', token: moderator.token, body: { items: [{ id, qty: 1 }] } })).response.status, 401);
+  assert.equal((await request('/api/orders', { method: 'POST', token, body: { items: [{ id, qty: 1 }] } })).response.status, 409);
+  // An owner edit cannot reset the independent moderation flag.
+  assert.equal((await request('/api/products/' + id, { method: 'PATCH', token: owner.token, body: { title: 'Updated listing title' } })).response.status, 200);
+  assert.equal((await request('/api/products/' + id)).response.status, 404);
+  assert.equal((await request('/api/staff/products/' + id + '/moderation', { method: 'PATCH', token, body: { status: 'approved', reason: 'Listing verified after correction' } })).response.status, 200);
+  assert.equal((await request('/api/products/' + id)).response.status, 200);
+  assert.equal((await request('/api/staff/users/' + owner.user.id, { method: 'PATCH', token: adminToken, body: { accountStatus: 'suspended', reason: 'Repeated listing violations' } })).response.status, 200);
+  assert.equal((await request('/api/auth/me', { token: owner.token })).response.status, 401);
+  assert.equal((await request('/api/auth/login', { method: 'POST', body: { username: owner.username, password: owner.password } })).response.status, 403);
+  assert.equal((await request('/api/products/' + id)).response.status, 404);
+  const adminMe = await request('/api/auth/me', { token: adminToken });
+  assert.equal((await request('/api/staff/users/' + adminMe.body.user.id, { method: 'PATCH', token: adminToken, body: { role: 'user', reason: 'Self demotion attempt' } })).response.status, 403);
+  const log = await request('/api/staff/log', { token });
+  assert.equal(log.response.status, 200);
+  assert.ok(log.body.some((entry) => entry.targetId === id && entry.action === 'listing.hidden'));
+});
+
+test('public catalog keeps a small labelled showcase without selling sample stock', async () => {
+  const { SHOWCASE_IDS } = require('../backend/utils/catalog');
+  process.env.DEMO_CATALOG_ENABLED = 'false';
+  try {
+    const list = await request('/api/products');
+    const samples = list.body.filter((product) => product.isDemo);
+    assert.equal(samples.length, SHOWCASE_IDS.length);
+    assert.ok(samples.every((product) => SHOWCASE_IDS.includes(product.id)));
+    assert.equal((await request('/api/products/demo-iphone-15-used-blue')).response.status, 404);
+    const buyer = await registerAndLogin('showcase-buyer');
+    assert.equal((await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: SHOWCASE_IDS[0], qty: 1 }] } })).response.status, 409);
+  } finally { process.env.DEMO_CATALOG_ENABLED = 'true'; }
 });
 
 test('GET /api/health reports a healthy API', async () => {
@@ -468,7 +546,7 @@ test('users manage their own validated listings while admins can moderate them',
   assert.equal(adminListings.response.status, 200);
   assert.equal(
     adminListings.body.some((item) => item.id === product.id),
-    true
+    false
   );
 
   const forbiddenUpdate = await request(`/api/products/${product.id}`, {

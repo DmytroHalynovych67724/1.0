@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, imageUrl } from '../api';
+import { api, imageUrl, catalogPreview } from '../api';
 import ProductCard from '../components/ProductCard';
 import QuickView from '../components/QuickView';
 import { useStore } from '../store';
@@ -34,10 +34,16 @@ function StorefrontContent() {
   const [preview, setPreview] = useState(null);
   useEffect(() => {
     let active = true;
+    let live = false;
+    const timer = window.setTimeout(() => {
+      catalogPreview(`/products?region=${region}`).then((items) => {
+        if (active && !live) { setProducts(items); setStatus('ready'); }
+      }).catch(() => {});
+    }, 1500);
     api(`/products?region=${region}`).then((items) => {
-      if (active) { setProducts(items); setStatus('ready'); }
-    }).catch(() => { if (active) setStatus('error'); });
-    return () => { active = false; };
+      if (active) { live = true; setProducts(items); setStatus('ready'); }
+    }).catch(() => { if (active) setStatus((current) => current === 'ready' ? current : 'error'); });
+    return () => { active = false; window.clearTimeout(timer); };
   }, [region, attempt]);
   const visible = products.filter((item) => !filter || item.condition === (filter === 1 ? 'new' : 'used')).slice(0, 8);
   return <div className="storefront">

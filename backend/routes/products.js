@@ -7,7 +7,8 @@ const {
   listProducts,
   updateProduct,
 } = require('../models/products');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, optionalAuth } = require('../middleware/auth');
+const { isPublicProduct } = require('../utils/catalog');
 const { AppError, asyncHandler } = require('../utils/errors');
 const { CONDITIONS, REGIONS, validateProduct } = require('../utils/validation');
 
@@ -144,7 +145,7 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const products = await listProducts(productFilters(req.query));
-    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
+    res.set('Cache-Control', 'no-store');
     res.json(products);
   })
 );
@@ -154,8 +155,9 @@ router.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     const filters = productFilters(req.query);
-    if (req.user.role !== 'admin') filters.ownerId = req.user.id;
+    filters.ownerId = req.user.id;
     filters.includeInactive = true;
+    filters.includeModerated = true;
     const products = await listProducts(filters);
     res.json(products);
   })
@@ -165,7 +167,7 @@ router.get(
   '/:id/related',
   asyncHandler(async (req, res) => {
     const product = await getProduct(req.params.id);
-    if (!product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
+    if (!isPublicProduct(product)) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
     const candidates = await listProducts({ region: product.region, category: product.category });
     res.json(
       candidates
@@ -230,9 +232,11 @@ router.get(
 
 router.get(
   '/:id',
+  optionalAuth,
   asyncHandler(async (req, res) => {
     const product = await getProduct(req.params.id);
-    if (!product) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
+    const canManage = req.user && (product?.sellerId === req.user.id || ['admin', 'moderator'].includes(req.user.role));
+    if (!product || (!isPublicProduct(product) && !canManage)) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
     res.json(product);
   })
 );

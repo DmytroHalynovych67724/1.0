@@ -5,6 +5,7 @@ import ComparePanel from '../components/ComparePanel';
 import ProductCard from '../components/ProductCard';
 import QuickView from '../components/QuickView';
 import { useStore } from '../store';
+import { categoryLabel } from '../catalogTaxonomy';
 
 const categories = [
   ['', { pl: 'Wszystkie', uk: 'Усі', en: 'All' }],
@@ -164,8 +165,8 @@ function countsFor(items, selector) {
 
 function readCatalogCache(key) {
   try {
-    const cached = JSON.parse(localStorage.getItem(key));
-    if (!cached || !Array.isArray(cached.items) || Date.now() - cached.savedAt > 24 * 60 * 60 * 1000) return null;
+    const cached = JSON.parse(sessionStorage.getItem(key + ':accounts-v2'));
+    if (!cached || !Array.isArray(cached.items) || Date.now() - cached.savedAt > 30_000) return null;
     return cached.items;
   } catch {
     return null;
@@ -174,7 +175,7 @@ function readCatalogCache(key) {
 
 function writeCatalogCache(key, items) {
   try {
-    localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), items }));
+    sessionStorage.setItem(key + ':accounts-v2', JSON.stringify({ savedAt: Date.now(), items }));
   } catch {
     // A full or disabled storage must never block the live catalogue.
   }
@@ -340,7 +341,8 @@ export default function Catalog({ favoritesOnly = false }) {
   const set = (key, value) => {
     const next = new URLSearchParams(params);
     value ? next.set(key, value) : next.delete(key);
-    if (key === 'category') Object.keys(labels).forEach((name) => next.delete(name));
+    if (key === 'category') [...Object.keys(labels), 'brand', 'model', 'grade'].forEach((name) => next.delete(name));
+    if (key === 'brand') next.delete('model');
     setVisible(12);
     setParams(next);
   };
@@ -373,8 +375,8 @@ export default function Catalog({ favoritesOnly = false }) {
   const cities = unique('location', sourceProducts.map((item) => item.location));
   const active = [...params.entries()].filter(([key]) => !['q', 'sort'].includes(key));
   const title = useMemo(
-    () => (favoritesOnly ? c.favorites : query ? `“${query}”` : category || t('catalog')),
-    [favoritesOnly, c.favorites, query, category, t]
+    () => (favoritesOnly ? c.favorites : query ? `“${query}”` : categoryLabel(category, language) || t('catalog')),
+    [favoritesOnly, c.favorites, query, category, language, t]
   );
   const visibleProducts = useMemo(
     () => (favoritesOnly ? products.filter((product) => favorites.includes(product.id)) : products),

@@ -22,10 +22,10 @@ async function requireAuth(req, res, next) {
 
     const user = await getDB()
       .prepare(
-        'SELECT id, username, role, avatar, verificationStatus, verifiedAt, createdAt FROM users WHERE id = ?'
+        'SELECT id, username, role, avatar, displayName, email, phone, city, address, accountStatus, sessionVersion, verificationStatus, verifiedAt, createdAt FROM users WHERE id = ?'
       )
       .get(payload.sub);
-    if (!user) {
+    if (!user || user.accountStatus !== 'active' || (payload.version || 0) !== user.sessionVersion) {
       return sendError(res, 401, 'INVALID_TOKEN', 'Authentication token is invalid or expired');
     }
 
@@ -44,4 +44,15 @@ function requireAdmin(req, res, next) {
   return next();
 }
 
-module.exports = { requireAdmin, requireAuth };
+function requireModerator(req, res, next) {
+  if (!req.user || !['admin', 'moderator'].includes(req.user.role)) {
+    return sendError(res, 403, 'MODERATOR_REQUIRED', 'Moderator access is required');
+  }
+  return next();
+}
+
+function optionalAuth(req, res, next) {
+  return req.get('authorization') ? requireAuth(req, res, next) : next();
+}
+
+module.exports = { requireAdmin, requireAuth, requireModerator, optionalAuth };
