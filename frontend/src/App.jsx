@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import {
   Navigate,
   RouterProvider,
@@ -9,16 +10,24 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Catalog from './pages/Catalog';
 import Product from './pages/Product';
-import Games from './pages/Games';
-import GamesHub from './pages/GamesHub';
 import Cart from './pages/Cart';
 import Auth from './pages/Auth';
-import Account from './pages/Account';
 import NotFound from './pages/NotFound';
 import TradeIn from './pages/TradeIn';
 import Guides from './pages/Guides';
 import Model from './pages/Model';
-import Sell from './pages/Sell';
+import BrandMark from './components/BrandMark';
+import { useStore } from './store';
+
+const Account = lazy(() => import('./pages/Account'));
+const Sell = lazy(() => import('./pages/Sell'));
+const Games = lazy(() => import('./pages/Games'));
+const GamesHub = lazy(() => import('./pages/GamesHub'));
+
+function RouteLoading() {
+  const { language } = useStore();
+  return <div className="shell page-loader route-loading" role="status"><BrandMark /><span>{language === 'uk' ? 'Завантаження…' : language === 'en' ? 'Loading…' : 'Ładowanie…'}</span></div>;
+}
 
 const routes = [
   {
@@ -57,5 +66,5 @@ const router = isStaticDemo
     });
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return <Suspense fallback={<RouteLoading />}><RouterProvider router={router} /></Suspense>;
 }

@@ -4,11 +4,13 @@ html[data-theme='dark'] { --paper: #111c30; --canvas: #091221; --canvas-2: #1b2b
 .brand-logo { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; }
 .brand-mark { width: 42px; height: 42px; flex: 0 0 auto; color: var(--brand-solid); }
 .brand-wordmark { font-size: 25px; font-weight: 800; letter-spacing: -.055em; line-height: 1; }
+.route-loading { display: flex; align-items: center; justify-content: center; gap: 14px; }
 .brand-logo--compact .brand-mark { width: 34px; height: 34px; }
 .brand-logo--compact .brand-wordmark { font-size: 22px; }
 .primary-button, .category-menu > summary, .storefront-copy .primary-button { background: var(--brand-solid); color: #fff; }
 .primary-button:hover, .storefront-copy .primary-button:hover { background: var(--brand-hover); }
 .primary-button:disabled { opacity: .48; cursor: not-allowed; }
+.newsletter-card, .auth-react__aside { background: var(--brand-solid); }
 .app-nav .nav-sell { color: var(--brand); }
 .app-header__main { gap: 24px; }
 .storefront-main { background: #eef3ff; color: #14213d; }

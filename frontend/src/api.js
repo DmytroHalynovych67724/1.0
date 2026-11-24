@@ -13,6 +13,7 @@ const apiBase = configuredApi
   : '/api';
 const backendOrigin = configuredApi.replace(/\/api$/, '');
 const appBase = import.meta.env.BASE_URL || '/';
+const productArtwork = import.meta.glob('../assets/products/*.svg', { eager: true, query: '?url', import: 'default' });
 
 export const isStaticDemo = import.meta.env.VITE_STATIC_DEMO === 'true' && !configuredApi;
 
@@ -249,6 +250,10 @@ export function imageUrl(value) {
   if (!value) return appUrl('assets/product-placeholder.svg');
   if (/^(?:https?:|data:|blob:)/i.test(value)) return value;
   const clean = String(value).replace(/^\.\//, '');
+  const artMatch = clean.match(/^\/?assets\/products\/([^/?#]+\.svg)$/);
+  if (artMatch && productArtwork[`../assets/products/${artMatch[1]}`]) {
+    return productArtwork[`../assets/products/${artMatch[1]}`];
+  }
   if (clean.startsWith('/assets/') || clean.startsWith('assets/')) {
     return appUrl(clean.replace(/^\//, ''));
   }
