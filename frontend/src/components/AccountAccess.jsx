@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../store';
 import { accountCopy } from '../accountCopy';
+import { newSellerCopy } from '../supplyDetails.mjs';
 
 const copy = {
   uk: { title: 'Роль і доступ', current: 'Поточна роль', refresh: 'Перевірити права', note: 'Модерація доступна модератору й адміністратору. Розділ «Користувачі» доступний лише адміністратору. Якщо вам щойно призначили роль — увійдіть повторно.', user: 'Власні оголошення, покупки, повідомлення й особисті дані.', moderator: 'Каталог модерації, приховування оголошень, скарги та журнал дій.', admin: 'Усі можливості модератора, призначення ролей і блокування користувачів.', open: 'Відкрити модерацію' },
@@ -13,6 +14,7 @@ export default function AccountAccess() {
   const { user, language, updateProfile } = useStore();
   const c = copy[language] || copy.pl;
   const roles = (accountCopy[language] || accountCopy.pl).role;
+  const sellerCopy = newSellerCopy[language] || newSellerCopy.pl;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const refresh = async () => {
@@ -23,6 +25,7 @@ export default function AccountAccess() {
   return <section className="account-section account-settings account-access">
     <span className="section-label">NASHARY ID / ACCESS</span><h2>{c.title}</h2>
     <p>{c.current}: <b>{roles[user.role]}</b> · @{user.username}</p><p>{c.note}</p>
+    <div className="supply-notice"><b>{user.role === 'admin' || user.canSellNew ? sellerCopy.allowed : sellerCopy.denied}</b><p>{sellerCopy.hint}</p></div>
     <div className="access-role-grid">{Object.keys(roles).map((role) => <article key={role} className={role === user.role ? 'is-current' : ''}><h3>{roles[role]}</h3><p>{c[role]}</p></article>)}</div>
     {error && <p role="alert" className="form-error">{error}</p>}
     <button type="button" className="quiet-button" disabled={busy} onClick={refresh}>{busy ? '…' : c.refresh}</button>

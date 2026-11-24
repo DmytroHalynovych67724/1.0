@@ -34,26 +34,28 @@ router.patch('/products/:id/moderation', asyncHandler(async (req, res) => {
 }));
 
 router.get('/users', requireAdmin, asyncHandler(async (_req, res) => {
-  res.json(await getDB().prepare('SELECT id, username, displayName, role, accountStatus, verificationStatus, createdAt FROM users ORDER BY createdAt DESC LIMIT 500').all());
+  res.json(await getDB().prepare('SELECT id, username, displayName, role, accountStatus, verificationStatus, canSellNew, createdAt FROM users ORDER BY createdAt DESC LIMIT 500').all());
 }));
 
 router.patch('/users/:id', requireAdmin, asyncHandler(async (req, res) => {
-  const { role, accountStatus } = req.body || {};
+  const { role, accountStatus, canSellNew } = req.body || {};
   const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
   if ((role !== undefined && !['user', 'moderator'].includes(role)) ||
       (accountStatus !== undefined && !['active', 'suspended'].includes(accountStatus)) ||
-      (role === undefined && accountStatus === undefined) || reason.length < 5 || reason.length > 500) {
+      (canSellNew !== undefined && typeof canSellNew !== 'boolean') ||
+      (role === undefined && accountStatus === undefined && canSellNew === undefined) || reason.length < 5 || reason.length > 500) {
     throw new AppError(400, 'VALIDATION_ERROR', 'Choose a valid role or status and provide a reason');
   }
   if (req.params.id === req.user.id) throw new AppError(403, 'SELF_CHANGE_DENIED', 'You cannot change your own access');
   const db = getDB();
   await db.transaction(async () => {
-    const target = await db.prepare('SELECT role, accountStatus FROM users WHERE id = ?').get(req.params.id);
+    const target = await db.prepare('SELECT role, accountStatus, canSellNew FROM users WHERE id = ?').get(req.params.id);
     if (!target) throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
     if (target.role === 'admin') throw new AppError(403, 'ADMIN_PROTECTED', 'Administrator access is managed by server configuration');
-    await db.prepare('UPDATE users SET role = ?, accountStatus = ?, sessionVersion = sessionVersion + 1, updatedAt = ? WHERE id = ?')
-      .run(role || target.role, accountStatus || target.accountStatus, Date.now(), req.params.id);
-    await audit(db, req.user.id, 'account.' + (role || accountStatus), req.params.id, reason);
+    await db.prepare('UPDATE users SET role = ?, accountStatus = ?, canSellNew = ?, sessionVersion = sessionVersion + 1, updatedAt = ? WHERE id = ?')
+      .run(role || target.role, accountStatus || target.accountStatus, canSellNew === undefined ? target.canSellNew : Number(canSellNew), Date.now(), req.params.id);
+    const actions = [role && 'account.' + role, accountStatus && 'account.' + accountStatus, canSellNew !== undefined && (canSellNew ? 'seller.new.approved' : 'seller.new.revoked')].filter(Boolean);
+    for (const action of actions) await audit(db, req.user.id, action, req.params.id, reason);
   })();
   res.json({ ok: true });
 }));

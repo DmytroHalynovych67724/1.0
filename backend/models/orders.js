@@ -60,8 +60,9 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         .prepare(
           `
         SELECT id, title, price, priceCents, stock, brand, condition, images, region, currency,
-               createdBy, seller, sellerType, delivery, status, moderationStatus,
+               createdBy, seller, sellerType, delivery, status, moderationStatus, supplyDetails,
                (SELECT accountStatus FROM users WHERE users.id = products.createdBy) AS sellerAccountStatus
+               , (SELECT CASE WHEN role = 'admin' OR canSellNew = 1 THEN 1 ELSE 0 END FROM users WHERE users.id = products.createdBy) AS sellerCanSellNew
         FROM products
         WHERE id = ?
       `
@@ -69,13 +70,17 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         .get(item.id);
 
       if (!product || product.status !== 'active' || product.moderationStatus !== 'approved' ||
-          product.sellerAccountStatus === 'suspended' || (!demoCatalogEnabled() && product.id.startsWith('demo-'))) {
+          product.sellerAccountStatus === 'suspended' || (product.condition === 'new' && !product.id.startsWith('demo-') && !product.sellerCanSellNew) || (!demoCatalogEnabled() && product.id.startsWith('demo-'))) {
         throw new AppError(
           409,
           'PRODUCT_UNAVAILABLE',
           `Product ${item.id} is no longer available`,
           [{ field: 'items', productId: item.id, message: 'Product does not exist' }]
         );
+      }
+      const supply = parseCheckout(product.supplyDetails);
+      if (supply.availability && supply.availability !== 'in_stock') {
+        throw new AppError(409, 'PRODUCT_NOT_IN_STOCK', 'This product is not available for immediate checkout', [{ field: 'items', productId: product.id, message: 'Contact the seller about availability' }]);
       }
       if (!Number.isInteger(product.stock) || product.stock < item.qty) {
         throw new AppError(409, 'INSUFFICIENT_STOCK', `Not enough stock for ${product.title}`, [
@@ -149,6 +154,7 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         title: product.title,
         brand: product.brand || 'Inne',
         condition: product.condition === 'new' ? 'new' : 'used',
+        supplyDetails: supply,
         sellerType: product.sellerType === 'private' ? 'private' : 'store',
         image,
         price: unitPriceCents / 100,

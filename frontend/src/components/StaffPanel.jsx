@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
 import { accountCopy } from '../accountCopy';
+import { newSellerCopy } from '../supplyDetails.mjs';
 
 export default function StaffPanel({ onEdit }) {
   const { user, language, flash, formatPrice } = useStore();
   const c = accountCopy[language] || accountCopy.pl;
+  const sellerCopy = newSellerCopy[language] || newSellerCopy.pl;
   const [tab, setTab] = useState('products');
   const [data, setData] = useState([]);
   const [query, setQuery] = useState('');
@@ -38,7 +40,7 @@ export default function StaffPanel({ onEdit }) {
   };
   const begin = (path, body) => {
     const target = data.find((item) => path.split('/').includes(item.id));
-    setAction({ path, body, label: target?.title || target?.username, value: c.role[body.role] || c[body.accountStatus || body.status] });
+    setAction({ path, body, label: target?.title || target?.username, value: body.canSellNew !== undefined ? (body.canSellNew ? sellerCopy.approve : sellerCopy.revoke) : c.role[body.role] || c[body.accountStatus || body.status] });
     setReason('');
   };
   const filtered = data.filter((item) => [item.title, item.username, item.action, item.actorName].filter(Boolean).join(' ').toLowerCase().includes(query.toLowerCase()));
@@ -51,7 +53,7 @@ export default function StaffPanel({ onEdit }) {
     {loading ? <p role="status">{c.loading}</p> : !filtered.length ? <p className="soft-empty">{c.empty}</p> : <div className="staff-list">{filtered.map((item) => <article key={item.id}>
       {tab === 'products' && <><img src={imageUrl(item.images?.[0])} alt="" /><div><Link to={'/product/' + item.id}><b>{item.title}</b></Link><small>{item.region.toUpperCase()} · {formatPrice(item.price, item.currency)} · {item.seller}</small><span className="role-badge">{item.isDemo ? c.demo : c[item.moderationStatus]}</span>{item.moderationReason && <p>{item.moderationReason}</p>}</div>{user.role === 'admin' && <button type="button" onClick={() => onEdit(item)}>{language === 'uk' ? 'Редагувати' : language === 'pl' ? 'Edytuj' : 'Edit'}</button>}<button type="button" onClick={() => begin('/staff/products/' + item.id + '/moderation', { status: item.moderationStatus === 'hidden' ? 'approved' : 'hidden' })}>{item.moderationStatus === 'hidden' ? c.approve : c.hide}</button></>}
       {tab === 'reports' && <><div><Link to={'/product/' + item.productId}><b>{item.title}</b></Link><small>{item.username} · {item.reason}</small><p>{item.details}</p></div><select aria-label={c.reports} value={item.status} onChange={(e) => begin('/marketplace/reports/' + item.id, { status: e.target.value })}>{['new','reviewing','resolved','rejected'].map((status) => <option key={status} value={status}>{c[status]}</option>)}</select></>}
-      {tab === 'users' && <><div><b>{item.displayName || item.username}</b><small>@{item.username} · {c[item.accountStatus]}</small></div>{item.role === 'admin' ? <span className="role-badge">{c.protected}</span> : <><select aria-label={c.users + ' / ' + item.username} value={item.role} onChange={(e) => begin('/staff/users/' + item.id, { role: e.target.value })}>{['user', 'moderator'].map((role) => <option key={role} value={role}>{c.role[role]}</option>)}</select><button type="button" onClick={() => begin('/staff/users/' + item.id, { accountStatus: item.accountStatus === 'active' ? 'suspended' : 'active' })}>{item.accountStatus === 'active' ? c.block : c.unblock}</button></>}</>}
+      {tab === 'users' && <><div><b>{item.displayName || item.username}</b><small>@{item.username} · {c[item.accountStatus]}</small><small>{item.role === 'admin' || item.canSellNew ? sellerCopy.allowed : sellerCopy.denied}</small></div>{item.role === 'admin' ? <span className="role-badge">{c.protected}</span> : <><button type="button" onClick={() => begin('/staff/users/' + item.id, { canSellNew: !item.canSellNew })}>{item.canSellNew ? sellerCopy.revoke : sellerCopy.approve}</button><select aria-label={c.users + ' / ' + item.username} value={item.role} onChange={(e) => begin('/staff/users/' + item.id, { role: e.target.value })}>{['user', 'moderator'].map((role) => <option key={role} value={role}>{c.role[role]}</option>)}</select><button type="button" onClick={() => begin('/staff/users/' + item.id, { accountStatus: item.accountStatus === 'active' ? 'suspended' : 'active' })}>{item.accountStatus === 'active' ? c.block : c.unblock}</button></>}</>}
       {tab === 'log' && <><div><b>{item.action}</b><small>{item.actorName} · {new Date(item.createdAt).toLocaleString()} · {item.targetId}</small><p>{item.reason}</p></div></>}
     </article>)}</div>}
   </section>;

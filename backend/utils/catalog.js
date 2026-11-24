@@ -7,6 +7,7 @@ function isPublicProduct(product) {
   return Boolean(product && product.status !== 'draft' &&
     product.moderationStatus !== 'hidden' &&
     product.sellerAccountStatus !== 'suspended' &&
+    (product.condition !== 'new' || product.id.startsWith('demo-') || product.sellerCanSellNew) &&
     (demoCatalogEnabled() || !product.id.startsWith('demo-') || SHOWCASE_IDS.includes(product.id)));
 }
 

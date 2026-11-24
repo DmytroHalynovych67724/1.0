@@ -22,7 +22,7 @@ async function requireAuth(req, res, next) {
 
     const user = await getDB()
       .prepare(
-        'SELECT id, username, role, avatar, displayName, email, phone, city, address, accountStatus, sessionVersion, verificationStatus, verifiedAt, createdAt FROM users WHERE id = ?'
+        'SELECT id, username, role, avatar, displayName, email, phone, city, address, accountStatus, sessionVersion, canSellNew, verificationStatus, verifiedAt, createdAt FROM users WHERE id = ?'
       )
       .get(payload.sub);
     if (!user || user.accountStatus !== 'active' || (payload.version || 0) !== user.sessionVersion) {

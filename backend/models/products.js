@@ -55,6 +55,7 @@ function normalizeProduct(row) {
     inspection: parseObject(row.inspection),
     inspectionScore: Object.values(parseObject(row.inspection)).filter(Boolean).length,
     deviceDetails: parseObject(row.deviceDetails),
+    supplyDetails: parseObject(row.supplyDetails),
     oldPrice: row.oldPriceCents ? Number(row.oldPriceCents) / 100 : null,
     region,
     currency: currencyForRegion(region),
@@ -63,6 +64,7 @@ function normalizeProduct(row) {
     moderationStatus: row.moderationStatus || 'approved',
     moderationReason: row.moderationReason || '',
     sellerAccountStatus: row.sellerAccountStatus || 'active',
+    sellerCanSellNew: row.sellerRole === 'admin' || Boolean(row.sellerCanSellNew),
     isDemo: row.id.startsWith('demo-'),
   };
 }
@@ -74,6 +76,7 @@ async function listProducts(filters = {}) {
   if (!filters.includeModerated) {
     where.push("p.moderationStatus = 'approved'");
     where.push("(u.accountStatus IS NULL OR u.accountStatus = 'active')");
+    where.push("(p.condition != 'new' OR p.id LIKE 'demo-%' OR u.role = 'admin' OR u.canSellNew = 1)");
   }
   if (!filters.includeDemo && !demoCatalogEnabled()) {
     where.push("(p.id NOT LIKE 'demo-%' OR p.id IN (" + SHOWCASE_IDS.map((id) => "'" + id + "'").join(',') + "))");
@@ -139,7 +142,10 @@ async function listProducts(filters = {}) {
     where.push('priceCents <= @maxPriceCents');
     params.maxPriceCents = Math.round(filters.maxPrice * 100);
   }
-  if (filters.inStock) where.push('stock > 0');
+  if (filters.inStock) {
+    where.push('stock > 0');
+    where.push("COALESCE(json_extract(p.supplyDetails, '$.availability'), 'in_stock') = 'in_stock'");
+  }
   if (filters.ownerId) {
     where.push('createdBy = @ownerId');
     params.ownerId = filters.ownerId;
@@ -154,7 +160,7 @@ async function listProducts(filters = {}) {
     stock_desc: 'p.stock DESC, p.createdAt DESC',
     title_asc: 'p.title COLLATE NOCASE ASC',
   }[filters.sort || 'newest'];
-  const sql = `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar, u.accountStatus AS sellerAccountStatus,
+  const sql = `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar, u.accountStatus AS sellerAccountStatus, u.role AS sellerRole, u.canSellNew AS sellerCanSellNew,
     (SELECT AVG(r.rating) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerRating,
     (SELECT COUNT(*) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerReviewCount
     FROM products p LEFT JOIN users u ON u.id = p.createdBy${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY ${orderBy}`;
@@ -172,7 +178,7 @@ async function getProduct(id) {
   return normalizeProduct(
     await getDB()
       .prepare(
-        `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar, u.accountStatus AS sellerAccountStatus,
+        `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar, u.accountStatus AS sellerAccountStatus, u.role AS sellerRole, u.canSellNew AS sellerCanSellNew,
     (SELECT AVG(r.rating) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerRating,
     (SELECT COUNT(*) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerReviewCount
     FROM products p LEFT JOIN users u ON u.id = p.createdBy WHERE p.id = ?`
@@ -215,6 +221,7 @@ async function createProduct(payload, options = {}) {
       ? payload.status
       : 'active',
     urgent: Boolean(payload.urgent),
+    supplyDetails: payload.supplyDetails || {},
     inspection:
       payload.inspection && typeof payload.inspection === 'object' ? payload.inspection : {},
     deviceDetails:
@@ -232,10 +239,10 @@ async function createProduct(payload, options = {}) {
       `
     INSERT INTO products (
       id, title, description, price, priceCents, images, specs, category, location,
-      condition, brand, model, stock, seller, sellerType, delivery, warranty, negotiable, status, urgent, inspection, deviceDetails, region, currency, createdBy, createdAt
+      condition, brand, model, stock, seller, sellerType, delivery, warranty, negotiable, status, urgent, inspection, deviceDetails, supplyDetails, region, currency, createdBy, createdAt
     ) VALUES (
       @id, @title, @description, @price, @priceCents, @images, @specs, @category, @location,
-      @condition, @brand, @model, @stock, @seller, @sellerType, @delivery, @warranty, @negotiable, @status, @urgent, @inspection, @deviceDetails, @region, @currency, @createdBy, @createdAt
+      @condition, @brand, @model, @stock, @seller, @sellerType, @delivery, @warranty, @negotiable, @status, @urgent, @inspection, @deviceDetails, @supplyDetails, @region, @currency, @createdBy, @createdAt
     )
   `
     )
@@ -245,6 +252,7 @@ async function createProduct(payload, options = {}) {
       specs: JSON.stringify(product.specs),
       inspection: JSON.stringify(product.inspection),
       deviceDetails: JSON.stringify(product.deviceDetails),
+      supplyDetails: JSON.stringify(product.supplyDetails),
       negotiable: product.negotiable ? 1 : 0,
       urgent: product.urgent ? 1 : 0,
     });
@@ -287,6 +295,7 @@ async function updateProduct(id, payload) {
       urgent = @urgent,
       inspection = @inspection,
       deviceDetails = @deviceDetails,
+      supplyDetails = @supplyDetails,
       oldPriceCents = @oldPriceCents,
       region = @region,
       currency = @currency,
@@ -317,6 +326,7 @@ async function updateProduct(id, payload) {
       urgent: merged.urgent ? 1 : 0,
       inspection: JSON.stringify(merged.inspection || {}),
       deviceDetails: JSON.stringify(merged.deviceDetails || {}),
+      supplyDetails: JSON.stringify(merged.supplyDetails || {}),
       oldPriceCents: priceChanged
         ? Math.round(existing.price * 100)
         : existing.oldPrice

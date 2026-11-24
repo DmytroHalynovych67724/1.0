@@ -7,6 +7,8 @@ import { ownsListing, canBuyListing, ownerCopy } from '../listingPolicy.mjs';
 import '../productDetails.css';
 import { sectionCopy, sectionPath } from '../catalogSections.mjs';
 import { categoryLabel } from '../catalogTaxonomy';
+import SupplySummary from '../components/SupplySummary';
+import { availabilityFor, supplyCopy } from '../supplyDetails.mjs';
 
 const words = {
   pl: {
@@ -118,6 +120,7 @@ function ProductDetails({ id }) {
   const { t, user, formatPrice, addToCart, flash, language } = useStore();
   const c = words[language] || words.pl;
   const oc = ownerCopy[language] || ownerCopy.pl;
+  const supply = supplyCopy[language] || supplyCopy.pl;
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [offer, setOffer] = useState('');
@@ -237,7 +240,7 @@ function ProductDetails({ id }) {
             {categoryLabel(product.category, language) || product.category} · {product.location}
           </span>
           <h1>{product.title}</h1>
-          <div className="listing-status-row"><span className={canBuyListing(null, product) ? 'is-available' : ''}>{product.stock > 0 ? (detailValues.status[product.status]?.[language] || c.available) : detailValues.status.sold[language]}</span><span>{t(product.condition === 'new' ? 'new' : 'used')}</span>{product.isDemo && <span>DEMO</span>}</div>
+          <div className="listing-status-row"><span className={availabilityFor(product) === 'in_stock' ? 'is-available' : ''}>{supply[availabilityFor(product)]}</span><span>{t(product.condition === 'new' ? 'new' : 'used')}</span>{product.supplyDetails?.marketVersion && <span>{product.supplyDetails.marketVersion}</span>}{product.isDemo && <span>DEMO</span>}</div>
           <div className="listing-highlights" aria-label={tabs[4]}>{['storage', 'ram', 'screen', 'processor'].filter((key) => product.specs?.[key]).map((key) => <div key={key}><small>{specWords[key]?.[language]}</small><b>{product.specs[key]}</b></div>)}</div>
           <Link className="model-offers-link" to={`/model/${encodeURIComponent(product.brand)}/${encodeURIComponent(product.model)}`}>{c.modelOffers}</Link>
           <div className="seller-line">
@@ -269,7 +272,7 @@ function ProductDetails({ id }) {
             type="button"
             onClick={() => addToCart(product)}
           >
-            {product.isDemo ? (language === 'uk' ? 'Демонстраційне оголошення' : language === 'pl' ? 'Oferta demonstracyjna' : 'Example listing') : t('add')}
+            {product.isDemo ? (language === 'uk' ? 'Демонстраційне оголошення' : language === 'pl' ? 'Oferta demonstracyjna' : 'Example listing') : availabilityFor(product) !== 'in_stock' ? supply[availabilityFor(product)] : t('add')}
           </button>
           <button className="watch-price-button" type="button" onClick={watchPrice}>♡ {c.watch}</button>
           <button
@@ -277,7 +280,7 @@ function ProductDetails({ id }) {
             type="button"
             onClick={() => openChat(false)}
           >
-            {t('message')}
+            {['on_order', 'expected'].includes(availabilityFor(product)) ? supply.inquiry : t('message')}
           </button>
           {product.negotiable && canBuyListing(user, product) ? <div className="offer-box">
             <label>
@@ -298,6 +301,7 @@ function ProductDetails({ id }) {
           </div> : <small className="listing-fixed-price">{tabs[5]}</small>}
           </div>}
           <div className="listing-fulfillment"><div><small>{c.warranty}</small><b>{detailValues.warranty[product.warranty]?.[language] || detailValues.warranty.none[language]}</b></div><div><small>{product.location}</small><b>{product.delivery === 'pickup' ? tabs[8] : product.delivery === 'shipping' ? tabs[7] : tabs[6]}</b></div></div>
+          <SupplySummary product={product} language={language} />
         </aside>
       </div>
       <div className={`shell product-info-react${product.description?.trim() ? '' : ' product-info-react--specs-only'}`}>

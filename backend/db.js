@@ -89,6 +89,7 @@ async function migrateProducts(database) {
   await addColumnIfMissing(database, 'products', 'inspection', "TEXT NOT NULL DEFAULT '{}'");
   await addColumnIfMissing(database, 'products', 'oldPriceCents', 'INTEGER');
   await addColumnIfMissing(database, 'products', 'deviceDetails', "TEXT NOT NULL DEFAULT '{}'");
+  await addColumnIfMissing(database, 'products', 'supplyDetails', "TEXT NOT NULL DEFAULT '{}'");
   await addColumnIfMissing(database, 'products', 'moderationStatus', "TEXT NOT NULL DEFAULT 'approved'");
   await addColumnIfMissing(database, 'products', 'moderationReason', "TEXT NOT NULL DEFAULT ''");
 
@@ -309,6 +310,7 @@ async function migrateUsers(database) {
   await addColumnIfMissing(database, 'users', 'address', "TEXT NOT NULL DEFAULT ''");
   await addColumnIfMissing(database, 'users', 'accountStatus', "TEXT NOT NULL DEFAULT 'active'");
   await addColumnIfMissing(database, 'users', 'sessionVersion', 'INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'users', 'canSellNew', 'INTEGER NOT NULL DEFAULT 0');
   await database.exec(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email COLLATE NOCASE);
     CREATE TABLE IF NOT EXISTS moderation_log (

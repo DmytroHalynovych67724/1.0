@@ -1,10 +1,13 @@
+import { availabilityFor } from './supplyDetails.mjs';
+
 export function ownsListing(user, product) {
   return Boolean(user?.id && product?.sellerId && user.id === product.sellerId);
 }
 
 export function canBuyListing(user, product) {
   return Boolean(product && !ownsListing(user, product) && !product.isDemo &&
-    product.stock > 0 && (!product.status || product.status === 'active') &&
+    !(product.condition === 'new' && product.sellerCanSellNew === false) &&
+    availabilityFor(product) === 'in_stock' && (!product.status || product.status === 'active') &&
     (!product.moderationStatus || product.moderationStatus === 'approved') && product.sellerAccountStatus !== 'suspended');
 }
 

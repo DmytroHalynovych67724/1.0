@@ -103,10 +103,14 @@ function validateProduct(body, { partial = false } = {}) {
     'urgent',
     'inspection',
     'deviceDetails',
+    'supplyDetails',
   ];
   const details = [];
   const value = {};
   const has = (field) => Object.prototype.hasOwnProperty.call(body, field);
+  if (!partial || has('supplyDetails')) {
+    value.supplyDetails = has('supplyDetails') ? require('./productSupply').validateSupplyDetails(body.supplyDetails) : {};
+  }
 
   if (partial && !supportedFields.some(has)) {
     throw validationFailure([{ field: 'body', message: 'At least one product field is required' }]);

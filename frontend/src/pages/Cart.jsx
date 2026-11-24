@@ -20,6 +20,7 @@ import {
 } from '../checkoutOptions';
 import { useStore } from '../store';
 import { ownsListing, ownerCopy } from '../listingPolicy.mjs';
+import { supplyCopy } from '../supplyDetails.mjs';
 
 const words = {
   pl: {
@@ -176,6 +177,7 @@ export default function Cart() {
       flash(`#${order.id.slice(0, 8)} · ${c.created}`);
       navigate('/account?tab=orders');
     } catch (error) {
+      if (error.code === 'PRODUCT_NOT_IN_STOCK') { flash((supplyCopy[language] || supplyCopy.pl).changed); return; }
       const invalidField = error.details?.[0]?.field;
       const fieldLabels = {
         customerName: c.name,

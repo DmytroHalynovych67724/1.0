@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
 import { ownsListing, canBuyListing, ownerCopy } from '../listingPolicy.mjs';
+import SupplySummary from './SupplySummary';
 
 const words = {
   pl: { title: 'Szybki podgląd', details: 'Pełne ogłoszenie', chat: 'Napisz', alert: 'Obserwuj cenę', saved: 'Obserwowanie ceny włączone', condition: 'Stan', delivery: 'Dostawa', trade: 'Możliwa negocjacja', both: 'Dostawa lub odbiór', shipping: 'Dostawa', pickup: 'Odbiór osobisty' },
@@ -68,6 +69,7 @@ export default function QuickView({ product, onClose }) {
             <small>{product.category} · {product.location}</small>
             <h2>{product.title}</h2>
             <strong>{formatPrice(product.price, product.currency)}</strong>
+            <SupplySummary product={product} language={language} />
             <dl><div><dt>{c.condition}</dt><dd>{t(product.condition === 'new' ? 'new' : 'used')}</dd></div><div><dt>{c.delivery}</dt><dd>{c[product.delivery] || product.delivery}</dd></div>{product.negotiable && <div><dt>{c.trade}</dt><dd>✓</dd></div>}{Object.entries(product.specs || {}).slice(0, 4).map(([key, value]) => <div key={key}><dt>{specLabels[key]?.[language] || key}</dt><dd>{value}</dd></div>)}</dl>
             {own ? <div className="listing-owner-panel"><b>{oc.own}</b><p>{oc.text}</p><Link className="primary-button" to={`/account?tab=listings&edit=${product.id}`}>{oc.edit}</Link></div> : <><div className="quick-view-actions"><button className="primary-button" disabled={!canBuyListing(user, product)} type="button" onClick={() => addToCart(product)}>{t('add')}</button><button className="quiet-button" type="button" onClick={chat}>{c.chat}</button></div><button className="text-button" type="button" onClick={watch}>♡ {c.alert}</button></>}
             <Link to={`/product/${product.id}`}>{c.details}</Link>

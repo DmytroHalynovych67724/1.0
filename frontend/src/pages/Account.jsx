@@ -12,6 +12,8 @@ import { mergeDetectedSpecs } from '../specAutofill.mjs';
 import { categoryLabel } from '../catalogTaxonomy';
 import { specCopy } from '../specCopy';
 import AccountAccess, { accessLabel } from '../components/AccountAccess';
+import SupplyFields from '../components/SupplyFields';
+import { newSellerCopy } from '../supplyDetails.mjs';
 
 const blankListing = {
   title: '',
@@ -26,6 +28,7 @@ const blankListing = {
   images: [],
   delivery: 'both',
   specs: {},
+  supplyDetails: {},
   model: '', warranty: 'none', negotiable: true, urgent: false, status: 'active',
   inspection: { screen: false, battery: false, cameras: false, buttons: false, connectivity: false, serialNumber: false },
   deviceDetails: { batteryHealth: '', display: '', body: '', completeness: '', defects: '', grade: 'B', serialChecked: false, specSource: '', specSourceId: '' },
@@ -242,12 +245,15 @@ const inspectionLabels = {
 };
 
 export function ListingForm({ initial, onClose, onSaved, region, language, c, page = false }) {
+  const { user } = useStore();
+  const canSellNew = user?.role === 'admin' || Boolean(user?.canSellNew);
+  const sellerCopy = newSellerCopy[language] || newSellerCopy.pl;
   const sc = specCopy[language] || specCopy.pl;
   const specInputPrefix = useId();
   const [form, setForm] = useState(
     initial
       ? { ...blankListing, ...initial, specs: initial.specs || {}, images: initial.images || [], inspection: { ...blankListing.inspection, ...(initial.inspection || {}) }, deviceDetails: { ...blankListing.deviceDetails, ...(initial.deviceDetails || {}) } }
-      : blankListing
+      : { ...blankListing, condition: canSellNew ? 'new' : 'used' }
   );
   const [busy, setBusy] = useState(false);
   const [specsBusy, setSpecsBusy] = useState(false);
@@ -468,8 +474,9 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
               onChange={(event) => change('condition', event.target.value)}
             >
               <option value="used">{c.used}</option>
-              <option value="new">{c.new}</option>
+              <option value="new" disabled={!canSellNew}>{c.new}</option>
             </select>
+            {!canSellNew && <small>{sellerCopy.hint}</small>}
           </label>
           <label>
             {c.location}
@@ -480,6 +487,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
             />
           </label>
           <div className="span-2 listing-photo-field"><span className="listing-field-label">{c.photos}</span><label className="photo-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); addPhotoFiles(event.dataTransfer.files); }}><input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={addPhotos} /><i>＋</i><b>{language === 'pl' ? 'Dodaj zdjęcia urządzenia' : language === 'uk' ? 'Додайте фотографії пристрою' : 'Add device photos'}</b><small>{c.photoHint}</small></label>{form.images.length > 0 && <div className="listing-photo-grid">{form.images.map((image, index) => <figure key={`${image.slice(0, 30)}-${index}`}><img src={imageUrl(image)} alt="" /><button type="button" onClick={() => change('images', form.images.filter((_, itemIndex) => itemIndex !== index))}>×</button>{index === 0 && <span>Cover</span>}</figure>)}</div>}</div>
+          {form.condition === 'new' && <SupplyFields value={form.supplyDetails} onChange={(value) => change('supplyDetails', value)} language={language} />}
           <label>{c.warranty}<select value={form.warranty} onChange={(event) => change('warranty', event.target.value)}><option value="none">—</option><option value="seller">Seller</option><option value="manufacturer">Manufacturer</option></select></label>
           <label>{c.status}<select value={form.status} onChange={(event) => change('status', event.target.value)}>{['active','reserved','sold','draft'].map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></label>
           <label className="check-filter"><input type="checkbox" checked={form.negotiable} onChange={(event) => change('negotiable', event.target.checked)} /><span>{c.negotiable}</span></label>

@@ -4,7 +4,8 @@ import { imageUrl } from '../api';
 import { useStore } from '../store';
 import { categoryLabel } from '../catalogTaxonomy';
 import { accountCopy } from '../accountCopy';
-import { ownsListing, ownerCopy } from '../listingPolicy.mjs';
+import { ownsListing, canBuyListing, ownerCopy } from '../listingPolicy.mjs';
+import { availabilityFor, supplyCopy } from '../supplyDetails.mjs';
 
 const copy = {
   pl: { compare: 'Porównaj', low: 'Ostatnie sztuki', verified: 'Zweryfikowany', quick: 'Szybki podgląd', urgent: 'Pilne', reserved: 'Zarezerwowane', model: 'Wszystkie oferty modelu' },
@@ -62,6 +63,8 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
   const oc = ownerCopy[language] || ownerCopy.pl;
   const demoLabel = (accountCopy[language] || accountCopy.pl).demo;
   const sold = product.stock < 1 || product.status === 'sold';
+  const supply = supplyCopy[language] || supplyCopy.pl;
+  const available = availabilityFor(product);
   const images = product.images?.length ? product.images : [''];
   const [activeImage, setActiveImage] = useState(0);
   const compared = comparison.some((item) => item.id === product.id);
@@ -133,7 +136,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
           {product.urgent && <span className="is-urgent">{c.urgent}</span>}
           {product.status === 'reserved' && <span>{c.reserved}</span>}
           {product.sellerVerified && <span>{c.verified}</span>}
-          {!sold && product.stock <= 2 && <span className="is-low">{c.low}</span>}
+          {!sold && available === 'in_stock' && product.stock <= 2 && <span className="is-low">{c.low}</span>}
         </div>
         {specs.length > 0 && (
           <dl className="product-card-specs">
@@ -146,6 +149,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
           </dl>
         )}
         <div className="product-card-buy">
+          <small className={`product-supply-status is-${available}`}>{supply[available]}{product.supplyDetails?.marketVersion ? ` · ${product.supplyDetails.marketVersion}` : ''}</small>
           <div className="product-price">
             <strong>{formatPrice(product.price, product.currency)}</strong>
             {product.oldPrice ? <del>{formatPrice(product.oldPrice, product.currency)}</del> : null}
@@ -153,10 +157,10 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
           {own ? <Link className="quiet-button" to={`/account?tab=listings&edit=${product.id}`}>{oc.manage}</Link> : <button
             className="primary-button"
             type="button"
-            disabled={sold || product.isDemo}
+            disabled={!canBuyListing(user, product)}
             onClick={() => addToCart(product)}
           >
-            {product.isDemo ? demoLabel : sold ? t('out') : t('add')}
+            {product.isDemo ? demoLabel : available !== 'in_stock' ? supply[available] : sold ? t('out') : t('add')}
           </button>}
         </div>
       </div>

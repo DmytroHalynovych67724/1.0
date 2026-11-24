@@ -8,6 +8,7 @@ function publicUser(user) {
     avatar: user.avatar || '', accountStatus: user.accountStatus || 'active',
     verificationStatus: user.verificationStatus || 'unverified',
     verified: user.verificationStatus === 'verified',
+    canSellNew: user.role === 'admin' || Boolean(user.canSellNew),
     verifiedAt: user.verifiedAt || null, createdAt: user.createdAt,
   };
 }

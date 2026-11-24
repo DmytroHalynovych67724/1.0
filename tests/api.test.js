@@ -150,6 +150,65 @@ test.after(async () => {
   fs.rmSync(tempDirectory, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
 });
 
+test('new-device sales require separate admin approval and revocation stops public sales', async () => {
+  const seller = await registerAndLogin('approved-new-seller');
+  const buyer = await registerAndLogin('approval-buyer');
+  const payload = productPayload({ condition: 'new', title: 'Approved new device', stock: 2 });
+  assert.equal((await request('/api/products', { method: 'POST', token: seller.token, body: payload })).response.status, 403);
+  const used = await request('/api/products', { method: 'POST', token: seller.token, body: productPayload({ condition: 'used' }) });
+  assert.equal(used.response.status, 201);
+  assert.equal((await request(`/api/products/${used.body.id}`, { method: 'PATCH', token: seller.token, body: { condition: 'new' } })).response.status, 403);
+  assert.equal((await request(`/api/staff/users/${seller.user.id}`, { method: 'PATCH', token: seller.token, body: { canSellNew: true, reason: 'Approve myself' } })).response.status, 403);
+  const profile = await request('/api/auth/me', { method: 'PATCH', token: seller.token, body: { displayName: 'Seller profile', canSellNew: true } });
+  assert.equal(profile.body.user.canSellNew, false);
+  const approved = await request(`/api/staff/users/${seller.user.id}`, { method: 'PATCH', token: adminToken, body: { canSellNew: true, reason: 'Reviewed new-device seller' } });
+  assert.equal(approved.response.status, 200);
+  const login = await request('/api/auth/login', { method: 'POST', body: { username: seller.username, password: seller.password } });
+  assert.equal(login.body.user.role, 'user');
+  assert.equal(login.body.user.canSellNew, true);
+  const created = await request('/api/products', { method: 'POST', token: login.body.token, body: payload });
+  assert.equal(created.response.status, 201);
+  assert.equal(created.body.sellerType, 'store');
+  assert.equal((await request(`/api/products/${created.body.id}`)).response.status, 200);
+  const revoked = await request(`/api/staff/users/${seller.user.id}`, { method: 'PATCH', token: adminToken, body: { canSellNew: false, reason: 'Seller permission withdrawn' } });
+  assert.equal(revoked.response.status, 200);
+  assert.equal((await request(`/api/products/${created.body.id}`)).response.status, 404);
+  assert.ok(!(await request('/api/products?condition=new')).body.some((item) => item.id === created.body.id));
+  const denied = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: created.body.id, qty: 1 }] } });
+  assert.equal(denied.response.status, 409);
+  assert.equal((await request('/api/auth/me', { token: login.body.token })).response.status, 401);
+  const audit = await request('/api/staff/log', { token: adminToken });
+  assert.ok(audit.body.some((row) => row.targetId === seller.user.id && row.action === 'seller.new.approved'));
+  assert.ok(audit.body.some((row) => row.targetId === seller.user.id && row.action === 'seller.new.revoked'));
+});
+
+test('supply details persist, preserve manual configuration and prevent checkout before stock arrives', async () => {
+  const supplyDetails = { availability: 'on_order', marketVersion: 'CN', firmware: 'Factory firmware', languages: 'English, Chinese', networkBands: 'Seller-confirmed bands', packageContents: 'Phone, cable', warrantyTerms: 'Seller terms', leadTime: '10–14 days', sku: 'QA-SUPPLY-01', batch: 'QA-LOT-01' };
+  const product = await createProduct({ condition: 'new', stock: 1, supplyDetails });
+  assert.deepEqual(product.supplyDetails, supplyDetails);
+  const buyer = await registerAndLogin('supply-buyer');
+  const rejected = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: product.id, qty: 1 }] } });
+  assert.equal(rejected.response.status, 409);
+  assert.equal(rejected.body.code, 'PRODUCT_NOT_IN_STOCK');
+  assert.equal((await request(`/api/products/${product.id}`)).body.stock, 1);
+  const inStock = await request('/api/products?inStock=true&condition=new');
+  assert.ok(!inStock.body.some((item) => item.id === product.id));
+  const updated = await request(`/api/products/${product.id}`, { method: 'PATCH', token: adminToken, body: { title: 'Updated supply title', specs: { processor: 'Updated model specs' } } });
+  assert.equal(updated.response.status, 200);
+  assert.deepEqual(updated.body.supplyDetails, supplyDetails);
+  for (const invalid of [{ availability: 'yes' }, { marketVersion: 'CN-GLOBAL-MAYBE' }, { leadTime: 10 }, { firmware: 'x'.repeat(121) }, { unknown: 'value' }]) {
+    const response = await request(`/api/products/${product.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: invalid } });
+    assert.equal(response.response.status, 400);
+    assert.ok(response.body.details[0].field.startsWith('supplyDetails.'));
+  }
+  const ready = await request(`/api/products/${product.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: { ...supplyDetails, availability: 'in_stock' } } });
+  assert.equal(ready.response.status, 200);
+  const ordered = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: product.id, qty: 1 }] } });
+  assert.equal(ordered.response.status, 201);
+  assert.equal(ordered.body.items[0].supplyDetails.marketVersion, 'CN');
+  assert.equal(ordered.body.items[0].supplyDetails.sku, 'QA-SUPPLY-01');
+});
+
 test('new and used catalogs stay separate and search includes model and configuration terms', async () => {
   const newProduct = await createProduct({ title: 'New audit device', model: 'AuditModel987', condition: 'new', specs: { storage: '512 GB' } });
   const usedProduct = await createProduct({ title: 'Used audit device', model: 'AuditModel987', condition: 'used', specs: { storage: '512 GB' } });

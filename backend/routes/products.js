@@ -246,9 +246,12 @@ router.post(
   requireAuth,
   asyncHandler(async (req, res) => {
     const payload = validateProduct(req.body);
+    if (payload.condition === 'new' && req.user.role !== 'admin' && !req.user.canSellNew) {
+      throw new AppError(403, 'NEW_SELLER_APPROVAL_REQUIRED', 'Administrator approval is required to sell new devices');
+    }
     if (req.user.role !== 'admin') {
       payload.seller = req.user.username;
-      payload.sellerType = 'private';
+      payload.sellerType = payload.condition === 'new' ? 'store' : 'private';
     }
     const product = await createProduct(payload, { createdBy: req.user.id });
     res.status(201).json(product);
@@ -266,9 +269,13 @@ const requireProductManager = asyncHandler(async (req, _res, next) => {
 
 async function handleUpdate(req, res) {
   const payload = validateProduct(req.body, { partial: true });
+  const existing = await getProduct(req.params.id);
+  if ((payload.condition || existing?.condition) === 'new' && req.user.role !== 'admin' && !req.user.canSellNew) {
+    throw new AppError(403, 'NEW_SELLER_APPROVAL_REQUIRED', 'Administrator approval is required to sell new devices');
+  }
   if (req.user.role !== 'admin') {
     payload.seller = req.user.username;
-    payload.sellerType = 'private';
+    payload.sellerType = (payload.condition || existing?.condition) === 'new' ? 'store' : 'private';
   }
   const updated = await updateProduct(req.params.id, payload);
   if (!updated) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
