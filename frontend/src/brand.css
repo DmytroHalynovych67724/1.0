@@ -39,7 +39,7 @@ html[data-theme='dark'] { --paper: #111c30; --canvas: #091221; --canvas-2: #1b2b
 .assistant-avatar .brand-mark { width: 26px; height: 26px; }
 .auth-react__aside > .brand-mark { width: 110px; height: 110px; margin-bottom: 16px; }
 .auth-react__aside > .brand-mark { color: #fff; }
-.auth-react__aside > .brand-mark path { stroke: #335cff; }
+.auth-react__aside > .brand-mark path { fill: #335cff; }
 .auth-react__aside > b { font-size: 46px; }
 html[data-theme='dark'] .storefront-main { background: #142747; color: #edf3ff; }
 html[data-theme='dark'] .storefront-copy h1 em { color: #9db5ff; }

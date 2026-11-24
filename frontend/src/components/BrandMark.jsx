@@ -1,6 +1,6 @@
 export default function BrandMark({ className = '' }) {
   return <svg className={`brand-mark ${className}`} viewBox="0 0 64 64" fill="none" aria-hidden="true">
     <rect width="64" height="64" rx="15" fill="currentColor" />
-    <path d="M13 46V18L30 46V18M52 19H43C33 19 33 31 43 31H44C54 31 54 45 44 45H35" stroke="white" strokeWidth="6" strokeLinejoin="round" />
+    <path d="M36.1 12.4H52.6V20.7H40Q38.4 20.7 38.4 22.3Q38.4 22.9 39.3 23.4L50.3 29.4Q55.8 33.2 55.8 39.3Q55.8 46.1 49.8 50.6H34.3L17.4 28.9V51.1H9.6L9.1 20.2Q9.1 14.7 13.3 13.4Q17.4 12.8 19.7 16L37.9 41.8H45.8Q47.5 41.8 47.5 40Q47.5 38.3 46.6 37.2L35.2 31.5Q30.2 28.7 30.2 22.1Q30.2 15.3 36.1 12.4Z" fill="white" />
   </svg>;
 }
