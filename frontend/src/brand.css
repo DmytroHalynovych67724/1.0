@@ -1,0 +1,57 @@
+/* Shared NaShary NS identity. Brand accents are blue in both themes. */
+:root { --brand-solid: #335cff; --brand: #335cff; --brand-hover: #2448d8; --brand-soft: #eef3ff; --brand-navy: #14213d; }
+html[data-theme='dark'] { --paper: #111c30; --canvas: #091221; --canvas-2: #1b2b45; --ink: #edf3ff; --muted: #aab8d0; --line: #293c59; --brand: #8aa6ff; --brand-hover: #2448d8; --brand-soft: #192c50; }
+.brand-logo { display: inline-flex; align-items: center; gap: 9px; color: var(--ink); text-decoration: none; }
+.brand-mark { width: 42px; height: 42px; flex: 0 0 auto; color: var(--brand-solid); }
+.brand-wordmark { font-size: 25px; font-weight: 800; letter-spacing: -.055em; line-height: 1; }
+.brand-logo--compact .brand-mark { width: 34px; height: 34px; }
+.brand-logo--compact .brand-wordmark { font-size: 22px; }
+.primary-button, .category-menu > summary, .storefront-copy .primary-button { background: var(--brand-solid); color: #fff; }
+.primary-button:hover, .storefront-copy .primary-button:hover { background: var(--brand-hover); }
+.primary-button:disabled { opacity: .48; cursor: not-allowed; }
+.app-nav .nav-sell { color: var(--brand); }
+.app-header__main { gap: 24px; }
+.storefront-main { background: #eef3ff; color: #14213d; }
+.storefront-copy h1 em { color: #335cff; }
+.storefront-copy p { color: #52627d; }
+.storefront-art .orbit { border-color: #c4d2ed; }
+.promo-used { background: #14213d; color: #fff; }
+.promo-trade { background: #dfeaff; color: #14213d; }
+.market-stamp .brand-mark { width: 24px; height: 24px; }
+.store-section-lead { margin: 10px 0 0; max-width: 660px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.storefront-products--used { padding: 28px; border: 1px solid var(--line); border-radius: 24px; background: var(--brand-soft); }
+.catalog-section-switch { display: flex; gap: 8px; padding-bottom: 22px; }
+.catalog-section-switch a { padding: 12px 20px; border: 1px solid var(--line); border-radius: 12px; font-size: 13px; font-weight: 700; background: var(--paper); color: var(--muted); }
+.catalog-section-switch a.is-active { background: var(--brand-solid); color: #fff; border-color: var(--brand-solid); }
+.catalog-heading .catalog-section-lead { margin: 12px 0; font-size: 14px; max-width: 660px; color: var(--muted); line-height: 1.7; }
+.catalog-condition-note { display: flex; flex-direction: column; gap: 5px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.catalog-condition-note b { font-size: 13px; color: var(--brand); }
+.catalog-condition-note span { font-size: 12px; color: var(--muted); }
+.catalog-source-note { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--brand-soft); margin-block: 18px; }
+.catalog-source-note p { margin: 0; font-size: 13px; line-height: 1.6; }
+.catalog-source-note button { flex-shrink: 0; }
+.assistant-toggle { position: relative; background: var(--brand-solid); color: #fff; transform: none; }
+.assistant-toggle .brand-mark { width: 38px; height: 38px; }
+.assistant-toggle b { position: absolute; right: 4px; top: 3px; width: 17px; height: 17px; border-radius: 50%; background: #fff; color: #335cff; font-size: 12px; display: grid; place-items: center; }
+.assistant-avatar { background: transparent; padding: 0; }
+.assistant-avatar .brand-mark { width: 26px; height: 26px; }
+.auth-react__aside > .brand-mark { width: 110px; height: 110px; margin-bottom: 16px; }
+.auth-react__aside > .brand-mark { color: #fff; }
+.auth-react__aside > .brand-mark path { stroke: #335cff; }
+.auth-react__aside > b { font-size: 46px; }
+html[data-theme='dark'] .storefront-main { background: #142747; color: #edf3ff; }
+html[data-theme='dark'] .storefront-copy h1 em { color: #9db5ff; }
+html[data-theme='dark'] .storefront-copy p, html[data-theme='dark'] .market-stamp span { color: #b8c8e2; }
+html[data-theme='dark'] .storefront-art .orbit { border-color: #2d466e; }
+html[data-theme='dark'] .app-header { background: #091221f5; }
+html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
+@media (max-width: 760px) {
+  .brand-mark { width: 34px; height: 34px; }
+  .brand-wordmark { font-size: 22px; }
+  .storefront-products--used { padding: 18px 12px; }
+}
+@media (max-width: 480px) {
+  .catalog-section-switch a { flex: 1; padding: 12px 10px; text-align: center; font-size: 12px; }
+  .catalog-source-note { align-items: flex-start; flex-direction: column; }
+  .app-header__main { column-gap: 10px; }
+}

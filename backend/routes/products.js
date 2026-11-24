@@ -168,7 +168,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const product = await getProduct(req.params.id);
     if (!isPublicProduct(product)) throw new AppError(404, 'PRODUCT_NOT_FOUND', 'Product not found');
-    const candidates = await listProducts({ region: product.region, category: product.category });
+    const candidates = await listProducts({ region: product.region, category: product.category, condition: product.condition });
     res.json(
       candidates
         .filter((item) => item.id !== product.id)

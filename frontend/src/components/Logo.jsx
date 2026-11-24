@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import BrandMark from './BrandMark';
 
 export default function Logo({ compact = false }) {
   return (
@@ -7,10 +8,8 @@ export default function Logo({ compact = false }) {
       to="/"
       aria-label="NaShary"
     >
-      <span className="brand-logo__frame">
-        <span>Na</span>
-        <b>Shary</b>
-      </span>
+      <BrandMark />
+      <span className="brand-wordmark">NaShary</span>
     </Link>
   );
 }

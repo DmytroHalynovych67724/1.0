@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
+import BrandMark from '../components/BrandMark';
 import { api } from '../api';
 import { useStore } from '../store';
 import { accountCopy } from '../accountCopy';
@@ -163,8 +164,8 @@ export default function Auth() {
         <Link to="/">← {c.back}</Link>
       </div>
       <div className="auth-react__aside">
-        <span>Na</span>
-        <b>shary</b>
+        <BrandMark />
+        <b>NaShary</b>
         <p>{c.tagline}</p>
       </div>
     </div>

@@ -5,6 +5,8 @@ import { useStore } from '../store';
 import ProductCard from '../components/ProductCard';
 import { ownsListing, canBuyListing, ownerCopy } from '../listingPolicy.mjs';
 import '../productDetails.css';
+import { sectionCopy, sectionPath } from '../catalogSections.mjs';
+import { categoryLabel } from '../catalogTaxonomy';
 
 const words = {
   pl: {
@@ -208,9 +210,9 @@ function ProductDetails({ id }) {
   return (
     <div className="product-page-react">
       <div className="shell breadcrumbs">
-        <Link to="/catalog">{t('catalog')}</Link>
+        <Link to={sectionPath(product.condition)}>{(sectionCopy[language] || sectionCopy.pl)[product.condition === 'used' ? 'used' : 'new']}</Link>
         <span>/</span>
-        <span>{product.category}</span>
+        <Link to={`${sectionPath(product.condition)}?category=${encodeURIComponent(product.category)}`}>{categoryLabel(product.category, language) || product.category}</Link>
       </div>
       <nav className="shell listing-section-nav" aria-label={product.title}><a href="#listing-overview">{tabs[0]}</a><a href="#listing-specs">{tabs[1]}</a><a href="#listing-reviews">{tabs[2]} ({sellerReviews.count})</a></nav>
       <div className="shell product-react-grid" id="listing-overview">
@@ -232,7 +234,7 @@ function ProductDetails({ id }) {
         </section>
         <aside className="buy-panel">
           <span className="product-kicker">
-            {product.category} · {product.location}
+            {categoryLabel(product.category, language) || product.category} · {product.location}
           </span>
           <h1>{product.title}</h1>
           <div className="listing-status-row"><span className={canBuyListing(null, product) ? 'is-available' : ''}>{product.stock > 0 ? (detailValues.status[product.status]?.[language] || c.available) : detailValues.status.sold[language]}</span><span>{t(product.condition === 'new' ? 'new' : 'used')}</span>{product.isDemo && <span>DEMO</span>}</div>

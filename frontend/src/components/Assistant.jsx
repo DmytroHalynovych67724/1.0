@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
+import BrandMark from './BrandMark';
 
 const copy = {
   pl: {
@@ -114,7 +115,7 @@ export default function Assistant() {
   return (
     <div className={`assistant${open ? ' is-open' : ''}`}>
       <button className="assistant-toggle" type="button" onClick={() => setOpen((value) => !value)} aria-label={c.title} aria-expanded={open} aria-controls="nashary-assistant">
-        <span>Na</span><b>?</b>
+        <BrandMark /><b>?</b>
       </button>
       {open && (
         <section className="assistant-panel" id="nashary-assistant" role="dialog" aria-label={c.title}>
@@ -127,12 +128,12 @@ export default function Assistant() {
           </header>
 
           <div className="assistant-messages-react" ref={messagesRef} aria-live="polite">
-            <div className="assistant-bubble assistant-bubble--assistant"><span className="assistant-avatar">Na</span><p>{c.welcome}</p></div>
+            <div className="assistant-bubble assistant-bubble--assistant"><span className="assistant-avatar"><BrandMark /></span><p>{c.welcome}</p></div>
             {messages.map((message) => message.role === 'user' ? (
               <div className="assistant-bubble assistant-bubble--user" key={message.id}><p>{message.text}</p></div>
             ) : (
               <div className="assistant-bubble assistant-bubble--assistant" key={message.id}>
-                <span className="assistant-avatar">Na</span>
+                <span className="assistant-avatar"><BrandMark /></span>
                 <div className="assistant-answer">
                   <p>{message.reply}</p>
                   {message.results?.length > 0 && <div className="assistant-products">{message.results.map((product) => <AssistantProduct product={product} language={language} formatPrice={formatPrice} close={() => setOpen(false)} key={product.id} />)}</div>}
@@ -140,7 +141,7 @@ export default function Assistant() {
                 </div>
               </div>
             ))}
-            {busy && <div className="assistant-bubble assistant-bubble--assistant"><span className="assistant-avatar">Na</span><span className="assistant-typing"><i /><i /><i /></span></div>}
+            {busy && <div className="assistant-bubble assistant-bubble--assistant"><span className="assistant-avatar"><BrandMark /></span><span className="assistant-typing"><i /><i /><i /></span></div>}
           </div>
 
           <div className="assistant-quick-react">{c.quick.map((item) => <button type="button" onClick={() => runSearch(item)} disabled={busy} key={item}>{item}</button>)}</div>

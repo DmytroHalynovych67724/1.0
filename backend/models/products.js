@@ -80,10 +80,12 @@ async function listProducts(filters = {}) {
   }
 
   if (filters.q) {
-    where.push(
-      '(LOWER(title) LIKE @q OR LOWER(description) LIKE @q OR LOWER(brand) LIKE @q OR LOWER(location) LIKE @q)'
-    );
-    params.q = `%${filters.q.toLowerCase()}%`;
+    // Match each term across the title, model and actual configuration, in any order.
+    const terms = filters.q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    terms.forEach((term, index) => {
+      where.push(`LOWER(COALESCE(p.title, '') || ' ' || COALESCE(p.description, '') || ' ' || COALESCE(p.brand, '') || ' ' || COALESCE(p.model, '') || ' ' || COALESCE(p.location, '') || ' ' || COALESCE(p.specs, '')) LIKE @q${index} ESCAPE '\\'`);
+      params[`q${index}`] = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
+    });
   }
   if (filters.category) {
     where.push('category = @category COLLATE NOCASE');

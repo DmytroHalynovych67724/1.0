@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import Logo from './Logo';
 import ComparePanel from './ComparePanel';
 import CategoryMenu from './CategoryMenu';
 import { useStore } from '../store';
 import { languages } from '../i18n';
+import { sectionCopy } from '../catalogSections.mjs';
 
 function Icon({ name }) {
   const paths = {
@@ -60,6 +61,9 @@ export default function Header() {
   const [compareOpen, setCompareOpen] = useState(false);
   const localeRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const sc = sectionCopy[language] || sectionCopy.pl;
+  const searchPath = location.pathname === '/marketplace' ? '/marketplace' : '/catalog';
   useEffect(() => {
     const close = (event) => {
       if (!localeRef.current?.contains(event.target)) setLocaleOpen(false);
@@ -70,11 +74,12 @@ export default function Header() {
   const search = (event) => {
     event.preventDefault();
     setMenuOpen(false);
-    navigate(`/catalog${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
+    navigate(`${searchPath}${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ''}`);
   };
   const links = [
     ['/', t('home')],
-    ['/catalog', t('catalog')],
+    ['/catalog', sc.new],
+    ['/marketplace', sc.used],
     ['/games', t('games')],
     ['/trade-in', 'Trade-In'],
     ['/guides', language === 'pl' ? 'Poradnik' : language === 'uk' ? 'Порадник' : 'Guides'],

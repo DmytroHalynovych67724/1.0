@@ -5,6 +5,7 @@ import { StoreProvider } from './store';
 import './styles.css';
 import './storefront.css';
 import './accounts.css';
+import './brand.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

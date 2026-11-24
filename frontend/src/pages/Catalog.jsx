@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, catalogPreview } from '../api';
 import ComparePanel from '../components/ComparePanel';
 import ProductCard from '../components/ProductCard';
 import QuickView from '../components/QuickView';
 import { useStore } from '../store';
 import { categoryLabel } from '../catalogTaxonomy';
+import { sectionCopy, sectionPath, sectionQuery, legacySectionRedirect } from '../catalogSections.mjs';
 
 const categories = [
   ['', { pl: 'Wszystkie', uk: 'Усі', en: 'All' }],
@@ -232,14 +233,24 @@ function FilterValues({ values, counts, selected, onSelect, more }) {
   );
 }
 
-export default function Catalog({ favoritesOnly = false }) {
+export default function Catalog({ favoritesOnly = false, section = 'new' }) {
+  const [params] = useSearchParams();
+  const redirect = !favoritesOnly && section === 'new' && legacySectionRedirect(params.toString());
+  if (redirect) return <Navigate to={redirect} replace />;
+  return <CatalogContent key={`${section}-${favoritesOnly}`} favoritesOnly={favoritesOnly} section={favoritesOnly ? null : section} />;
+}
+
+function CatalogContent({ favoritesOnly, section }) {
   const { t, region, regions, language, comparison, favorites, user, flash } = useStore();
   const navigate = useNavigate();
   const c = copy[language] || copy.pl;
+  const sc = sectionCopy[language] || sectionCopy.pl;
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [sourceProducts, setSourceProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [source, setSource] = useState('live');
+  const [attempt, setAttempt] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [quickView, setQuickView] = useState(null);
@@ -250,13 +261,12 @@ export default function Catalog({ favoritesOnly = false }) {
   const signature = params.toString();
   const query = params.get('q') || '';
   const category = params.get('category') || '';
-  const condition = params.get('condition') || '';
+  const condition = section || params.get('condition') || '';
   const sort = params.get('sort') || 'newest';
   const specKeys = categorySpecs[category] || [];
 
   useEffect(() => {
-    const search = new URLSearchParams(favoritesOnly ? '' : signature);
-    search.set('region', region);
+    const search = sectionQuery(favoritesOnly ? '' : signature, section, region);
     if (!favoritesOnly && sort === 'price-asc') search.set('sort', 'price_asc');
     else if (!favoritesOnly && sort === 'price-desc') search.set('sort', 'price_desc');
     const path = `/products?${search}`;
@@ -272,6 +282,7 @@ export default function Catalog({ favoritesOnly = false }) {
           previewLoaded = true;
           setProducts(items);
           setLoading(false);
+          setSource('preview');
         })
         .catch(() => {});
     }, 900);
@@ -280,33 +291,35 @@ export default function Catalog({ favoritesOnly = false }) {
       if (cached) {
         setProducts(cached);
         setLoading(false);
+        setSource('cached');
       } else {
         setLoading(true);
+        setSource('live');
       }
     });
     api(path)
       .then((items) => {
         if (cancelled) return;
         liveFinished = true;
+        setSource('live');
         setProducts(items);
         writeCatalogCache(cacheKey, items);
       })
-      .catch(() => { if (!cancelled && !cached && !previewLoaded) setProducts([]); })
+      .catch(() => { if (!cancelled) { if (!cached && !previewLoaded) { setProducts([]); setSource('error'); } else setSource('preview'); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => {
       cancelled = true;
       if (previewTimer) window.clearTimeout(previewTimer);
     };
-  }, [favoritesOnly, region, signature, sort]);
+  }, [favoritesOnly, region, signature, sort, section, attempt]);
 
   useEffect(() => {
     if (favoritesOnly) {
       queueMicrotask(() => setSourceProducts([]));
       return undefined;
     }
-    const search = new URLSearchParams(signature);
-    search.set('region', region);
-    ['sort', 'brand', 'model', 'condition', 'grade', ...Object.keys(labels)].forEach((key) => search.delete(key));
+    const search = sectionQuery(signature, section, region);
+    ['sort', 'brand', 'model', 'grade', ...Object.keys(labels)].forEach((key) => search.delete(key));
     const path = `/products?${search}`;
     const cacheKey = `nashary:catalog-source:${path}`;
     const cached = readCatalogCache(cacheKey);
@@ -336,7 +349,7 @@ export default function Catalog({ favoritesOnly = false }) {
       cancelled = true;
       if (previewTimer) window.clearTimeout(previewTimer);
     };
-  }, [favoritesOnly, signature, region]);
+  }, [favoritesOnly, signature, region, section, attempt]);
 
   const set = (key, value) => {
     const next = new URLSearchParams(params);
@@ -373,10 +386,10 @@ export default function Catalog({ favoritesOnly = false }) {
   const modelCounts = useMemo(() => countsFor(sourceProducts.filter((item) => !params.get('brand') || item.brand === params.get('brand')), (product) => product.model), [sourceProducts, params]);
   const models = Object.keys(modelCounts).sort((a, b) => modelCounts[b] - modelCounts[a]).slice(0, 12);
   const cities = unique('location', sourceProducts.map((item) => item.location));
-  const active = [...params.entries()].filter(([key]) => !['q', 'sort'].includes(key));
+  const active = [...params.entries()].filter(([key]) => !['q', 'sort', 'condition'].includes(key));
   const title = useMemo(
-    () => (favoritesOnly ? c.favorites : query ? `“${query}”` : categoryLabel(category, language) || t('catalog')),
-    [favoritesOnly, c.favorites, query, category, language, t]
+    () => (favoritesOnly ? c.favorites : query ? `“${query}”` : categoryLabel(category, language) || sc[section]),
+    [favoritesOnly, c.favorites, query, category, language, sc, section]
   );
   const visibleProducts = useMemo(
     () => (favoritesOnly ? products.filter((product) => favorites.includes(product.id)) : products),
@@ -396,23 +409,29 @@ export default function Catalog({ favoritesOnly = false }) {
     return key;
   };
   const saveSearch = async () => {
-    if (!user) return navigate('/auth', { state: { from: `/catalog?${signature}` } });
-    const queryData = Object.fromEntries([...params.entries()].filter(([key]) => key !== 'sort'));
-    await api('/marketplace/searches', { method: 'POST', body: JSON.stringify({ name: title, region, query: queryData }) });
-    flash(c.savedSearch);
+    if (!user) return navigate('/auth', { state: { from: `${sectionPath(section)}?${signature}` } });
+    const queryData = Object.fromEntries([...sectionQuery(signature, section, region).entries()].filter(([key]) => key !== 'sort'));
+    try {
+      await api('/marketplace/searches', { method: 'POST', body: JSON.stringify({ name: title, region, query: queryData }) });
+      flash(c.savedSearch);
+    } catch (error) { flash(error.message); }
   };
 
   return (
     <div className={`catalog-page${favoritesOnly ? ' catalog-page--favorites' : ''}`}>
       <div className="shell page-heading catalog-heading">
-        <span className="section-label">NaShary market</span>
+        <span className="section-label">NaShary · {favoritesOnly ? c.favorites : sc[section]}</span>
         <h1>{title}</h1>
+        {!favoritesOnly && <p className="catalog-section-lead">{section === 'used' ? sc.usedLead : sc.newLead}</p>}
         <p>{loading ? '…' : `${visibleProducts.length} ${t('results')}`}</p>
         <div className="region-chip">
           <span>{region.toUpperCase()}</span>
           {c.only} {regions[region].label[language]}
         </div>
       </div>
+
+      {!favoritesOnly && <nav className="shell catalog-section-switch" aria-label={t('catalog')}><Link className={section === 'new' ? 'is-active' : ''} aria-current={section === 'new' ? 'page' : undefined} to="/catalog">{sc.new}</Link><Link className={section === 'used' ? 'is-active' : ''} aria-current={section === 'used' ? 'page' : undefined} to="/marketplace">{sc.used}</Link></nav>}
+      {source !== 'live' && <div className="shell catalog-source-note" role="status"><p>{source === 'error' ? sc.error : sc.preview}</p><button className="quiet-button" type="button" onClick={() => setAttempt((n) => n + 1)}>{sc.retry}</button></div>}
 
       {!favoritesOnly && <div className="shell catalog-promo-strip"><span>{region.toUpperCase()}</span><p>{c.promo}</p><button type="button" onClick={() => navigate('/games')}>{c.play}</button></div>}
 
@@ -491,23 +510,9 @@ export default function Catalog({ favoritesOnly = false }) {
             </label>
           </FilterSection>
 
-          <FilterSection title={t('condition')}>
-            <div className="filter-option-list filter-option-list--two">
-              {['new', 'used'].map((value) => (
-                <button
-                  className={condition === value ? 'is-active' : ''}
-                  type="button"
-                  key={value}
-                  onClick={() => set('condition', condition === value ? '' : value)}
-                >
-                  <span>{t(value)}</span>
-                  <small>{conditionCounts[value] || 0}</small>
-                </button>
-              ))}
-            </div>
-          </FilterSection>
+          <div className="catalog-condition-note"><b>{sc[section]}</b><span>{conditionCounts[condition] || 0} {t('results')}</span></div>
 
-          {category === 'Smartfony' && <FilterSection title={c.grade}>
+          {condition === 'used' && category === 'Smartfony' && <FilterSection title={c.grade}>
             <div className="filter-option-list">
               {[
                 ['N', { pl: 'A+ · jak nowy', uk: 'A+ · як новий', en: 'A+ · like new' }],

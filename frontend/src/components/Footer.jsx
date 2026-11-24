@@ -56,7 +56,7 @@ export default function Footer() {
       <div className="footer-main">
         <div className="shell footer-grid">
           <div className="footer-brand"><Logo compact /><p>{language === 'pl' ? 'Nowa i używana elektronika w jednym spokojnym miejscu.' : language === 'uk' ? 'Нова та вживана електроніка в одному зручному місці.' : 'New and pre-owned electronics in one calm place.'}</p><span>PL · UA · EU</span></div>
-          <div><b>{c.market}</b><Link to="/catalog?condition=new">{c.newItems}</Link><Link to="/catalog?condition=used">{c.usedItems}</Link><Link to="/sell">{c.sell}</Link><Link to="/trade-in">Trade‑In</Link><Link to="/games">NaShary Play</Link></div>
+          <div><b>{c.market}</b><Link to="/catalog">{c.newItems}</Link><Link to="/marketplace">{c.usedItems}</Link><Link to="/sell">{c.sell}</Link><Link to="/trade-in">Trade‑In</Link><Link to="/games">NaShary Play</Link></div>
           <div><b>{c.help}</b><Link to="/guides">{c.safe}</Link><Link to="/guides">{c.delivery}</Link><Link to="/guides">{c.rules}</Link><Link to="/guides">FAQ</Link></div>
           <div><b>{c.account}</b><Link to="/account">{t('profile')}</Link><Link to="/account?tab=messages">{t('messages')}</Link><Link to="/cart">{t('cart')}</Link><span className="footer-contact">hello@nashary.market<br />Warszawa · Kyiv · Europe</span></div>
         </div>

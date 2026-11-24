@@ -150,6 +150,23 @@ test.after(async () => {
   fs.rmSync(tempDirectory, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
 });
 
+test('new and used catalogs stay separate and search includes model and configuration terms', async () => {
+  const newProduct = await createProduct({ title: 'New audit device', model: 'AuditModel987', condition: 'new', specs: { storage: '512 GB' } });
+  const usedProduct = await createProduct({ title: 'Used audit device', model: 'AuditModel987', condition: 'used', specs: { storage: '512 GB' } });
+  for (const condition of ['new', 'used']) {
+    const result = await request(`/api/products?condition=${condition}&region=pl&q=512%20AuditModel987`);
+    assert.equal(result.response.status, 200);
+    assert.equal(result.body.length, 1);
+    assert.equal(result.body[0].id, condition === 'new' ? newProduct.id : usedProduct.id);
+    assert.ok(result.body.every((item) => item.condition === condition));
+    const related = await request(`/api/products/${result.body[0].id}/related`);
+    assert.equal(related.response.status, 200);
+    assert.ok(related.body.every((item) => item.condition === condition));
+  }
+  const wildcard = await request('/api/products?q=AuditModel987%25');
+  assert.deepEqual(wildcard.body, []);
+});
+
 test('marketplace tools save searches, price watches, trade-ins, reviews and reports', async () => {
   const buyer = await registerAndLogin('market-tools');
   const product = await createProduct({
@@ -607,6 +624,19 @@ test('listing owners cannot buy, watch or open a chat with themselves, including
   assert.equal(chat.response.status, 201);
   const alert = await request('/api/marketplace/alerts', { method: 'POST', token: buyer.token, body: { productId: product.id, targetPrice: 2000 } });
   assert.equal(alert.response.status, 201);
+});
+
+test('cancelling an order restores stock exactly once even for simultaneous requests', async () => {
+  const product = await createProduct({ stock: 2 });
+  const buyer = await registerAndLogin('cancel-stock');
+  const ordered = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: product.id, qty: 2 }] } });
+  assert.equal(ordered.response.status, 201);
+  assert.equal((await request(`/api/products/${product.id}`)).body.stock, 0);
+  const cancelled = await Promise.all([1, 2].map(() => request(`/api/orders/${ordered.body.id}/status`, { method: 'PATCH', token: adminToken, body: { status: 'cancelled' } })));
+  assert.deepEqual(cancelled.map((item) => item.response.status).sort(), [200, 409]);
+  assert.equal((await request(`/api/products/${product.id}`)).body.stock, 2);
+  assert.equal((await request(`/api/orders/${ordered.body.id}/status`, { method: 'PATCH', token: adminToken, body: { status: 'cancelled' } })).response.status, 409);
+  assert.equal((await request(`/api/products/${product.id}`)).body.stock, 2);
 });
 
 test('orders calculate totals on the server and enforce ownership', async () => {
