@@ -2,6 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { api } from './api';
 import { languages, translate } from './i18n';
 import { ownsListing, canBuyListing, ownerCopy } from './listingPolicy.mjs';
+import { safeStorage, readJson as read, compactCart, compactProduct, compactProfile } from './browserStorage.mjs';
+
+safeStorage.repair();
 
 const StoreContext = createContext(null);
 const regions = {
@@ -10,38 +13,52 @@ const regions = {
   eu: { label: { pl: 'Europa', uk: 'Європа', en: 'Europe' }, currency: 'EUR' },
 };
 
-function read(key, fallback) {
-  try {
-    return JSON.parse(localStorage.getItem(key)) ?? fallback;
-  } catch {
-    return fallback;
-  }
+function readFavorites() {
+  const items = read('nashary-react-favorites', []);
+  return Array.isArray(items) ? items.filter((id) => typeof id === 'string') : [];
+}
+function readComparison() {
+  const items = read('nashary-react-comparison', []);
+  return Array.isArray(items) ? items.filter((p) => p && typeof p.id === 'string').slice(0, 4).map(compactProduct) : [];
 }
 
 export function StoreProvider({ children }) {
   const [language, setLanguageState] = useState(
-    () => localStorage.getItem('nashary-language') || 'pl'
+    () => (languages[safeStorage.getItem('nashary-language')] ? safeStorage.getItem('nashary-language') : 'pl')
   );
-  const [region, setRegionState] = useState(() => localStorage.getItem('nashary-region') || 'pl');
+  const [region, setRegionState] = useState(() => (regions[safeStorage.getItem('nashary-region')] ? safeStorage.getItem('nashary-region') : 'pl'));
   const [theme, setThemeState] = useState(
     () =>
-      localStorage.getItem('nashary-theme') ||
+      safeStorage.getItem('nashary-theme') ||
       (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   );
-  const [user, setUser] = useState(() => localStorage.getItem('nashary-token') ? read('nashary-user', null) : null);
-  const [cart, setCart] = useState(() => read('nashary-react-cart', []));
-  const [favorites, setFavorites] = useState(() => read('nashary-react-favorites', []));
-  const [comparison, setComparison] = useState(() => read('nashary-react-comparison', []));
+  const [user, setUser] = useState(() => safeStorage.getItem('nashary-token') ? read('nashary-user', null) : null);
+  const [cart, setCart] = useState(() => compactCart(read('nashary-react-cart', [])));
+  const [favorites, setFavorites] = useState(() => readFavorites());
+  const [comparison, setComparison] = useState(() => readComparison());
   const [notice, setNotice] = useState('');
+  const [initialProductIds] = useState(() => [...new Set([...cart.map((item) => item.id), ...comparison.map((item) => item.id)])]);
+  useEffect(() => {
+    let active = true;
+    Promise.all(initialProductIds.map((id) => api(`/products/${encodeURIComponent(id)}`).catch(() => null)))
+      .then((products) => {
+        if (!active) return;
+        const fresh = new Map(products.filter(Boolean).map((product) => [product.id, product]));
+        setCart((items) => items.map((item) => fresh.has(item.id) ? { ...item, product: fresh.get(item.id) } : item));
+        setComparison((items) => items.map((item) => fresh.get(item.id) || item));
+      });
+    return () => { active = false; };
+  }, [initialProductIds]);
+
 
   useEffect(() => {
-    localStorage.setItem('nashary-react-cart', JSON.stringify(cart));
+    safeStorage.setItem('nashary-react-cart', JSON.stringify(compactCart(cart)));
   }, [cart]);
   useEffect(() => {
-    localStorage.setItem('nashary-react-favorites', JSON.stringify(favorites));
+    safeStorage.setItem('nashary-react-favorites', JSON.stringify(favorites));
   }, [favorites]);
   useEffect(() => {
-    localStorage.setItem('nashary-react-comparison', JSON.stringify(comparison));
+    safeStorage.setItem('nashary-react-comparison', JSON.stringify(comparison.map(compactProduct)));
   }, [comparison]);
   useEffect(() => {
     // Start waking a free Render instance while the user is still browsing the landing page.
@@ -49,20 +66,20 @@ export function StoreProvider({ children }) {
   }, []);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem('nashary-theme', theme);
+    safeStorage.setItem('nashary-theme', theme);
   }, [theme]);
   useEffect(() => {
-    if (!localStorage.getItem('nashary-token')) return;
+    if (!safeStorage.getItem('nashary-token')) return;
     api('/auth/me')
       .then((profile) => {
         const currentUser = profile.user || profile;
         setUser(currentUser);
-        localStorage.setItem('nashary-user', JSON.stringify(currentUser));
+        safeStorage.setItem('nashary-user', JSON.stringify(compactProfile(currentUser)));
       })
       .catch((error) => {
         if (error.status !== 401 && error.status !== 403) return;
-        localStorage.removeItem('nashary-token');
-        localStorage.removeItem('nashary-user');
+        safeStorage.removeItem('nashary-token');
+        safeStorage.removeItem('nashary-user');
         setUser(null);
       });
   }, []);
@@ -78,27 +95,27 @@ export function StoreProvider({ children }) {
     window.__nasharyNotice = window.setTimeout(() => setNotice(''), 2800);
   }, []);
   const setLanguage = (value) => {
-    localStorage.setItem('nashary-language', value);
+    safeStorage.setItem('nashary-language', value);
     setLanguageState(value);
   };
   const setRegion = (value) => {
-    localStorage.setItem('nashary-region', value);
+    safeStorage.setItem('nashary-region', value);
     setRegionState(value);
     setCart([]);
   };
   const signIn = (token, profile) => {
-    localStorage.setItem('nashary-token', token);
-    localStorage.setItem('nashary-user', JSON.stringify(profile));
+    safeStorage.setItem('nashary-token', token);
+    safeStorage.setItem('nashary-user', JSON.stringify(compactProfile(profile)));
     setUser(profile);
   };
   const signOut = () => {
-    localStorage.removeItem('nashary-token');
-    localStorage.removeItem('nashary-user');
+    safeStorage.removeItem('nashary-token');
+    safeStorage.removeItem('nashary-user');
     setUser(null);
   };
   const setTheme = (value) => setThemeState(value === 'dark' ? 'dark' : 'light');
   const updateProfile = (profile) => {
-    localStorage.setItem('nashary-user', JSON.stringify(profile));
+    safeStorage.setItem('nashary-user', JSON.stringify(compactProfile(profile)));
     setUser(profile);
   };
   const addToCart = useCallback(

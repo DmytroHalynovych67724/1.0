@@ -9,6 +9,7 @@ import { sectionCopy, sectionPath } from '../catalogSections.mjs';
 import { categoryLabel } from '../catalogTaxonomy';
 import SupplySummary from '../components/SupplySummary';
 import { availabilityFor, supplyCopy } from '../supplyDetails.mjs';
+import { safeStorage, readJson, compactProduct } from '../browserStorage.mjs';
 
 const words = {
   pl: {
@@ -143,7 +144,9 @@ function ProductDetails({ id }) {
   }, [id]);
   useEffect(() => {
     if (!product) return;
-    const stored = (() => { try { return JSON.parse(localStorage.getItem('nashary-recent') || '[]'); } catch { return []; } })();
+    const rawStored = readJson('nashary-recent', []);
+    const stored = (Array.isArray(rawStored) ? rawStored : []).filter((item) => item && typeof item.id === 'string').slice(0, 8).map(compactProduct);
+    let active = true;
     Promise.all([
       api(`/products/${product.id}/related`).catch(() => []),
       product.sellerId
@@ -152,13 +155,14 @@ function ProductDetails({ id }) {
       user
         ? api(`/trust/products/${product.id}/review-eligibility`).catch(() => null)
         : Promise.resolve(null),
-    ]).then(([items, reviewData, eligibility]) => { setRelated(items); setSellerReviews(reviewData); setReviewEligibility(eligibility); setRecent(stored.filter((item) => item.id !== product.id).slice(0, 4)); });
-    localStorage.setItem('nashary-recent', JSON.stringify([product, ...stored.filter((item) => item.id !== product.id)].slice(0, 8)));
+      Promise.all(stored.filter((item) => item.id !== product.id).slice(0, 4).map((item) => api(`/products/${encodeURIComponent(item.id)}`).catch(() => null))),
+    ]).then(([items, reviewData, eligibility, recentItems]) => { if (!active) return; setRelated(items); setSellerReviews(reviewData); setReviewEligibility(eligibility); setRecent(recentItems.filter(Boolean)); });
+    safeStorage.setItem('nashary-recent', JSON.stringify([compactProduct(product), ...stored.filter((item) => item.id !== product.id)].slice(0, 8)));
     document.title = `${product.title} — NaShary`;
     const script = document.createElement('script'); script.type = 'application/ld+json'; script.dataset.nashary = 'product';
     script.text = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Product', name: product.title, image: product.images, description: product.description, offers: { '@type': 'Offer', price: product.price, priceCurrency: product.currency, availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' } });
     document.head.querySelector('script[data-nashary="product"]')?.remove(); document.head.appendChild(script);
-    return () => script.remove();
+    return () => { active = false; script.remove(); };
   }, [product, user]);
   const watchPrice = async () => {
     if (own) return flash(oc.text);

@@ -1,3 +1,5 @@
+import { safeStorage } from './browserStorage.mjs';
+
 export class ApiError extends Error {
   constructor(message, status, code, details = []) {
     super(message);
@@ -222,7 +224,7 @@ async function staticDemoApi(path, options) {
 export async function api(path, options = {}) {
   if (isStaticDemo) return staticDemoApi(path, options);
 
-  const token = localStorage.getItem('nashary-token');
+  const token = safeStorage.getItem('nashary-token');
   const headers = new Headers(options.headers || {});
   if (token) headers.set('authorization', `Bearer ${token}`);
   if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
@@ -230,8 +232,8 @@ export async function api(path, options = {}) {
   const payload = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 401 && token) {
-      localStorage.removeItem('nashary-token');
-      localStorage.removeItem('nashary-user');
+      safeStorage.removeItem('nashary-token');
+      safeStorage.removeItem('nashary-user');
       window.dispatchEvent(new CustomEvent('nashary:auth-expired'));
     }
     throw new ApiError(

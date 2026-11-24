@@ -1,9 +1,11 @@
+import { safeStorage, safeSessionStorage } from '../browserStorage.mjs';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, catalogPreview } from '../api';
 import ComparePanel from '../components/ComparePanel';
 import ProductCard from '../components/ProductCard';
 import QuickView from '../components/QuickView';
+import ManufacturerLogo from '../components/ManufacturerLogo';
 import { useStore } from '../store';
 import { categoryLabel } from '../catalogTaxonomy';
 import { sectionCopy, sectionPath, sectionQuery, legacySectionRedirect } from '../catalogSections.mjs';
@@ -166,7 +168,7 @@ function countsFor(items, selector) {
 
 function readCatalogCache(key) {
   try {
-    const cached = JSON.parse(sessionStorage.getItem(key + ':accounts-v2'));
+    const cached = JSON.parse(safeSessionStorage.getItem(key + ':accounts-v3'));
     if (!cached || !Array.isArray(cached.items) || Date.now() - cached.savedAt > 30_000) return null;
     return cached.items;
   } catch {
@@ -176,7 +178,8 @@ function readCatalogCache(key) {
 
 function writeCatalogCache(key, items) {
   try {
-    sessionStorage.setItem(key + ':accounts-v2', JSON.stringify({ savedAt: Date.now(), items }));
+    const snapshot = JSON.stringify({ savedAt: Date.now(), items });
+    if (snapshot.length < 200000) safeSessionStorage.setItem(key + ':accounts-v3', snapshot);
   } catch {
     // A full or disabled storage must never block the live catalogue.
   }
@@ -256,7 +259,7 @@ function CatalogContent({ favoritesOnly, section }) {
   const [quickView, setQuickView] = useState(null);
   const [visible, setVisible] = useState(12);
   const [view, setViewState] = useState(
-    () => localStorage.getItem('nashary-catalog-view') || 'grid'
+    () => safeStorage.getItem('nashary-catalog-view') || 'grid'
   );
   const signature = params.toString();
   const query = params.get('q') || '';
@@ -360,7 +363,7 @@ function CatalogContent({ favoritesOnly, section }) {
     setParams(next);
   };
   const setView = (value) => {
-    localStorage.setItem('nashary-catalog-view', value);
+    safeStorage.setItem('nashary-catalog-view', value);
     setViewState(value);
   };
   const reset = () => setParams(query ? { q: query } : {});
@@ -451,10 +454,11 @@ function CatalogContent({ favoritesOnly, section }) {
                     className={params.get('brand') === brand ? 'is-active' : ''}
                     type="button"
                     key={brand}
+                    aria-label={`${brand} (${brandCounts[brand]})`}
+                    aria-pressed={params.get('brand') === brand}
                     onClick={() => set('brand', params.get('brand') === brand ? '' : brand)}
                   >
-                    <span>{brand.slice(0, 2).toUpperCase()}</span>
-                    <b>{brand}</b>
+                    <ManufacturerLogo brand={brand} />
                     <small>{brandCounts[brand]}</small>
                   </button>
                 ))}

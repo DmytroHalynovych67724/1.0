@@ -4,6 +4,7 @@ import { api, imageUrl, catalogPreview } from '../api';
 import ProductCard from '../components/ProductCard';
 import QuickView from '../components/QuickView';
 import BrandMark from '../components/BrandMark';
+import ManufacturerLogo from '../components/ManufacturerLogo';
 import { useStore } from '../store';
 import { sectionCopy } from '../catalogSections.mjs';
 
@@ -68,7 +69,7 @@ function StorefrontContent() {
         {status === 'loading' ? <div role="status"><p>{c.loading}</p><div className="store-skeletons">{[0,1,2,3].map((i) => <div key={i} />)}</div></div> : status === 'error' ? <div className="store-empty" role="alert"><p>{sc.error}</p><button className="quiet-button" type="button" onClick={() => setAttempt((n) => n + 1)}>{sc.retry}</button></div> : items.length ? <div className="product-grid-react">{items.map((product) => <ProductCard key={product.id} product={product} onQuickView={setPreview} />)}</div> : <div className="store-empty"><p>{condition === 'new' ? sc.newEmpty : sc.usedEmpty}</p><Link className="quiet-button" to={condition === 'new' ? '/marketplace' : '/sell'}>{condition === 'new' ? sc.used : sc.sell} ↗</Link></div>}
       </section>;
     })}
-    <section className="shell storefront-brands"><h2>{c.brands}</h2><div>{['Apple', 'Samsung', 'Google', 'Sony', 'Lenovo', 'ASUS'].map((brand) => <Link key={brand} to={'/catalog?brand=' + encodeURIComponent(brand)}>{brand}<span aria-hidden="true">↗</span></Link>)}</div></section>
+    <section className="shell storefront-brands"><h2>{c.brands}</h2><div>{['Apple', 'Samsung', 'Google', 'Sony', 'Lenovo', 'ASUS'].map((brand) => <Link key={brand} aria-label={brand} to={'/catalog?brand=' + encodeURIComponent(brand)}><ManufacturerLogo brand={brand} /><span className="manufacturer-link-arrow" aria-hidden="true">↗</span></Link>)}</div></section>
     <section className="shell storefront-editorial"><div className="section-head"><h2>{c.guide}</h2></div><div className="editorial-grid"><Link to="/guides"><span className="section-label">NASHARY GUIDE</span><h3>{c.guideTitle}</h3><p>{c.guideLead}</p><b>{c.guideLink} ↗</b></Link><Link to="/games"><span className="section-label">PLAY & SAVE</span><h3>{c.games}</h3><p>{c.gamesLead}</p><b>{c.gamesLink} ↗</b></Link></div></section>
     {preview && <QuickView product={preview} onClose={() => setPreview(null)} />}
   </div>;
