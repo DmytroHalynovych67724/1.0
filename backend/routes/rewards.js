@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { quiz, quizChallenge, spin } = require('../models/rewards');
+const { spin } = require('../models/rewards');
+const { quizChallenge, answerQuestion } = require('../models/quiz');
 const { currentGame, startGame, move } = require('../models/tictactoe');
 const { asyncHandler, AppError } = require('../utils/errors');
 
@@ -17,24 +18,17 @@ router.post(
 router.get(
   '/quiz',
   asyncHandler(async (req, res) => {
-    res.json(await quizChallenge({ userId: req.user.id, language: req.query?.language }));
+    res.json(await quizChallenge({ userId: req.user.id, language: req.query?.language, region: req.query?.region }));
   })
 );
 
 router.post(
   '/quiz',
-  asyncHandler(async (req, res) => {
-    res.json(
-      await quiz({
-        userId: req.user.id,
-        region: req.body?.region,
-        answer: req.body?.answer,
-        answers: req.body?.answers,
-        questionId: req.body?.questionId,
-      })
-    );
-  })
+  (_req, _res, next) => next(new AppError(400, 'QUIZ_SESSION_REQUIRED', 'Fetch the quiz and submit each answer individually'))
 );
+router.post('/quiz/answer', asyncHandler(async (req, res) => {
+  res.json(await answerQuestion({ userId: req.user.id, sessionId: req.body?.sessionId, revision: req.body?.revision, questionId: req.body?.questionId, answer: req.body?.answer, language: req.body?.language }));
+}));
 
 router.post(
   '/tictactoe',

@@ -8,7 +8,6 @@ const { orderQuizOptions } = require('../utils/quizOptions');
 
 const DAY = 24 * 60 * 60 * 1000;
 const QUIZ_DAILY_TOTAL = 8;
-const QUIZ_REQUIRED_CORRECT = 7;
 
 function today() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw' }).format(new Date());
@@ -312,25 +311,6 @@ function dailyQuestions(userId) {
     .map(({ question }) => question);
 }
 
-async function quizChallenge({ userId, language = 'pl' }) {
-  const locale = ['pl', 'uk', 'en'].includes(language) ? language : 'pl';
-  const questions = dailyQuestions(userId).map((question) => localizedQuestion(question, locale, { userId, day: today() }));
-  const attempt = await getDB()
-    .prepare(
-      'SELECT won, rewardCode, createdAt FROM game_attempts WHERE userId = ? AND game = ? AND attemptDate = ?'
-    )
-    .get(userId, 'quiz', today());
-  return {
-    questions,
-    requiredCorrect: QUIZ_REQUIRED_CORRECT,
-    total: questions.length,
-    attempted: Boolean(attempt),
-    previousResult: attempt
-      ? { won: Boolean(attempt.won), rewardCode: attempt.rewardCode || null }
-      : null,
-  };
-}
-
 function maxDiscount(region, percent) {
   return rewardPolicy.capsCents[normalizeRegion(region)][String(percent)];
 }
@@ -423,35 +403,4 @@ async function spin({ userId, region }) {
   return play({ userId, region, game: 'spin', won: true, reward });
 }
 
-async function quiz({ userId, region, answers }) {
-  let correct = 0;
-  let total = 0;
-  if (Array.isArray(answers)) {
-    const expected = new Map(
-      dailyQuestions(userId).map((question) => [question.id, question.answer])
-    );
-    const unique = new Map();
-    answers.forEach((item) => {
-      if (item && expected.has(item.questionId))
-        unique.set(item.questionId, String(item.answer || '').toLowerCase());
-    });
-    total = expected.size;
-    correct = [...unique].filter(([id, value]) => expected.get(id) === value).length;
-  }
-  if (!Array.isArray(answers) || answers.length !== QUIZ_DAILY_TOTAL || new Set(answers.map((item) => item?.questionId)).size !== QUIZ_DAILY_TOTAL || total !== QUIZ_DAILY_TOTAL || answers.some((item) => !dailyQuestions(userId).some((question) => question.id === item?.questionId && question.options.some(([value]) => value === item?.answer)))) {
-    throw new AppError(400, 'INVALID_QUIZ_ANSWERS', 'Submit one valid answer for each daily question');
-  }
-  const requiredCorrect = QUIZ_REQUIRED_CORRECT;
-  const won = correct >= requiredCorrect;
-  const reward = rewardFor('quiz', { perfect: won && correct === total });
-  return play({
-    userId,
-    region,
-    game: 'quiz',
-    won,
-    reward,
-    result: { correct, total, requiredCorrect },
-  });
-}
-
-module.exports = { quiz, quizChallenge, spin, play, rewardFor };
+module.exports = { spin, play, rewardFor, dailyQuestions, localizedQuestion, today };

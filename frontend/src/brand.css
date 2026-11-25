@@ -211,3 +211,9 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
   .model-offers-section > header { flex-direction: column; align-items: flex-start; gap: .75rem; }
   .model-offers-section > header > p { margin: 0; }
 }
+.quiz-review { margin-top: 1.5rem; padding: 1.2rem; border: 1px solid var(--line); border-radius: 1rem; text-align: left; }
+.quiz-review summary { cursor: pointer; font-weight: 700; }
+.quiz-review ol { padding-left: 1.4rem; }
+.quiz-review li { padding: 1rem .25rem; border-bottom: 1px solid var(--line); line-height: 1.6; }
+.quiz-review li:last-child { border: 0; }
+.quiz-review p { font-size: .9rem; color: var(--muted); margin-block: .5rem; }

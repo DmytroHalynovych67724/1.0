@@ -23,6 +23,7 @@ const text = {
     won: 'Wygrana! Oto Twoja nagroda', lost: 'Bot wygrał. Możesz od razu zagrać ponownie.',
     draw: 'Remis. Spróbuj jeszcze raz.', copied: 'Kod skopiowany',
     used: 'Dzisiejsza nagroda z tej gry została już odebrana.', copyHint: 'kliknij kod, aby skopiować',
+    review: 'Sprawdź odpowiedzi', yourAnswer: 'Twoja odpowiedź', correctAnswer: 'Poprawna odpowiedź', quizUsed: 'Dzisiejsza próba została już zakończona.', tomorrow: 'Kolejna próba jutro.',
     loading: 'Ładuję pytania…', retry: 'Spróbuj ponownie',
     freeShipping: 'Darmowa dostawa', newDiscount: 'na nowy sprzęt ze sklepu', usedGift: 'prezent do używanego sprzętu',
     gifts: { care_kit: 'zestaw do czyszczenia', eco_pack: 'opakowanie ochronne', usb_c_cable: 'kabel USB‑C', device_inspection: 'bezpłatna kontrola urządzenia' },
@@ -38,6 +39,7 @@ const text = {
     won: 'Перемога! Ось твоя нагорода', lost: 'Бот переміг. Можна одразу зіграти ще раз.',
     draw: 'Нічия. Спробуй ще раз.', copied: 'Код скопійовано',
     used: 'Сьогоднішню нагороду з цієї гри вже отримано.', copyHint: 'натисни код, щоб скопіювати',
+    review: 'Переглянути відповіді', yourAnswer: 'Твоя відповідь', correctAnswer: 'Правильна відповідь', quizUsed: 'Сьогоднішню спробу вже завершено.', tomorrow: 'Наступна спроба завтра.',
     loading: 'Завантажую запитання…', retry: 'Спробувати знову',
     freeShipping: 'Безкоштовна доставка', newDiscount: 'на нову техніку від магазину', usedGift: 'подарунок до вживаної техніки',
     gifts: { care_kit: 'набір для чищення', eco_pack: 'захисне пакування', usb_c_cable: 'кабель USB‑C', device_inspection: 'безкоштовна перевірка пристрою' },
@@ -52,6 +54,7 @@ const text = {
     difficulty: 'Level: hard', yourTurn: 'Your turn', botTurn: 'Bot is thinking…', reset: 'New board',
     won: 'You won! Here is your reward', lost: 'The bot won. You can retry now.', draw: 'Draw. Try again.',
     copied: 'Code copied', used: 'Today’s reward from this game has already been claimed.', copyHint: 'click the code to copy',
+    review: 'Review your answers', yourAnswer: 'Your answer', correctAnswer: 'Correct answer', quizUsed: 'Today’s attempt has already been completed.', tomorrow: 'Next attempt tomorrow.',
     loading: 'Loading questions…', retry: 'Try again',
     freeShipping: 'Free delivery', newDiscount: 'on new store items', usedGift: 'gift with a pre-owned item',
     gifts: { care_kit: 'care kit', eco_pack: 'protective packaging', usb_c_cable: 'USB‑C cable', device_inspection: 'free device inspection' },
@@ -97,7 +100,6 @@ function GamesContent({ game }) {
   const [spinReward, setSpinReward] = useState(null);
   const [challenge, setChallenge] = useState(null);
   const [quizIndex, setQuizIndex] = useState(0);
-  const [quizAnswers, setQuizAnswers] = useState([]);
   const [quizResult, setQuizResult] = useState(null);
   const [quizBusy, setQuizBusy] = useState(false);
   const [quizLoading, setQuizLoading] = useState(game === 'quiz');
@@ -128,17 +130,20 @@ function GamesContent({ game }) {
     return () => { active = false; };
   }, [user, game, region, receiveGame]);
 
+  const receiveQuiz = useCallback((data) => {
+    setChallenge(data); setQuizIndex(data.revision || 0); setQuizError('');
+    setQuizResult(data.result || (data.attempted ? { won: false, used: true, correct: 0, total: data.total } : null));
+  }, []);
+
   useEffect(() => {
     if (!user || game !== 'quiz') return;
     let active = true;
-    api(`/rewards/quiz?language=${language}`).then((data) => {
+    api(`/rewards/quiz?language=${language}&region=${region}`).then((data) => {
       if (!active) return;
-      setChallenge(data); setQuizIndex(0); setQuizAnswers([]);
-      setQuizError('');
-      setQuizResult(data.attempted ? { won: false, used: true, correct: 0, total: data.total } : null);
+      receiveQuiz(data);
     }).catch((error) => { if (active) setQuizError(error.message); }).finally(() => { if (active) setQuizLoading(false); });
     return () => { active = false; };
-  }, [game, language, user, quizReload]);
+  }, [game, language, user, quizReload, region, receiveQuiz]);
 
   useEffect(() => { quizAnswerGate.current = false; }, [quizIndex, challenge]);
 
@@ -180,21 +185,14 @@ function GamesContent({ game }) {
   };
   const answerQuiz = async (answer) => {
     if (quizBusy || quizResult || quizAnswerGate.current || !challenge?.questions?.[quizIndex]) return;
-    quizAnswerGate.current = true;
+    quizAnswerGate.current = true; setQuizBusy(true);
     const question = challenge.questions[quizIndex];
-    const nextAnswers = [...quizAnswers, { questionId: question.id, answer }];
-    if (quizIndex < challenge.questions.length - 1) { setQuizAnswers(nextAnswers); setQuizIndex(quizIndex + 1); return; }
-    setQuizBusy(true);
     try {
-      setQuizResult(await api('/rewards/quiz', { method: 'POST', body: JSON.stringify({ answers: nextAnswers, region }) }));
+      receiveQuiz(await api('/rewards/quiz/answer', { method: 'POST', body: JSON.stringify({ sessionId: challenge.sessionId, revision: challenge.revision, questionId: question.id, answer, language }) }));
     } catch (error) {
-      if (error.code === 'DAILY_ATTEMPT_USED') {
-        setQuizResult({ won: false, used: true, correct: 0, total: challenge.total });
-      } else flash(error.message);
-    } finally {
-      quizAnswerGate.current = false;
-      setQuizBusy(false);
-    }
+      try { receiveQuiz(await api(`/rewards/quiz?language=${language}&region=${region}`)); }
+      catch { setQuizError(error.message); }
+    } finally { quizAnswerGate.current = false; setQuizBusy(false); }
   };
   const playCell = async (index) => {
     if (board[index] || gameState.winner || botTurn || tttGate.current) return;
@@ -247,12 +245,19 @@ function GamesContent({ game }) {
           <div className="game-number">02</div><h2>{c.quiz}</h2><p>{c.quizText}</p>
           {quizLoading && <div className="game-loading-state"><span className="assistant-typing"><i /><i /><i /></span><p>{c.loading}</p></div>}
           {!quizLoading && quizError && <div className="game-error-state"><p>{quizError}</p><button className="quiet-button" type="button" onClick={() => { setQuizLoading(true); setQuizError(''); setQuizReload((value) => value + 1); }}>{c.retry}</button></div>}
-          {currentQuestion && !quizResult && <div className="quiz">
+          {currentQuestion && !quizResult && !quizError && <div className="quiz">
+            <p className="sales-note">{language === 'uk' ? 'Нагорода для ринку' : language === 'en' ? 'Reward market' : 'Rynek nagrody'}: {challenge.region?.toUpperCase()}</p>
             <div className="quiz-progress"><span>{c.question} {quizIndex + 1} {c.of} {challenge.total}</span><i><b style={{ width: `${((quizIndex + 1) / challenge.total) * 100}%` }} /></i></div>
             <b>{currentQuestion.prompt}</b>
             {currentQuestion.options.map((option) => <button disabled={quizBusy} type="button" key={option.value} onClick={() => answerQuiz(option.value)}>{option.label}</button>)}
           </div>}
-          {quizResult && <div className={`quiz-result ${quizResult.won ? 'is-win' : ''}`}><strong>{quizResult.used ? c.used : `${c.score}: ${quizResult.correct}/${quizResult.total}`}</strong>{!quizResult.used && <span>{quizResult.won ? c.won : c.required}</span>}</div>}
+          {quizResult && <div className={`quiz-result ${quizResult.won ? 'is-win' : ''}`}><strong>{quizResult.used ? c.quizUsed : `${c.score}: ${quizResult.correct}/${quizResult.total}`}</strong>{!quizResult.used && <span>{quizResult.won ? c.won : `${c.required} ${c.tomorrow}`}</span>}</div>}
+          {quizResult?.review?.length > 0 && <details className="quiz-review"><summary>{c.review}</summary><ol>{quizResult.review.map((item) => {
+            const question = challenge.questions.find((entry) => entry.id === item.questionId);
+            if (!question) return null;
+            const label = (value) => question.options.find((option) => option.value === value)?.label || value;
+            return <li key={item.questionId}><b>{question.prompt}</b><p>{c.yourAnswer}: {label(item.selectedValue)} {item.selectedValue === item.correctValue ? '✓' : ''}</p>{item.selectedValue !== item.correctValue && <p>{c.correctAnswer}: {label(item.correctValue)}</p>}</li>;
+          })}</ol></details>}
           <Reward result={quizResult} copy={() => flash(c.copied)} hint={c.copyHint} c={c} />
         </section>}
         {game === 'tictactoe' && <section className="game-panel game-panel--ttt">

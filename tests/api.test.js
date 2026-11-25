@@ -86,6 +86,16 @@ async function registerAndLogin(prefix = 'buyer') {
   return { username, password, token: loggedIn.body.token, user: me.body.user };
 }
 
+async function submitQuiz(token, challenge, answers) {
+  let response;
+  for (const item of answers) {
+    response = await request('/api/rewards/quiz/answer', { method: 'POST', token, body: { sessionId: challenge.sessionId, revision: challenge.revision, ...item, language: 'en' } });
+    assert.equal(response.response.status, 200, JSON.stringify(response.body));
+    challenge = response.body;
+  }
+  return { ...response, body: response.body.result };
+}
+
 function productPayload(overrides = {}) {
   return {
     title: 'iPhone 15 128GB',
@@ -1202,11 +1212,7 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   const fullAnswers = dailyQuiz.body.questions.map((question) => ({ questionId: question.id, answer: correctAnswers[question.id] }));
   const incompleteQuiz = await request('/api/rewards/quiz', { method: 'POST', token: player.token, body: { region: 'pl', answers: fullAnswers.slice(0, 7) } });
   assert.equal(incompleteQuiz.response.status, 400);
-  const quiz = await request('/api/rewards/quiz', {
-    method: 'POST',
-    token: player.token,
-    body: { region: 'pl', answers: fullAnswers },
-  });
+  const quiz = await submitQuiz(player.token, dailyQuiz.body, fullAnswers);
   assert.equal(quiz.response.status, 200);
   assert.equal(quiz.body.percent, 10);
   assert.equal(quiz.body.maxDiscountCents, 30000);
@@ -1237,7 +1243,7 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   assert.match(localizedQuestion.body.questions[0].prompt, /[А-Яа-яІіЇїЄє]/);
   assert.equal(Array.isArray(localizedQuestion.body.questions[0].options), true);
   const sevenAnswers = localizedQuestion.body.questions.map((question, index) => ({ questionId: question.id, answer: index ? correctAnswers[question.id] : question.options.find((option) => option.value !== correctAnswers[question.id]).value }));
-  const sevenQuiz = await request('/api/rewards/quiz', { method: 'POST', token: intruder.token, body: { region: 'pl', answers: sevenAnswers } });
+  const sevenQuiz = await submitQuiz(intruder.token, localizedQuestion.body, sevenAnswers);
   assert.equal(sevenQuiz.response.status, 200);
   assert.equal(sevenQuiz.body.correct, 7);
   assert.equal(sevenQuiz.body.percent, 5);
@@ -1357,6 +1363,52 @@ test('full cancellation releases a promo once while partial cancellation keeps i
   const shippingAgain = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: shipping.body.rewardCode, checkout } });
   assert.equal(shippingAgain.response.status, 201);
   assert.equal(shippingAgain.body.shippingDiscount, shippingOrder.body.shippingDiscount);
+});
+
+test('quiz persists ordered answers, resumes across languages and ignores forged scores', async () => {
+  const player = await registerAndLogin('quiz-session');
+  const outsider = await registerAndLogin('quiz-session-outsider');
+  const challenge = await request('/api/rewards/quiz?language=uk&region=ua', { token: player.token });
+  assert.equal(challenge.response.status, 200);
+  assert.equal(challenge.body.region, 'ua');
+  const initial = challenge.body;
+  const first = initial.questions[0];
+  const second = initial.questions[1];
+  const correctAnswers = { storage: 'ssd', refresh: 'refresh', usb: 'usb-c', battery: 'cool', oled: 'oled', ram: 'active', ip68: 'water', nfc: 'nfc', wifi6: 'wireless', gpu: 'gpu', resolution: '4k', backup: 'backup', hdmi: 'hdmi', cores: 'units', 'used-phone': 'imei' };
+  const wrongFirst = first.options.find((option) => option.value !== correctAnswers[first.id]).value;
+  const answerBody = { sessionId: initial.sessionId, revision: 0, questionId: first.id, answer: wrongFirst, correct: 8, score: 100, won: true, region: 'eu' };
+  assert.equal((await request('/api/rewards/quiz/answer', { method: 'POST', token: outsider.token, body: answerBody })).response.status, 404);
+  assert.equal((await request('/api/rewards/quiz/answer', { method: 'POST', token: player.token, body: { ...answerBody, questionId: second.id } })).response.status, 400);
+  assert.equal((await request('/api/rewards/quiz/answer', { method: 'POST', token: player.token, body: { ...answerBody, answer: 'invalid' } })).response.status, 400);
+  const answered = await Promise.all([1, 2].map(() => request('/api/rewards/quiz/answer', { method: 'POST', token: player.token, body: answerBody })));
+  assert.deepEqual(answered.map(({ response }) => response.status).sort(), [200, 409]);
+  const resumed = await request('/api/rewards/quiz?language=en&region=pl', { token: player.token });
+  assert.equal(resumed.body.sessionId, initial.sessionId);
+  assert.equal(resumed.body.revision, 1);
+  assert.deepEqual(resumed.body.answers, [{ questionId: first.id, answer: wrongFirst }]);
+  assert.equal(resumed.body.region, 'ua');
+  assert.equal(resumed.body.result, null);
+  assert.deepEqual(resumed.body.questions.map((question) => question.options.map((option) => option.value)), initial.questions.map((question) => question.options.map((option) => option.value)));
+  assert.equal(resumed.body.questions.some((question) => 'answer' in question), false);
+  const remaining = resumed.body.questions.slice(1).map((question) => ({ questionId: question.id, answer: question.options.find((option) => option.value !== correctAnswers[question.id]).value }));
+  const completed = await submitQuiz(player.token, resumed.body, remaining);
+  assert.equal(completed.body.correct, 0);
+  assert.equal(completed.body.won, false);
+  assert.equal(completed.body.rewardCode, null);
+  assert.equal(completed.body.review.length, 8);
+  assert.equal(completed.body.review.every((item) => item.selectedValue !== item.correctValue), true);
+  const final = await request('/api/rewards/quiz?language=pl&region=eu', { token: player.token });
+  assert.equal(final.body.revision, 8);
+  assert.equal(final.body.attempted, true);
+  assert.deepEqual(final.body.result, completed.body);
+  assert.equal((await request('/api/rewards/quiz/answer', { method: 'POST', token: player.token, body: answerBody })).response.status, 409);
+  const expiring = await request('/api/rewards/quiz?region=pl', { token: outsider.token });
+  await database.getDB().prepare('UPDATE quiz_sessions SET expiresAt = ? WHERE userId = ?').run(Date.now() - 1, outsider.user.id);
+  assert.equal((await request('/api/rewards/quiz/answer', { method: 'POST', token: outsider.token, body: { ...answerBody, sessionId: expiring.body.sessionId } })).response.status, 410);
+  const renewed = await request('/api/rewards/quiz?region=pl', { token: outsider.token });
+  assert.notEqual(renewed.body.sessionId, expiring.body.sessionId);
+  assert.equal(renewed.body.revision, 0);
+  assert.equal((await database.getDB().prepare('SELECT COUNT(*) AS total FROM quiz_sessions WHERE userId = ?').get(outsider.user.id)).total, 1);
 });
 
 test('technical assistant exposes connection state and refuses unrelated requests', async () => {

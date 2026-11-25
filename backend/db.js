@@ -654,6 +654,19 @@ async function migrateTrust(database) {
 
 async function migrateRewards(database) {
   await database.exec(`
+    CREATE TABLE IF NOT EXISTS quiz_sessions (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      day TEXT NOT NULL,
+      region TEXT NOT NULL,
+      questionData TEXT NOT NULL,
+      answers TEXT NOT NULL DEFAULT '[]',
+      revision INTEGER NOT NULL DEFAULT 0,
+      result TEXT,
+      createdAt INTEGER NOT NULL,
+      expiresAt INTEGER NOT NULL,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS tictactoe_sessions (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL UNIQUE,
