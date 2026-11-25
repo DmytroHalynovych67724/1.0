@@ -1411,6 +1411,43 @@ test('quiz persists ordered answers, resumes across languages and ignores forged
   assert.equal((await database.getDB().prepare('SELECT COUNT(*) AS total FROM quiz_sessions WHERE userId = ?').get(outsider.user.id)).total, 1);
 });
 
+test('catalog pages filter before pagination and facets omit photos and descriptions', async () => {
+  const marker = `PAGER-${process.pid}-${sequence}`;
+  const ids = [];
+  for (let index = 0; index < 15; index += 1) {
+    const product = await createProduct({ title: `${marker} device ${index}`, brand: 'PagingBrand', price: 100 + index % 3, images: ['https://example.com/cover.jpg', 'https://example.com/detail.jpg'], description: 'Detailed listing text', specs: { storage: index < 10 ? '128 GB' : '64 GB', color: 'Black' } });
+    ids.push(product.id);
+    await database.getDB().prepare('UPDATE products SET createdAt = ? WHERE id = ?').run(123456789, product.id);
+  }
+  const draft = await createProduct({ title: `${marker} hidden draft`, status: 'draft' });
+  await createProduct({ title: `${marker} other market`, region: 'eu' });
+  const query = `/api/products?view=cards&region=pl&q=${marker}&sort=price_asc&limit=5`;
+  const pages = await Promise.all([0, 5, 10].map((offset) => request(`${query}&offset=${offset}`)));
+  for (const page of pages) { assert.equal(page.response.status, 200, JSON.stringify(page.body)); assert.equal(page.body.total, 15); assert.equal(page.body.items.length, 5); }
+  const allIds = pages.flatMap((page) => page.body.items.map((item) => item.id));
+  assert.equal(new Set(allIds).size, 15);
+  assert.deepEqual(new Set(allIds), new Set(ids));
+  assert.deepEqual((await request(query)).body.items.map((item) => item.id), pages[0].body.items.map((item) => item.id));
+  const card = pages[0].body.items[0];
+  assert.deepEqual(card.images, ['https://example.com/cover.jpg']);
+  assert.equal(card.description, '');
+  assert.equal(card.sellerAvatar, '');
+  const filtered = await request(`${query}&storage=128%20GB&offset=5`);
+  assert.equal(filtered.body.total, 10);
+  assert.equal(filtered.body.items.length, 5);
+  assert.equal(filtered.body.items.every((item) => item.specs.storage === '128 GB'), true);
+  const facets = await request(`/api/products?view=facets&region=pl&q=${marker}`);
+  assert.equal(facets.response.status, 200);
+  assert.equal(facets.body.length, 15);
+  assert.equal(facets.body.some((item) => 'images' in item || 'description' in item || 'sellerAvatar' in item), false);
+  assert.equal(facets.body.every((item) => item.brand === 'PagingBrand'), true);
+  const selected = await request(`/api/products?view=cards&region=pl&ids=${ids[0]},${draft.id}`);
+  assert.equal(selected.body.total, 1);
+  assert.equal(selected.body.items[0].id, ids[0]);
+  assert.equal((await request('/api/products?view=cards&ids=')).body.total, 0);
+  for (const invalid of ['view=cards&limit=0', 'view=cards&limit=49', 'view=cards&offset=-1', 'view=cards&limit=1&limit=2', 'view=other', 'limit=5', 'ids=bad%27id']) assert.equal((await request(`/api/products?${invalid}`)).response.status, 400);
+});
+
 test('technical assistant exposes connection state and refuses unrelated requests', async () => {
   const status = await request('/api/marketplace/assistant/status');
   assert.equal(status.body.configured,false);

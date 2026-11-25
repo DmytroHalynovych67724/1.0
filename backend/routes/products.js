@@ -36,6 +36,22 @@ function optionalPrice(query, field) {
 }
 
 function productFilters(query) {
+  const view = optionalQueryString(query, 'view', 12);
+  if (view && !['cards', 'facets'].includes(view)) throw new AppError(400, 'VALIDATION_ERROR', 'Invalid catalog view');
+  const integer = (field, fallback, max) => {
+    if (query[field] === undefined) return fallback;
+    if (typeof query[field] !== 'string' || !/^\d+$/.test(query[field]) || Number(query[field]) > max) throw new AppError(400, 'VALIDATION_ERROR', `Invalid ${field}`);
+    return Number(query[field]);
+  };
+  const limit = view === 'cards' ? integer('limit', 12, 48) : undefined;
+  const offset = view === 'cards' ? integer('offset', 0, 1_000_000) : undefined;
+  if (limit === 0 || (view !== 'cards' && (query.limit !== undefined || query.offset !== undefined))) throw new AppError(400, 'VALIDATION_ERROR', 'Pagination requires the cards view and a positive limit');
+  let ids;
+  if (query.ids !== undefined) {
+    const raw = optionalQueryString(query, 'ids', 8200) || '';
+    ids = raw ? [...new Set(raw.split(','))] : [];
+    if (ids.length > 100 || ids.some((id) => !/^[a-z0-9_-]{1,80}$/i.test(id))) throw new AppError(400, 'VALIDATION_ERROR', 'Use up to 100 valid product IDs');
+  }
   const condition = optionalQueryString(query, 'condition', 10);
   const sort = optionalQueryString(query, 'sort', 20) || 'newest';
   const minPrice = optionalPrice(query, 'minPrice');
@@ -119,6 +135,10 @@ function productFilters(query) {
   }
 
   return {
+    projection: view,
+    limit,
+    offset,
+    ids,
     q: optionalQueryString(query, 'q', 100) || optionalQueryString(query, 'search', 100),
     category: optionalQueryString(query, 'category', 60),
     condition,

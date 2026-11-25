@@ -1,6 +1,7 @@
+import { CATALOG_PAGE_SIZE, catalogPage, mergeCatalogItems } from '../catalogPaging.mjs';
 import { specLabels as labels } from '../specLabels.mjs';
 import { safeStorage, safeSessionStorage } from '../browserStorage.mjs';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, catalogPreview } from '../api';
 import ComparePanel from '../components/ComparePanel';
@@ -140,19 +141,19 @@ function countsFor(items, selector) {
   }, {});
 }
 
-function readCatalogCache(key) {
+function readCatalogCache(key, metadata = false) {
   try {
     const cached = JSON.parse(safeSessionStorage.getItem(key + ':accounts-v3'));
     if (!cached || !Array.isArray(cached.items) || Date.now() - cached.savedAt > 30_000) return null;
-    return cached.items;
+    return metadata ? cached : cached.items;
   } catch {
     return null;
   }
 }
 
-function writeCatalogCache(key, items) {
+function writeCatalogCache(key, items, total = items.length) {
   try {
-    const snapshot = JSON.stringify({ savedAt: Date.now(), items });
+    const snapshot = JSON.stringify({ savedAt: Date.now(), items, total });
     if (snapshot.length < 200000) safeSessionStorage.setItem(key + ':accounts-v3', snapshot);
   } catch {
     // A full or disabled storage must never block the live catalogue.
@@ -232,6 +233,13 @@ function CatalogContent({ favoritesOnly, section }) {
   const [compareOpen, setCompareOpen] = useState(false);
   const [quickView, setQuickView] = useState(null);
   const [visible, setVisible] = useState(12);
+  const [total, setTotal] = useState(0);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [moreBusy, setMoreBusy] = useState(false);
+  const [moreError, setMoreError] = useState('');
+  const requestVersion = useRef(0);
+  const moreGate = useRef(false);
+  const favoriteSignature = favoritesOnly ? [...new Set(favorites)].join(',') : '';
   const [view, setViewState] = useState(
     () => safeStorage.getItem('nashary-catalog-view') || 'grid'
   );
@@ -243,52 +251,73 @@ function CatalogContent({ favoritesOnly, section }) {
   const specKeys = categorySpecs[category] || [];
 
   useEffect(() => {
+    const version = ++requestVersion.current;
+    moreGate.current = false;
     const search = sectionQuery(favoritesOnly ? '' : signature, section, region);
     if (!favoritesOnly && sort === 'price-asc') search.set('sort', 'price_asc');
     else if (!favoritesOnly && sort === 'price-desc') search.set('sort', 'price_desc');
+    search.set('view', 'cards'); search.set('limit', String(CATALOG_PAGE_SIZE)); search.delete('offset');
+    if (favoritesOnly) search.set('ids', favoriteSignature);
     const path = `/products?${search}`;
     const cacheKey = `nashary:catalog:${path}`;
-    const cached = readCatalogCache(cacheKey);
+    const cached = readCatalogCache(cacheKey, true);
     let cancelled = false;
     let liveFinished = false;
     let previewLoaded = false;
+    const apply = (payload, origin) => {
+      if (cancelled || version !== requestVersion.current) return;
+      const page = catalogPage(payload);
+      setProducts(page.items); setTotal(page.total); setNextOffset(page.offset + page.items.length); setSource(origin);
+    };
     const previewTimer = cached ? null : window.setTimeout(() => {
-      catalogPreview(path)
-        .then((items) => {
-          if (cancelled || liveFinished) return;
-          previewLoaded = true;
-          setProducts(items);
-          setLoading(false);
-          setSource('preview');
-        })
-        .catch(() => {});
+      catalogPreview(path).then((items) => {
+        if (cancelled || liveFinished) return;
+        previewLoaded = true; apply(items, 'preview'); setLoading(false);
+      }).catch(() => {});
     }, 900);
     queueMicrotask(() => {
       if (cancelled) return;
-      if (cached) {
-        setProducts(cached);
-        setLoading(false);
-        setSource('cached');
-      } else {
-        setLoading(true);
-        setSource('live');
-      }
+      setVisible(CATALOG_PAGE_SIZE); setMoreBusy(false); setMoreError('');
+      if (cached) { apply({ ...cached, total: Number.isInteger(cached.total) ? cached.total : cached.items.length, offset: 0 }, 'cached'); setLoading(false); }
+      else { setLoading(true); setSource('live'); }
     });
-    api(path)
-      .then((items) => {
-        if (cancelled) return;
-        liveFinished = true;
-        setSource('live');
-        setProducts(items);
-        writeCatalogCache(cacheKey, items);
-      })
-      .catch(() => { if (!cancelled) { if (!cached && !previewLoaded) { setProducts([]); setSource('error'); } else setSource('preview'); } })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => {
-      cancelled = true;
-      if (previewTimer) window.clearTimeout(previewTimer);
+    const fetchItems = async () => {
+      if (!favoritesOnly) return api(path);
+      const ids = favoriteSignature ? favoriteSignature.split(',') : [];
+      const requests = [];
+      for (let index = 0; index < ids.length; index += 48) {
+        const batch = new URLSearchParams({ region, ids: ids.slice(index, index + 48).join(','), view: 'cards', limit: '48' });
+        requests.push(api(`/products?${batch}`).then((data) => catalogPage(data).items));
+      }
+      const results = await Promise.all(requests);
+      return results.reduce((all, items) => mergeCatalogItems(all, items), []);
     };
-  }, [favoritesOnly, region, signature, sort, section, attempt]);
+    fetchItems().then((payload) => {
+      if (cancelled) return;
+      liveFinished = true;
+      const page = catalogPage(payload); apply(page, 'live'); writeCatalogCache(cacheKey, page.items, page.total);
+    }).catch(() => {
+      if (!cancelled) { if (!cached && !previewLoaded) { setProducts([]); setTotal(0); setSource('error'); } else setSource('preview'); }
+    }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; if (previewTimer) window.clearTimeout(previewTimer); };
+  }, [favoritesOnly, favoriteSignature, region, signature, sort, section, attempt]);
+
+  const loadMore = async () => {
+    if (moreGate.current) return;
+    const version = requestVersion.current;
+    moreGate.current = true; setMoreBusy(true); setMoreError('');
+    const search = sectionQuery(signature, section, region);
+    if (sort === 'price-asc') search.set('sort', 'price_asc');
+    else if (sort === 'price-desc') search.set('sort', 'price_desc');
+    search.set('view', 'cards'); search.set('limit', String(CATALOG_PAGE_SIZE)); search.set('offset', String(nextOffset));
+    try {
+      const page = catalogPage(await api(`/products?${search}`));
+      if (version !== requestVersion.current) return;
+      setProducts((current) => mergeCatalogItems(current, page.items)); setTotal(page.total);
+      setNextOffset(page.items.length ? page.offset + page.items.length : page.total);
+    } catch { if (version === requestVersion.current) setMoreError(sc.error); }
+    finally { if (version === requestVersion.current) { moreGate.current = false; setMoreBusy(false); } }
+  };
 
   useEffect(() => {
     if (favoritesOnly) {
@@ -297,6 +326,7 @@ function CatalogContent({ favoritesOnly, section }) {
     }
     const search = sectionQuery(signature, section, region);
     ['sort', 'brand', 'model', 'grade', ...Object.keys(labels)].forEach((key) => search.delete(key));
+    search.set('view', 'facets'); search.delete('limit'); search.delete('offset');
     const path = `/products?${search}`;
     const cacheKey = `nashary:catalog-source:${path}`;
     const cached = readCatalogCache(cacheKey);
@@ -373,6 +403,9 @@ function CatalogContent({ favoritesOnly, section }) {
     [favoritesOnly, favorites, products]
   );
   const effectiveView = favoritesOnly ? 'grid' : view;
+  const paginated = !favoritesOnly && ['live', 'cached'].includes(source);
+  const resultCount = paginated ? total : visibleProducts.length;
+  const remaining = paginated ? Math.max(0, total - nextOffset) : Math.max(0, visibleProducts.length - visible);
   const activeName = (key) => {
     if (labels[key]) return labels[key][language] || labels[key].pl;
     if (key === 'category') return t('category');
@@ -400,7 +433,7 @@ function CatalogContent({ favoritesOnly, section }) {
         <span className="section-label">NaShary · {favoritesOnly ? c.favorites : sc[section]}</span>
         <h1>{title}</h1>
         {!favoritesOnly && <p className="catalog-section-lead">{section === 'used' ? sc.usedLead : sc.newLead}</p>}
-        <p>{loading ? '…' : `${visibleProducts.length} ${t('results')}`}</p>
+        <p>{loading ? '…' : `${resultCount} ${t('results')}`}</p>
         <div className="region-chip">
           <span>{region.toUpperCase()}</span>
           {c.only} {regions[region].label[language]}
@@ -648,7 +681,7 @@ function CatalogContent({ favoritesOnly, section }) {
             </div>
           ) : visibleProducts.length ? (
             <div className={`product-grid-react product-grid-react--${effectiveView}`} key={signature}>
-              {visibleProducts.slice(0, visible).map((product) => (
+              {(paginated ? visibleProducts : visibleProducts.slice(0, visible)).map((product) => (
                 <ProductCard key={product.id} product={product} view={effectiveView} onQuickView={setQuickView} />
               ))}
             </div>
@@ -660,7 +693,8 @@ function CatalogContent({ favoritesOnly, section }) {
               </button>
             </div>
           )}
-          {visibleProducts.length > visible && <button className="load-more-button" type="button" onClick={() => setVisible((value) => value + 12)}>{c.more}<span>{visibleProducts.length - visible}</span></button>}
+          {moreError && <p className="sales-error" role="alert">{moreError}</p>}
+          {!loading && remaining > 0 && <button className="load-more-button" type="button" disabled={moreBusy} aria-busy={moreBusy} onClick={() => paginated ? loadMore() : setVisible((value) => value + CATALOG_PAGE_SIZE)}>{moreBusy ? '…' : c.more}<span>{remaining}</span></button>}
         </section>
       </div>
 

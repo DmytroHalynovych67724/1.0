@@ -74,6 +74,16 @@ async function listProducts(filters = {}) {
   const db = getDB();
   const where = [];
   const params = {};
+  if (filters.ids) {
+    where.push(filters.ids.length ? `p.id IN (${filters.ids.map((_id, index) => `@id${index}`).join(',')})` : '0');
+    filters.ids.forEach((id, index) => { params[`id${index}`] = id; });
+  }
+  Object.entries(filters.specs || {}).forEach(([key, value], index) => {
+    if (!/^[a-z][a-z0-9_]*$/i.test(key)) { where.push('0'); return; }
+    where.push(`LOWER(CAST(CASE WHEN json_valid(p.specs) THEN json_extract(p.specs, @specPath${index}) END AS TEXT)) = LOWER(@specValue${index})`);
+    params[`specPath${index}`] = `$.${key}`;
+    params[`specValue${index}`] = String(value);
+  });
   if (!filters.includeModerated) {
     where.push("p.moderationStatus = 'approved'");
     where.push("(u.accountStatus IS NULL OR u.accountStatus = 'active')");
@@ -161,18 +171,23 @@ async function listProducts(filters = {}) {
     stock_desc: 'p.stock DESC, p.createdAt DESC',
     title_asc: 'p.title COLLATE NOCASE ASC',
   }[filters.sort || 'newest'];
-  const sql = `SELECT p.*, u.verificationStatus, u.avatar AS sellerAvatar, u.accountStatus AS sellerAccountStatus, u.role AS sellerRole, u.canSellNew AS sellerCanSellNew,
+  const facetView = filters.projection === 'facets';
+  const cardView = filters.projection === 'cards';
+  const columns = facetView ? 'p.id,p.brand,p.model,p.category,p.location,p.condition,p.specs,p.deviceDetails'
+    : cardView ? `p.id,p.title,p.price,p.priceCents,p.category,p.location,p.condition,p.brand,p.model,p.stock,p.seller,p.sellerType,p.delivery,p.warranty,p.negotiable,p.status,p.urgent,p.inspection,p.deviceDetails,p.supplyDetails,p.region,p.currency,p.createdBy,p.createdAt,p.updatedAt,p.moderationStatus,p.moderationReason,p.oldPriceCents,p.specs,'' AS description,
+      CASE WHEN json_valid(p.images) THEN json_array(json_extract(p.images,'$[0]')) ELSE json_array(p.images) END AS images`
+    : 'p.*';
+  const join = `FROM products p LEFT JOIN users u ON u.id = p.createdBy${where.length ? ` WHERE ${where.join(' AND ')}` : ''}`;
+  const total = cardView ? Number((await db.prepare(`SELECT COUNT(*) AS total ${join}`).get(params)).total) : null;
+  const sql = facetView ? `SELECT ${columns} ${join} ORDER BY p.createdAt DESC,p.id ASC`
+    : `SELECT ${columns}, u.verificationStatus, ${cardView ? "''" : 'u.avatar'} AS sellerAvatar, u.accountStatus AS sellerAccountStatus, u.role AS sellerRole, u.canSellNew AS sellerCanSellNew,
     (SELECT AVG(r.rating) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerRating,
     (SELECT COUNT(*) FROM reviews r WHERE r.sellerId = p.createdBy AND r.hidden = 0) AS sellerReviewCount
-    FROM products p LEFT JOIN users u ON u.id = p.createdBy${where.length ? ` WHERE ${where.join(' AND ')}` : ''} ORDER BY ${orderBy}`;
-  const products = (await db.prepare(sql).all(params)).map(normalizeProduct);
-  if (!filters.specs || !Object.keys(filters.specs).length) return products;
-  return products.filter((product) =>
-    Object.entries(filters.specs).every(
-      ([key, value]) =>
-        String(product.specs[key] || '').toLowerCase() === String(value).toLowerCase()
-    )
-  );
+    ${join} ORDER BY ${orderBy},p.id ASC${cardView ? ' LIMIT @pageLimit OFFSET @pageOffset' : ''}`;
+  const rows = await db.prepare(sql).all(cardView ? { ...params, pageLimit: filters.limit || 12, pageOffset: filters.offset || 0 } : params);
+  if (facetView) return rows.map((row) => ({ id: row.id, brand: row.brand, model: row.model, category: row.category, location: row.location, condition: row.condition, specs: parseSpecs(row.specs), deviceDetails: { grade: normalizeDeviceDetails(parseObject(row.deviceDetails)).grade } }));
+  const products = rows.map(normalizeProduct);
+  return cardView ? { items: products, total, limit: filters.limit || 12, offset: filters.offset || 0 } : products;
 }
 
 async function getProduct(id) {

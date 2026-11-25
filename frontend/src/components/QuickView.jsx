@@ -15,7 +15,13 @@ const words = {
 
 
 
-export default function QuickView({ product, onClose }) {
+export default function QuickView({ product: preview, onClose }) {
+  const [product, setProduct] = useState(preview);
+  useEffect(() => {
+    let active = true;
+    api(`/products/${preview.id}`).then((full) => { if (active) setProduct(full); }).catch(() => {});
+    return () => { active = false; };
+  }, [preview.id]);
   const { language, formatPrice, addToCart, user, flash, t } = useStore();
   const c = words[language] || words.pl;
   const own = ownsListing(user, product);

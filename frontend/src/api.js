@@ -66,10 +66,12 @@ function filterDemoProducts(items, params) {
     'minPrice',
     'maxPrice',
     'sort',
+    'view', 'limit', 'offset', 'ids', 'location',
   ]);
   const query = (params.get('q') || '').trim().toLocaleLowerCase();
   const region = params.get('region');
   let products = items.filter((product) => {
+    if (params.has('ids') && !params.get('ids').split(',').includes(product.id)) return false;
     if (region && product.region !== region) return false;
     if (params.get('category') && product.category !== params.get('category')) return false;
     if (params.get('brand') && product.brand !== params.get('brand')) return false;
@@ -77,8 +79,9 @@ function filterDemoProducts(items, params) {
     if (params.get('condition') && product.condition !== params.get('condition')) return false;
     if (params.get('grade') && product.deviceDetails?.grade !== params.get('grade')) return false;
     if (params.get('city') && product.location !== params.get('city')) return false;
+    if (params.get('location') && product.location !== params.get('location')) return false;
     if (params.get('sellerType') && product.sellerType !== params.get('sellerType')) return false;
-    if (params.get('delivery') && product.delivery !== params.get('delivery')) return false;
+    if (params.get('delivery') && product.delivery !== params.get('delivery') && product.delivery !== 'both') return false;
     if (params.get('warranty') && product.warranty !== params.get('warranty')) return false;
     if (params.get('verified') === 'true' && !product.sellerVerified) return false;
     if (params.get('negotiable') === 'true' && !product.negotiable) return false;
@@ -190,7 +193,15 @@ async function staticDemoApi(path, options) {
   }
 
   const catalog = await loadDemoCatalog();
-  if (pathname === '/products') return filterDemoProducts(catalog, params);
+  if (pathname === '/products') {
+    const items = filterDemoProducts(catalog, params);
+    if (params.get('view') === 'cards') {
+      const limit = Number(params.get('limit')) || 12;
+      const offset = Number(params.get('offset')) || 0;
+      return { items: items.slice(offset, offset + limit).map((item) => ({ ...item, images: (item.images || []).slice(0, 1), description: '' })), total: items.length, limit, offset };
+    }
+    return items;
+  }
   if (pathname === '/products/model') {
     const offers = filterDemoProducts(catalog, params).filter(
       (item) => item.brand === params.get('brand') && item.model === params.get('model')
