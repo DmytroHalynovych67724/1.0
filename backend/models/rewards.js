@@ -4,6 +4,7 @@ const { getDB } = require('../db');
 const { AppError } = require('../utils/errors');
 const { normalizeRegion, currencyForRegion } = require('../utils/regions');
 const rewardPolicy = require('../../shared/rewardPolicy.json');
+const { orderQuizOptions } = require('../utils/quizOptions');
 
 const DAY = 24 * 60 * 60 * 1000;
 const QUIZ_DAILY_TOTAL = 8;
@@ -291,11 +292,11 @@ const QUIZ_QUESTIONS = [
   },
 ];
 
-function localizedQuestion(question, locale) {
+function localizedQuestion(question, locale, context) {
   return {
     id: question.id,
     prompt: question.prompt[locale],
-    options: question.options.map(([value, label]) => ({
+    options: orderQuizOptions(question.options, { ...context, questionId: question.id }).map(([value, label]) => ({
       value,
       label: typeof label === 'string' ? label : label[locale],
     })),
@@ -313,7 +314,7 @@ function dailyQuestions(userId) {
 
 async function quizChallenge({ userId, language = 'pl' }) {
   const locale = ['pl', 'uk', 'en'].includes(language) ? language : 'pl';
-  const questions = dailyQuestions(userId).map((question) => localizedQuestion(question, locale));
+  const questions = dailyQuestions(userId).map((question) => localizedQuestion(question, locale, { userId, day: today() }));
   const attempt = await getDB()
     .prepare(
       'SELECT won, rewardCode, createdAt FROM game_attempts WHERE userId = ? AND game = ? AND attemptDate = ?'

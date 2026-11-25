@@ -216,7 +216,7 @@ function ProductDetails({ id }) {
         <span>/</span>
         <Link to={`${sectionPath(product.condition)}?category=${encodeURIComponent(product.category)}`}>{categoryLabel(product.category, language) || product.category}</Link>
       </div>
-      <nav className="shell listing-section-nav" aria-label={product.title}><a href="#listing-overview">{tabs[0]}</a><a href="#listing-specs">{tabs[1]}</a><a href="#listing-reviews">{tabs[2]} ({sellerReviews.count})</a></nav>
+      <nav className="shell listing-section-nav" aria-label={product.title}><a href="#listing-overview">{tabs[0]}</a><a href="#listing-specs">{tabs[1]}</a>{product.condition === 'used' && <a href="#listing-condition">{c.state}</a>}<a href="#listing-reviews">{tabs[2]} ({sellerReviews.count})</a></nav>
       <div className="shell product-react-grid" id="listing-overview">
         <section className="product-gallery-react">
           <div className="product-main-image">

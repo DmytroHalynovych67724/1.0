@@ -1195,6 +1195,9 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   const legacyQuiz = await request('/api/rewards/quiz', { method: 'POST', token: player.token, body: { region: 'pl', answer: 'ssd' } });
   assert.equal(legacyQuiz.response.status, 400);
   const dailyQuiz = await request('/api/rewards/quiz?language=en', { token: player.token });
+  const sameDailyQuiz = await request('/api/rewards/quiz?language=uk', { token: player.token });
+  assert.deepEqual(dailyQuiz.body.questions.map((question) => [question.id, question.options.map((option) => option.value)]), sameDailyQuiz.body.questions.map((question) => [question.id, question.options.map((option) => option.value)]));
+  assert.equal(dailyQuiz.body.questions.some((question) => 'answer' in question || question.options.some((option) => 'correct' in option)), false);
   const correctAnswers = { storage: 'ssd', refresh: 'refresh', usb: 'usb-c', battery: 'cool', oled: 'oled', ram: 'active', ip68: 'water', nfc: 'nfc', wifi6: 'wireless', gpu: 'gpu', resolution: '4k', backup: 'backup', hdmi: 'hdmi', cores: 'units', 'used-phone': 'imei' };
   const fullAnswers = dailyQuiz.body.questions.map((question) => ({ questionId: question.id, answer: correctAnswers[question.id] }));
   const incompleteQuiz = await request('/api/rewards/quiz', { method: 'POST', token: player.token, body: { region: 'pl', answers: fullAnswers.slice(0, 7) } });

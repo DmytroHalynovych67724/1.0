@@ -192,3 +192,18 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
 .used-condition-summary li strong { font-weight: 500; color: var(--muted); }
 .used-condition-summary > a { display: inline-block; color: var(--brand); margin-top: .75rem; }
 @media (max-width: 640px) { .used-condition-summary dl, .used-condition-summary ul { grid-template-columns: minmax(0, 1fr); } }
+.model-offer-image { display: block; min-width: 0; }
+.model-offer-image img { display: block; max-width: 100%; }
+.offer-core h3 a { color: inherit; text-decoration: none; }
+.offer-core > small, .model-condition-note { color: var(--muted); font-size: .9rem; line-height: 1.65; }
+.offer-core dl { margin-top: .75rem; }
+.offer-core dl div { display: block; font-size: .9rem; padding-block: .35rem; }
+.offer-core dd { white-space: normal; overflow: visible; overflow-wrap: anywhere; font-weight: 500; margin-top: .3rem; }
+.model-variant-filter button:disabled { opacity: .4; cursor: not-allowed; }
+.model-variant-filter button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+@media (max-width: 700px) { .model-offer-image { grid-column: 1 / -1; } }
+.used-condition-summary { scroll-margin-top: 150px; }
+@media (max-width: 700px) {
+  .used-condition-summary { scroll-margin-top: 160px; }
+  .offer-seller > b, .offer-seller > small, .offer-seller > span { display: block; grid-column: 1 / -1; }
+}

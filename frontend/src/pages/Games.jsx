@@ -134,6 +134,7 @@ export default function Games({ game }) {
   const [quizLoading, setQuizLoading] = useState(game === 'quiz');
   const [quizError, setQuizError] = useState('');
   const [quizReload, setQuizReload] = useState(0);
+  const quizAnswerGate = useRef(false);
   const [board, setBoard] = useState(Array(9).fill(null));
   const [gameMessage, setGameMessage] = useState('');
   const [tttReward, setTttReward] = useState(null);
@@ -141,11 +142,17 @@ export default function Games({ game }) {
 
   useEffect(() => {
     if (!user || game !== 'quiz') return;
+    let active = true;
     api(`/rewards/quiz?language=${language}`).then((data) => {
+      if (!active) return;
       setChallenge(data); setQuizIndex(0); setQuizAnswers([]);
+      setQuizError('');
       setQuizResult(data.attempted ? { won: false, used: true, correct: 0, total: data.total } : null);
-    }).catch((error) => setQuizError(error.message)).finally(() => setQuizLoading(false));
+    }).catch((error) => { if (active) setQuizError(error.message); }).finally(() => { if (active) setQuizLoading(false); });
+    return () => { active = false; };
   }, [game, language, user, quizReload]);
+
+  useEffect(() => { quizAnswerGate.current = false; }, [quizIndex, challenge]);
 
   useEffect(() => {
     if (!running) return undefined;
@@ -197,11 +204,11 @@ export default function Games({ game }) {
     }
   };
   const answerQuiz = async (answer) => {
-    if (quizBusy || quizResult) return;
+    if (quizBusy || quizResult || quizAnswerGate.current || !challenge?.questions?.[quizIndex]) return;
+    quizAnswerGate.current = true;
     const question = challenge.questions[quizIndex];
     const nextAnswers = [...quizAnswers, { questionId: question.id, answer }];
-    setQuizAnswers(nextAnswers);
-    if (quizIndex < challenge.questions.length - 1) { setQuizIndex(quizIndex + 1); return; }
+    if (quizIndex < challenge.questions.length - 1) { setQuizAnswers(nextAnswers); setQuizIndex(quizIndex + 1); return; }
     setQuizBusy(true);
     try {
       setQuizResult(await api('/rewards/quiz', { method: 'POST', body: JSON.stringify({ answers: nextAnswers, region }) }));
@@ -210,6 +217,7 @@ export default function Games({ game }) {
         setQuizResult({ won: false, used: true, correct: 0, total: challenge.total });
       } else flash(error.message);
     } finally {
+      quizAnswerGate.current = false;
       setQuizBusy(false);
     }
   };
