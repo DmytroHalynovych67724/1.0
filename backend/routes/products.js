@@ -268,8 +268,20 @@ const requireProductManager = asyncHandler(async (req, _res, next) => {
 });
 
 async function handleUpdate(req, res) {
-  const payload = validateProduct(req.body, { partial: true });
   const existing = await getProduct(req.params.id);
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) validateProduct(req.body, { partial: true });
+  // A technical-data refresh or one-field edit must not erase the owner's condition notes.
+  const body = { ...req.body };
+  if (body.deviceDetails && typeof body.deviceDetails === 'object' && !Array.isArray(body.deviceDetails)) {
+    const changes = body.deviceDetails;
+    body.deviceDetails = { ...existing.deviceDetails, ...body.deviceDetails };
+    if (!('batteryHealthStatus' in changes) && typeof changes.batteryHealth === 'number') body.deviceDetails.batteryHealthStatus = 'reported';
+    if (!('defectsStatus' in changes) && typeof changes.defects === 'string') body.deviceDetails.defectsStatus = changes.defects.trim() ? 'reported' : 'unknown';
+  }
+  if (body.inspection && typeof body.inspection === 'object' && !Array.isArray(body.inspection)) {
+    body.inspection = { ...existing.inspection, ...body.inspection };
+  }
+  const payload = validateProduct(body, { partial: true });
   if ((payload.condition || existing?.condition) === 'new' && req.user.role !== 'admin' && !req.user.canSellNew) {
     throw new AppError(403, 'NEW_SELLER_APPROVAL_REQUIRED', 'Administrator approval is required to sell new devices');
   }

@@ -8,6 +8,8 @@ import '../productDetails.css';
 import { sectionCopy, sectionPath } from '../catalogSections.mjs';
 import { categoryLabel } from '../catalogTaxonomy';
 import SupplySummary from '../components/SupplySummary';
+import UsedConditionSummary from '../components/UsedConditionSummary';
+import { conditionCopy } from '../deviceCondition.mjs';
 import { availabilityFor, supplyCopy } from '../supplyDetails.mjs';
 import { safeStorage, readJson, compactProduct } from '../browserStorage.mjs';
 
@@ -88,14 +90,7 @@ const specWords = {
   color: { pl: 'Kolor', uk: 'Колір', en: 'Color' },
 };
 
-const inspectionWords = {
-  screen: { pl: 'Ekran', uk: 'Екран', en: 'Display' },
-  battery: { pl: 'Bateria', uk: 'Батарея', en: 'Battery' },
-  cameras: { pl: 'Aparaty', uk: 'Камери', en: 'Cameras' },
-  buttons: { pl: 'Przyciski', uk: 'Кнопки', en: 'Buttons' },
-  connectivity: { pl: 'Łączność', uk: 'Підключення', en: 'Connectivity' },
-  serialNumber: { pl: 'Numer seryjny', uk: 'Серійний номер', en: 'Serial number' },
-};
+
 
 const detailValues = {
   warranty: {
@@ -259,7 +254,7 @@ function ProductDetails({ id }) {
               <small>{t('seller')}</small>
               <b>{product.seller}</b>
             </div>
-            {product.sellerVerified && <em>✓ {c.verified}</em>}
+            {product.sellerVerified && <em title={(conditionCopy[language] || conditionCopy.pl).profileHint}>✓ {(conditionCopy[language] || conditionCopy.pl).profile}</em>}
           </div>
           <div className="seller-rating">
             <span>{sellerReviews.rating ?? product.sellerRating ? `★ ${Number(sellerReviews.rating ?? product.sellerRating).toFixed(1)}` : c.newSeller}</span>
@@ -347,7 +342,8 @@ function ProductDetails({ id }) {
           {product.deviceDetails?.specSource === 'icecat' && <p className="icecat-attribution"><a href="https://icecat.biz/" target="_blank" rel="noreferrer">{c.icecatSpecs}</a><span> · {c.icecatDisclaimer} </span><a href="https://icecat.biz/en/menu/disclaimer" target="_blank" rel="noreferrer">ⓘ</a></p>}
         </section>
       </div>
-      {product.inspectionScore > 0 && <section className="shell inspection-panel"><div><span>{product.inspectionScore}/6</span><h2>{c.inspection}</h2></div><ul>{Object.entries(product.inspection).map(([key, value]) => <li className={value ? 'is-ok' : ''} key={key}>{value ? '✓' : '–'} {inspectionWords[key]?.[language] || key}</li>)}</ul></section>}
+      <UsedConditionSummary product={product} language={language}/>
+
       <section className="shell model-reviews-section seller-reviews-section" id="listing-reviews">
         <header>
           <div><span className="section-label">Trust</span><h2>{c.reviews}</h2><p>{c.reviewHint}</p></div>
@@ -359,7 +355,7 @@ function ProductDetails({ id }) {
           {reviewEligibility?.eligible ? <form onSubmit={submitReview}><label>{c.addReview}<select value={rating} onChange={(event) => setRating(Number(event.target.value))}>{[5,4,3,2,1].map((value) => <option key={value} value={value}>{value} ★</option>)}</select></label><textarea required maxLength="500" value={comment} onChange={(event) => setComment(event.target.value)} /><button className="primary-button" type="submit">{c.addReview}</button></form> : <div className="seller-review-locked"><span>{reviewEligibility?.reason === 'already_reviewed' ? '✓' : 'i'}</span><p>{reviewEligibility?.reason === 'already_reviewed' ? c.alreadyReviewed : reviewEligibility?.reason === 'own_listing' ? c.ownListing : c.purchaseRequired}</p></div>}
         </div>
       </section>
-      <section className="shell product-faq"><span className="section-label">FAQ</span><h2>{c.faq}</h2><details><summary>{language === 'pl' ? 'Jak bezpiecznie sprawdzić urządzenie?' : language === 'uk' ? 'Як безпечно перевірити пристрій?' : 'How to inspect the device safely?'}</summary><p>{language === 'pl' ? 'Sprawdź numer seryjny, baterię, ekran, aparaty i wykonaj płatność przez zapisane zamówienie.' : language === 'uk' ? 'Перевірте серійний номер, батарею, екран, камери та оплачуйте через оформлене замовлення.' : 'Check the serial number, battery, display and cameras, then pay through a recorded order.'}</p></details><details><summary>{language === 'pl' ? 'Co daje weryfikacja?' : language === 'uk' ? 'Що дає верифікація?' : 'What does verification mean?'}</summary><p>{language === 'pl' ? 'Potwierdza profil sprzedawcy, ale nadal warto zachować standardowe zasady bezpieczeństwa.' : language === 'uk' ? 'Вона підтверджує профіль продавця, але стандартних правил безпеки все одно слід дотримуватися.' : 'It confirms the seller profile, while normal safety rules still apply.'}</p></details></section>
+      <section className="shell product-faq"><span className="section-label">FAQ</span><h2>{c.faq}</h2><details><summary>{language === 'pl' ? 'Jak bezpiecznie sprawdzić urządzenie?' : language === 'uk' ? 'Як безпечно перевірити пристрій?' : 'How to inspect the device safely?'}</summary><p>{language === 'pl' ? 'Sprawdź numer seryjny, baterię, ekran i aparaty. Uzgodnij płatność ze sprzedawcą: zapis zamówienia nie zapewnia ochrony płatności.' : language === 'uk' ? 'Перевірте серійний номер, батарею, екран і камери. Погодьте спосіб оплати з продавцем: запис замовлення не є захищеною оплатою.' : 'Check the serial number, battery, display and cameras. Agree payment with the seller: an order record does not provide payment protection.'}</p></details><details><summary>{language === 'pl' ? 'Co daje weryfikacja?' : language === 'uk' ? 'Що дає верифікація?' : 'What does verification mean?'}</summary><p>{language === 'pl' ? 'Potwierdza profil sprzedawcy, ale nadal warto zachować standardowe zasady bezpieczeństwa.' : language === 'uk' ? 'Вона підтверджує профіль продавця, але стандартних правил безпеки все одно слід дотримуватися.' : 'It confirms the seller profile, while normal safety rules still apply.'}</p></details></section>
       {related.length > 0 && <section className="shell product-recommendations"><header><h2>{c.similar}</h2></header><div className="product-grid-react">{related.slice(0, 4).map((item) => <ProductCard key={item.id} product={item} />)}</div></section>}
       {recent.length > 0 && <section className="shell product-recommendations"><header><h2>{c.recent}</h2></header><div className="product-grid-react">{recent.map((item) => <ProductCard key={item.id} product={item} />)}</div></section>}
       {!own && <div className="shell report-listing"><button type="button" onClick={report}>⚑ {c.report}</button></div>}

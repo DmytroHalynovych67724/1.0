@@ -1,5 +1,6 @@
 const { AppError } = require('./errors');
 const { REGIONS } = require('./regions');
+const { INSPECTION_KEYS, normalizeInspection, validateDeviceDetails } = require('./deviceCondition');
 
 const CONDITIONS = new Set(['new', 'used']);
 const DELIVERY_METHODS = new Set(['shipping', 'pickup', 'both']);
@@ -226,15 +227,19 @@ function validateProduct(body, { partial = false } = {}) {
     if (!has('inspection')) value.inspection = {};
     else if (!isPlainObject(body.inspection) || Object.keys(body.inspection).length > 12)
       details.push({ field: 'inspection', message: 'inspection must be a small object' });
-    else value.inspection = Object.fromEntries(Object.entries(body.inspection).map(([key, raw]) => [key, Boolean(raw)]));
+    else {
+      for (const [key, raw] of Object.entries(body.inspection)) {
+        if (!INSPECTION_KEYS.includes(key) || typeof raw !== 'boolean') details.push({ field: `inspection.${key}`, message: 'Use a known inspection field and a boolean' });
+      }
+      value.inspection = normalizeInspection(body.inspection);
+    }
   }
   if (!partial || has('deviceDetails')) {
     if (!has('deviceDetails')) value.deviceDetails = {};
-    else if (!isPlainObject(body.deviceDetails) || Object.keys(body.deviceDetails).length > 16)
+    else if (!isPlainObject(body.deviceDetails) || Object.keys(body.deviceDetails).length > 20)
       details.push({ field: 'deviceDetails', message: 'deviceDetails must be a small object' });
     else {
-      const allowed = ['batteryHealth', 'display', 'body', 'completeness', 'defects', 'grade', 'country', 'serialChecked', 'specSource', 'specSourceId'];
-      value.deviceDetails = Object.fromEntries(Object.entries(body.deviceDetails).filter(([key, raw]) => allowed.includes(key) && ['string', 'number', 'boolean'].includes(typeof raw)).map(([key, raw]) => [key, typeof raw === 'string' ? raw.trim().slice(0, 300) : raw]));
+      value.deviceDetails = validateDeviceDetails(body.deviceDetails, details);
     }
   }
 

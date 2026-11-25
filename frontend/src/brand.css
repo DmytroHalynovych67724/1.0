@@ -176,3 +176,19 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
   .catalog-source-note { align-items: flex-start; flex-direction: column; }
   .app-header__main { column-gap: 10px; }
 }
+.used-condition-fields textarea { width: 100%; resize: vertical; min-height: 5rem; }
+.used-condition-fields > p { color: var(--muted); line-height: 1.6; }
+.used-condition-summary { margin-block: 2rem; padding: clamp(1.2rem, 3vw, 2.4rem); border: 1px solid var(--line); border-radius: 1.5rem; background: var(--paper); }
+.used-condition-summary h2 { margin-block: .5rem 1rem; }
+.used-condition-summary p { color: var(--muted); line-height: 1.65; max-width: 75ch; }
+.used-condition-summary dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.5rem 2rem; }
+.used-condition-summary dl > div { border: 1px solid var(--line); border-radius: 1rem; padding: 1rem; min-width: 0; }
+.used-condition-summary dt { color: var(--muted); font-size: .9rem; margin-bottom: .5rem; }
+.used-condition-summary dd { margin: 0; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.used-condition-summary small { display: block; color: var(--muted); margin-top: .5rem; }
+.used-condition-summary .has-defects { border-color: var(--brand); }
+.used-condition-summary ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem 2rem; padding: 0; list-style: none; margin-block: 1.5rem; }
+.used-condition-summary li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; padding-block: .6rem; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.used-condition-summary li strong { font-weight: 500; color: var(--muted); }
+.used-condition-summary > a { display: inline-block; color: var(--brand); margin-top: .75rem; }
+@media (max-width: 640px) { .used-condition-summary dl, .used-condition-summary ul { grid-template-columns: minmax(0, 1fr); } }

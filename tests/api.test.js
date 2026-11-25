@@ -151,6 +151,52 @@ test.after(async () => {
   fs.rmSync(tempDirectory, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
 });
 
+test('used condition distinguishes missing data, device measurements and seller declarations', async () => {
+  const empty = await createProduct({ deviceDetails: {}, inspection: {} });
+  assert.equal(empty.deviceDetails.batteryHealthStatus, 'unknown');
+  assert.equal(empty.deviceDetails.batteryHealth, undefined);
+  assert.equal(empty.deviceDetails.grade, '');
+  assert.equal(empty.deviceDetails.defectsStatus, 'unknown');
+  assert.equal(empty.inspectionScore, 0);
+  for (const batteryHealth of [-1, 101, 92.5, '92', 'unknown', true]) {
+    const invalid = await request('/api/products', { method: 'POST', token: adminToken, body: productPayload({ deviceDetails: { batteryHealth } }) });
+    assert.equal(invalid.response.status, 400);
+  }
+  for (const deviceDetails of [{ batteryHealthStatus: 'reported' }, { defectsStatus: 'reported', defects: ' ' }, { grade: 'perfect' }, { serialChecked: 'false' }, { badge: 'verified' }]) {
+    const invalid = await request('/api/products', { method: 'POST', token: adminToken, body: productPayload({ deviceDetails }) });
+    assert.equal(invalid.response.status, 400);
+  }
+  for (const inspection of [{ screen: 'false' }, { verified: true }]) {
+    const invalid = await request('/api/products', { method: 'POST', token: adminToken, body: productPayload({ inspection }) });
+    assert.equal(invalid.response.status, 400);
+  }
+  const measured = await createProduct({ deviceDetails: { batteryHealthStatus: 'reported', batteryHealth: 0, defectsStatus: 'reported', defects: 'Battery needs replacement', body: 'Scratched', repairs: 'Display replaced', grade: 'C' }, inspection: { screen: true } });
+  assert.equal(measured.deviceDetails.batteryHealth, 0);
+  assert.equal(measured.inspectionScore, 1);
+  const refresh = await request(`/api/products/${measured.id}`, { method: 'PATCH', token: adminToken, body: { deviceDetails: { specSource: 'icecat' }, inspection: { cameras: true } } });
+  assert.equal(refresh.response.status, 200);
+  assert.equal(refresh.body.deviceDetails.batteryHealth, 0);
+  assert.equal(refresh.body.deviceDetails.defects, 'Battery needs replacement');
+  assert.equal(refresh.body.deviceDetails.repairs, 'Display replaced');
+  assert.equal(refresh.body.inspectionScore, 2);
+  const unknown = await request(`/api/products/${measured.id}`, { method: 'PATCH', token: adminToken, body: { deviceDetails: { batteryHealthStatus: 'unavailable' } } });
+  assert.equal(unknown.response.status, 200);
+  assert.equal(unknown.body.deviceDetails.batteryHealth, undefined);
+  const noDefects = await request(`/api/products/${measured.id}`, { method: 'PATCH', token: adminToken, body: { deviceDetails: { defectsStatus: 'none' } } });
+  assert.equal(noDefects.body.deviceDetails.defects, '');
+  const addedDefect = await request(`/api/products/${measured.id}`, { method: 'PATCH', token: adminToken, body: { deviceDetails: { defects: 'Cracked glass' } } });
+  assert.equal(addedDefect.body.deviceDetails.defectsStatus, 'reported');
+  const legacy = await createProduct({ deviceDetails: { batteryHealth: 87, defects: 'Scratch' } });
+  assert.equal(legacy.deviceDetails.batteryHealthStatus, 'reported');
+  assert.equal(legacy.deviceDetails.defectsStatus, 'reported');
+  await database.getDB().prepare('UPDATE products SET inspection = ?, deviceDetails = ? WHERE id = ?').run(JSON.stringify({ screen: true, battery: 'false', certified: true }), JSON.stringify({ batteryHealth: 150, grade: 'certified' }), legacy.id);
+  const sanitized = await request(`/api/products/${legacy.id}`);
+  assert.equal(sanitized.body.inspectionScore, 1);
+  assert.equal(sanitized.body.inspection.certified, undefined);
+  assert.equal(sanitized.body.deviceDetails.batteryHealthStatus, 'unknown');
+  assert.equal(sanitized.body.deviceDetails.grade, '');
+});
+
 test('new-device sales require separate admin approval and revocation stops public sales', async () => {
   const seller = await registerAndLogin('approved-new-seller');
   const buyer = await registerAndLogin('approval-buyer');

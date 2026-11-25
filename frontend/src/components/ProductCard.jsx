@@ -1,3 +1,4 @@
+import { conditionCopy } from '../deviceCondition.mjs';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { imageUrl } from '../api';
@@ -135,7 +136,7 @@ export default function ProductCard({ product, view = 'grid', onQuickView }) {
           {product.isDemo && <span className="demo-badge">{demoLabel}</span>}
           {product.urgent && <span className="is-urgent">{c.urgent}</span>}
           {product.status === 'reserved' && <span>{c.reserved}</span>}
-          {product.sellerVerified && <span>{c.verified}</span>}
+          {product.sellerVerified && <span title={(conditionCopy[language] || conditionCopy.pl).profileHint}>{(conditionCopy[language] || conditionCopy.pl).profile}</span>}
           {!sold && available === 'in_stock' && product.stock <= 2 && <span className="is-low">{c.low}</span>}
         </div>
         {specs.length > 0 && (

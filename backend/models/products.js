@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
 const { demoCatalogEnabled, SHOWCASE_IDS } = require('../utils/catalog');
+const { normalizeInspection, normalizeDeviceDetails } = require('../utils/deviceCondition');
 
 function parseImages(value) {
   if (!value) return [];
@@ -52,9 +53,9 @@ function normalizeProduct(row) {
     negotiable: Boolean(row.negotiable),
     status: ['active', 'reserved', 'sold', 'draft'].includes(row.status) ? row.status : 'active',
     urgent: Boolean(row.urgent),
-    inspection: parseObject(row.inspection),
-    inspectionScore: Object.values(parseObject(row.inspection)).filter(Boolean).length,
-    deviceDetails: parseObject(row.deviceDetails),
+    inspection: normalizeInspection(parseObject(row.inspection)),
+    inspectionScore: Object.values(normalizeInspection(parseObject(row.inspection))).filter(Boolean).length,
+    deviceDetails: normalizeDeviceDetails(parseObject(row.deviceDetails)),
     supplyDetails: parseObject(row.supplyDetails),
     oldPrice: row.oldPriceCents ? Number(row.oldPriceCents) / 100 : null,
     region,

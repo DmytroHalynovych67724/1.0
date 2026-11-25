@@ -14,6 +14,7 @@ import { categoryLabel } from '../catalogTaxonomy';
 import { specCopy } from '../specCopy';
 import AccountAccess, { accessLabel } from '../components/AccountAccess';
 import SupplyFields from '../components/SupplyFields';
+import UsedConditionFields from '../components/UsedConditionFields';
 import { newSellerCopy } from '../supplyDetails.mjs';
 
 const blankListing = {
@@ -32,7 +33,7 @@ const blankListing = {
   supplyDetails: {},
   model: '', warranty: 'none', negotiable: true, urgent: false, status: 'active',
   inspection: { screen: false, battery: false, cameras: false, buttons: false, connectivity: false, serialNumber: false },
-  deviceDetails: { batteryHealth: '', display: '', body: '', completeness: '', defects: '', grade: 'B', serialChecked: false, specSource: '', specSourceId: '' },
+  deviceDetails: { batteryHealth: '', display: '', body: '', completeness: '', defects: '', grade: '', serialChecked: false, specSource: '', specSourceId: '' },
 };
 
 const listingCategories = [
@@ -239,11 +240,7 @@ const paymentStatusLabels = {
   paid: { pl: 'Opłacone', uk: 'Оплачено', en: 'Paid' },
 };
 
-const inspectionLabels = {
-  pl: { screen: 'Ekran działa prawidłowo', battery: 'Bateria sprawdzona', cameras: 'Aparaty sprawdzone', buttons: 'Przyciski działają', connectivity: 'Wi‑Fi i sieć działają', serialNumber: 'IMEI / numer seryjny sprawdzony' },
-  uk: { screen: 'Екран працює справно', battery: 'Батарею перевірено', cameras: 'Камери перевірено', buttons: 'Кнопки працюють', connectivity: 'Wi‑Fi та мережа працюють', serialNumber: 'IMEI / серійний номер перевірено' },
-  en: { screen: 'Display works correctly', battery: 'Battery checked', cameras: 'Cameras checked', buttons: 'Buttons work', connectivity: 'Wi-Fi and network work', serialNumber: 'IMEI / serial number checked' },
-};
+
 
 export function ListingForm({ initial, onClose, onSaved, region, language, c, page = false }) {
   const { user } = useStore();
@@ -493,8 +490,8 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
           <label>{c.status}<select value={form.status} onChange={(event) => change('status', event.target.value)}>{['active','reserved','sold','draft'].map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></label>
           <label className="check-filter"><input type="checkbox" checked={form.negotiable} onChange={(event) => change('negotiable', event.target.checked)} /><span>{c.negotiable}</span></label>
           <label className="check-filter"><input type="checkbox" checked={form.urgent} onChange={(event) => change('urgent', event.target.checked)} /><span>{c.urgent}</span></label>
-          <fieldset className="span-2 inspection-form"><legend>{c.inspection}</legend><p>{language === 'pl' ? 'Zaznacz tylko to, co naprawdę zostało sprawdzone.' : language === 'uk' ? 'Позначте лише те, що справді перевірено.' : 'Select only what you have actually checked.'}</p>{Object.keys(blankListing.inspection).map((key) => <label className="check-filter" key={key}><input type="checkbox" checked={Boolean(form.inspection?.[key])} onChange={(event) => change('inspection', { ...form.inspection, [key]: event.target.checked })}/><span>{inspectionLabels[language]?.[key] || inspectionLabels.pl[key]}</span></label>)}</fieldset>
-          {form.condition === 'used' && <fieldset className="span-2 device-details-form"><legend>{c.deviceState}</legend><label>{c.batteryHealth}<input type="number" min="1" max="100" value={form.deviceDetails.batteryHealth} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, batteryHealth: Number(event.target.value) })}/></label><label>{c.grade}<select value={form.deviceDetails.grade} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, grade: event.target.value })}>{['A','B','C','D'].map((item) => <option key={item}>{item}</option>)}</select></label><label>{c.displayState}<input value={form.deviceDetails.display} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, display: event.target.value })}/></label><label>{c.bodyState}<input value={form.deviceDetails.body} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, body: event.target.value })}/></label><label>{c.completeness}<input value={form.deviceDetails.completeness} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, completeness: event.target.value })}/></label><label>{c.defects}<input value={form.deviceDetails.defects} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, defects: event.target.value })}/></label><label className="check-filter"><input type="checkbox" checked={Boolean(form.deviceDetails.serialChecked)} onChange={(event) => change('deviceDetails', { ...form.deviceDetails, serialChecked: event.target.checked })}/><span>{c.serialChecked}</span></label></fieldset>}
+          {form.condition === 'used' && <UsedConditionFields value={form.deviceDetails} inspection={form.inspection} onChange={(value) => change('deviceDetails', value)} onInspectionChange={(value) => change('inspection', value)} language={language}/>}
+
           {(listingSpecs[form.category] || []).length > 0 && <details className="span-2 auto-spec-review" open={!specMatches.length}>
             <summary><span>{language === 'pl' ? 'Dane techniczne' : language === 'uk' ? 'Технічні характеристики' : 'Technical specifications'}</span><small>{(listingSpecs[form.category] || []).filter((key) => form.specs?.[key]).length} / {(listingSpecs[form.category] || []).length}</small></summary>
             <div className="form-grid-react">{(listingSpecs[form.category] || []).map((key) => (
