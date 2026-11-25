@@ -207,3 +207,7 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
   .used-condition-summary { scroll-margin-top: 160px; }
   .offer-seller > b, .offer-seller > small, .offer-seller > span { display: block; grid-column: 1 / -1; }
 }
+@media (max-width: 700px) {
+  .model-offers-section > header { flex-direction: column; align-items: flex-start; gap: .75rem; }
+  .model-offers-section > header > p { margin: 0; }
+}

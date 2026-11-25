@@ -1259,9 +1259,56 @@ test('daily mini-games issue server-side personal promo codes', async () => {
       board: ['X', 'O', null, 'X', 'O', null, 'X', null, null],
     },
   });
-  assert.equal(ticTacToe.response.status, 200);
-  assert.equal(ticTacToe.body.percent <= 10, true);
-  assert.match(ticTacToe.body.rewardCode, /^TTT-[A-F0-9]{8}$/);
+  assert.equal(ticTacToe.response.status, 400);
+  assert.equal(ticTacToe.body.code, 'GAME_SESSION_REQUIRED');
+});
+
+test('tic-tac-toe records authoritative moves, isolates players and awards a win once', async () => {
+  const player = await registerAndLogin('server-game');
+  const outsider = await registerAndLogin('game-outsider');
+  const start = await request('/api/rewards/tictactoe/start', { method: 'POST', token: player.token, body: { region: 'pl' } });
+  assert.equal(start.response.status, 201);
+  assert.deepEqual(start.body.board, Array(9).fill(null));
+  const id = start.body.sessionId;
+  assert.equal((await request(`/api/rewards/tictactoe/${id}`, { token: outsider.token })).response.status, 404);
+  assert.equal((await request(`/api/rewards/tictactoe/${id}/moves`, { method: 'POST', token: outsider.token, body: { cell: 0, revision: 0 } })).response.status, 404);
+  const invalid = await request(`/api/rewards/tictactoe/${id}/moves`, { method: 'POST', token: player.token, body: { cell: '0', revision: 0 } });
+  assert.equal(invalid.response.status, 400);
+  const concurrent = await Promise.all([0, 1].map((cell) => request(`/api/rewards/tictactoe/${id}/moves`, { method: 'POST', token: player.token, body: { cell, revision: 0, board: ['X','X','X'], region: 'ua' } })));
+  assert.deepEqual(concurrent.map(({ response }) => response.status).sort(), [200, 409]);
+  const current = await request('/api/rewards/tictactoe/current', { token: player.token });
+  assert.equal(current.body.revision, 1);
+  assert.equal(current.body.board.filter((cell) => cell === 'X').length, 1);
+  assert.equal(current.body.board.filter((cell) => cell === 'O').length, 1);
+  assert.equal(current.body.region, 'pl');
+  assert.equal(current.body.reward, null);
+  const occupied = current.body.board.findIndex(Boolean);
+  assert.equal((await request(`/api/rewards/tictactoe/${id}/moves`, { method: 'POST', token: player.token, body: { cell: occupied, revision: 1 } })).response.status, 409);
+  // Set a legal penultimate server board in this isolated test DB to exercise the reward transaction deterministically.
+  await database.getDB().prepare('UPDATE tictactoe_sessions SET board = ?, revision = 2 WHERE id = ?').run(JSON.stringify(['X','O',null,'X','O',null,null,null,null]), id);
+  const won = await request(`/api/rewards/tictactoe/${id}/moves`, { method: 'POST', token: player.token, body: { cell: 6, revision: 2 } });
+  assert.equal(won.response.status, 200);
+  assert.equal(won.body.winner, 'X');
+  assert.equal(won.body.board.filter((cell) => cell === 'O').length, 2);
+  assert.match(won.body.reward.rewardCode, /^TTT-[A-F0-9]{8}$/);
+  assert.equal(won.body.reward.region, 'pl');
+  assert.equal(won.body.reward.percent, 5);
+  const replay = await request(`/api/rewards/tictactoe/${id}/moves`, { method: 'POST', token: player.token, body: { cell: 6, revision: 2 } });
+  assert.equal(replay.response.status, 409);
+  const restored = await request(`/api/rewards/tictactoe/${id}`, { token: player.token });
+  assert.deepEqual(restored.body.reward, won.body.reward);
+  const reset = await request('/api/rewards/tictactoe/start', { method: 'POST', token: player.token, body: { region: 'ua' } });
+  assert.notEqual(reset.body.sessionId, id);
+  assert.equal((await request(`/api/rewards/tictactoe/${id}`, { token: player.token })).response.status, 404);
+  await database.getDB().prepare('UPDATE tictactoe_sessions SET board = ?, revision = 2 WHERE id = ?').run(JSON.stringify(['X','O',null,'X','O',null,null,null,null]), reset.body.sessionId);
+  const dailyUsed = await request(`/api/rewards/tictactoe/${reset.body.sessionId}/moves`, { method: 'POST', token: player.token, body: { cell: 6, revision: 2 } });
+  assert.equal(dailyUsed.response.status, 200);
+  assert.equal(dailyUsed.body.reward.used, true);
+  assert.equal(dailyUsed.body.reward.rewardCode, null);
+  assert.equal((await database.getDB().prepare("SELECT COUNT(*) AS total FROM game_attempts WHERE userId = ? AND game = 'tictactoe'").get(player.user.id)).total, 1);
+  assert.equal((await database.getDB().prepare('SELECT COUNT(*) AS total FROM tictactoe_sessions WHERE userId = ?').get(player.user.id)).total, 1);
+  await database.getDB().prepare('UPDATE tictactoe_sessions SET expiresAt = ? WHERE userId = ?').run(Date.now() - 1, player.user.id);
+  assert.equal((await request('/api/rewards/tictactoe/current', { token: player.token })).response.status, 410);
 });
 
 test('technical assistant exposes connection state and refuses unrelated requests', async () => {

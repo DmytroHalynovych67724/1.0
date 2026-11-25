@@ -1,7 +1,8 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { quiz, quizChallenge, spin, ticTacToe } = require('../models/rewards');
-const { asyncHandler } = require('../utils/errors');
+const { quiz, quizChallenge, spin } = require('../models/rewards');
+const { currentGame, startGame, move } = require('../models/tictactoe');
+const { asyncHandler, AppError } = require('../utils/errors');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -37,11 +38,12 @@ router.post(
 
 router.post(
   '/tictactoe',
-  asyncHandler(async (req, res) => {
-    res.json(
-      await ticTacToe({ userId: req.user.id, region: req.body?.region, board: req.body?.board })
-    );
-  })
+  (_req, _res, next) => next(new AppError(400, 'GAME_SESSION_REQUIRED', 'Start a game and submit each move; final boards are not accepted'))
 );
+
+router.get('/tictactoe/current', asyncHandler(async (req, res) => { res.json(await currentGame({ userId: req.user.id })); }));
+router.post('/tictactoe/start', asyncHandler(async (req, res) => { res.status(201).json(await startGame({ userId: req.user.id, region: req.body?.region })); }));
+router.get('/tictactoe/:id', asyncHandler(async (req, res) => { res.json(await currentGame({ userId: req.user.id, id: req.params.id })); }));
+router.post('/tictactoe/:id/moves', asyncHandler(async (req, res) => { res.json(await move({ userId: req.user.id, id: req.params.id, cell: req.body?.cell, revision: req.body?.revision })); }));
 
 module.exports = router;

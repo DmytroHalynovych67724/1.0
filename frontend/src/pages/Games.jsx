@@ -1,5 +1,5 @@
 import RewardRules from '../components/RewardRules';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { useStore } from '../store';
@@ -64,37 +64,6 @@ function resultFor(board) {
   return board.every(Boolean) ? { winner: 'draw', line: [] } : { winner: null, line: [] };
 }
 
-function minimax(board, maximizing, depth = 0) {
-  const result = resultFor(board).winner;
-  if (result) return result === 'O' ? 10 - depth : result === 'X' ? depth - 10 : 0;
-  const scores = [];
-  board.forEach((cell, index) => {
-    if (cell) return;
-    const next = [...board];
-    next[index] = maximizing ? 'O' : 'X';
-    scores.push(minimax(next, !maximizing, depth + 1));
-  });
-  return maximizing ? Math.max(...scores) : Math.min(...scores);
-}
-
-function botMove(board) {
-  const available = board.map((cell, index) => (cell ? null : index)).filter((value) => value !== null);
-  if (!available.length) return null;
-  // The bot now plays an optimal minimax move most of the time. A small error
-  // chance keeps the daily reward achievable without making the board trivial.
-  if (Math.random() < 0.05) return available[Math.floor(Math.random() * available.length)];
-  let best = -Infinity;
-  let choices = [];
-  available.forEach((index) => {
-    const next = [...board];
-    next[index] = 'O';
-    const score = minimax(next, false);
-    if (score > best) { best = score; choices = [index]; }
-    else if (score === best) choices.push(index);
-  });
-  return choices[Math.floor(Math.random() * choices.length)];
-}
-
 function Reward({ result, copy, hint, c }) {
   const { formatPrice, language } = useStore();
   if (!result?.rewardCode) return null;
@@ -115,7 +84,7 @@ function Reward({ result, copy, hint, c }) {
   );
 }
 
-export default function Games({ game }) {
+function GamesContent({ game }) {
   const { t, user, language, region, flash } = useStore();
   const c = text[language] || text.pl;
   const [position, setPosition] = useState(0);
@@ -139,6 +108,25 @@ export default function Games({ game }) {
   const [gameMessage, setGameMessage] = useState('');
   const [tttReward, setTttReward] = useState(null);
   const [tttBusy, setTttBusy] = useState(false);
+  const [tttLoading, setTttLoading] = useState(game === 'tictactoe');
+  const [tttSession, setTttSession] = useState(null);
+  const tttGate = useRef(false);
+  const receiveGame = useCallback((data) => {
+    setBoard(data.board); setTttSession({ id: data.sessionId, revision: data.revision });
+    setTttReward(data.reward);
+    setGameMessage(data.reward?.used ? c.used : data.winner === 'X' ? c.won : data.winner === 'O' ? c.lost : data.winner === 'draw' ? c.draw : '');
+  }, [c.used, c.won, c.lost, c.draw]);
+
+  useEffect(() => {
+    if (!user || game !== 'tictactoe') return;
+    let active = true;
+    api('/rewards/tictactoe/current').then((data) => {
+      if (!active) return;
+      if (data.region === region) receiveGame(data);
+      else { setBoard(Array(9).fill(null)); setTttSession(null); setTttReward(null); setGameMessage(''); }
+    }).catch((error) => { if (active && ![404, 410].includes(error.status)) setGameMessage(error.message); }).finally(() => { if (active) setTttLoading(false); });
+    return () => { active = false; };
+  }, [user, game, region, receiveGame]);
 
   useEffect(() => {
     if (!user || game !== 'quiz') return;
@@ -169,20 +157,7 @@ export default function Games({ game }) {
   }, [running]);
 
   const gameState = useMemo(() => resultFor(board), [board]);
-  const botTurn = !gameState.winner && board.filter(Boolean).length % 2 === 1;
-
-  useEffect(() => {
-    if (!botTurn) return undefined;
-    const timer = setTimeout(() => {
-      const index = botMove(board);
-      if (index == null) return;
-      const next = [...board]; next[index] = 'O'; setBoard(next);
-      const result = resultFor(next).winner;
-      if (result === 'O') setGameMessage(c.lost);
-      if (result === 'draw') setGameMessage(c.draw);
-    }, 520);
-    return () => clearTimeout(timer);
-  }, [board, botTurn, c.draw, c.lost]);
+  const botTurn = tttBusy || tttLoading;
 
   const startPrecision = () => {
     const nextTarget = 18 + Math.random() * 64;
@@ -222,21 +197,31 @@ export default function Games({ game }) {
     }
   };
   const playCell = async (index) => {
-    if (board[index] || gameState.winner || botTurn) return;
-    const next = [...board]; next[index] = 'X'; setBoard(next);
-    const result = resultFor(next).winner;
-    if (result === 'X') {
-      setTttBusy(true);
-      setGameMessage('…');
-      try {
-        setTttReward(await api('/rewards/tictactoe', { method: 'POST', body: JSON.stringify({ region, board: next }) }));
-        setGameMessage(c.won);
-      } catch (error) {
-        setGameMessage(error.code === 'DAILY_ATTEMPT_USED' ? c.used : error.message);
-      } finally { setTttBusy(false); }
-    } else if (result === 'draw') setGameMessage(c.draw);
+    if (board[index] || gameState.winner || botTurn || tttGate.current) return;
+    tttGate.current = true; setTttBusy(true);
+    let session = tttSession;
+    try {
+      if (!session) {
+        const started = await api('/rewards/tictactoe/start', { method: 'POST', body: JSON.stringify({ region }) });
+        session = { id: started.sessionId, revision: started.revision }; setTttSession(session);
+      }
+      const next = [...board]; next[index] = 'X'; setBoard(next);
+      receiveGame(await api(`/rewards/tictactoe/${session.id}/moves`, { method: 'POST', body: JSON.stringify({ cell: index, revision: session.revision }) }));
+    } catch (error) {
+      // A lost response may still have committed the move. Read the server board before retrying.
+      if (session) {
+        try { receiveGame(await api(`/rewards/tictactoe/${session.id}`)); }
+        catch { setBoard(board); setGameMessage(error.message); }
+      } else setGameMessage(error.message);
+    } finally { tttGate.current = false; setTttBusy(false); }
   };
-  const reset = () => { setBoard(Array(9).fill(null)); setGameMessage(''); setTttReward(null); };
+  const reset = async () => {
+    if (tttGate.current) return;
+    tttGate.current = true; setTttBusy(true);
+    try { receiveGame(await api('/rewards/tictactoe/start', { method: 'POST', body: JSON.stringify({ region }) })); }
+    catch (error) { setGameMessage(error.message); }
+    finally { tttGate.current = false; setTttBusy(false); }
+  };
 
   if (!user) return (
     <main className="games-login shell"><span className="eyebrow">NaShary Play</span><h1>{t('gameTitle')}</h1><p>{t('loginRequired')}</p><Link className="primary-button" to="/auth" state={{ from: `/games/${game}` }}>{t('login')}</Link></main>
@@ -283,4 +268,9 @@ export default function Games({ game }) {
       <RewardRules />
     </main>
   );
+}
+
+export default function Games({ game }) {
+  const { user, region } = useStore();
+  return <GamesContent key={`${game}:${user?.id || 'guest'}:${region}`} game={game}/>;
 }

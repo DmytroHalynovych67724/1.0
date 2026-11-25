@@ -343,7 +343,7 @@ function rewardFor(game, { perfect = false } = {}) {
   };
 }
 
-async function play({ userId, region, game, won, reward, result = {} }) {
+async function play({ userId, region, game, won, reward, result = {}, commitResult }) {
   const db = getDB();
   const attemptDate = today();
   if (
@@ -356,7 +356,11 @@ async function play({ userId, region, game, won, reward, result = {} }) {
   const id = uuidv4();
   const createdAt = Date.now();
   let rewardCode = null;
+  let output;
   await db.transaction(async () => {
+    if (await db.prepare('SELECT 1 FROM game_attempts WHERE userId = ? AND game = ? AND attemptDate = ?').get(userId, game, attemptDate)) {
+      throw new AppError(409, 'DAILY_ATTEMPT_USED', "Today's attempt has already been used");
+    }
     if (won) {
       const prefix = game === 'spin' ? 'SPIN' : game === 'quiz' ? 'QUIZ' : 'TTT';
       rewardCode = uniqueCode(prefix);
@@ -390,8 +394,7 @@ async function play({ userId, region, game, won, reward, result = {} }) {
     `
       )
       .run(id, userId, game, attemptDate, won ? 1 : 0, rewardCode, createdAt);
-  })();
-  return {
+    output = {
     game,
     won,
     rewardCode,
@@ -409,7 +412,10 @@ async function play({ userId, region, game, won, reward, result = {} }) {
     giftKey: won ? reward.giftKey : null,
     expiresInDays: won ? rewardPolicy.expiresInDays : 0,
     ...result,
-  };
+    };
+    if (commitResult) await commitResult(output);
+  })();
+  return output;
 }
 
 async function spin({ userId, region }) {
@@ -448,46 +454,4 @@ async function quiz({ userId, region, answers }) {
   });
 }
 
-function hasLine(board, mark) {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  return lines.some((line) => line.every((index) => board[index] === mark));
-}
-
-async function ticTacToe({ userId, region, board }) {
-  const normalized = Array.isArray(board)
-    ? board.map((cell) => (cell === 'X' || cell === 'O' ? cell : null))
-    : [];
-  const xCount = normalized.filter((cell) => cell === 'X').length;
-  const oCount = normalized.filter((cell) => cell === 'O').length;
-  const hasValidFinalMove = normalized.some((cell, index) => {
-    if (cell !== 'X') return false;
-    const before = [...normalized];
-    before[index] = null;
-    return !hasLine(before, 'X') && !hasLine(before, 'O');
-  });
-  if (
-    normalized.length !== 9 ||
-    xCount !== oCount + 1 ||
-    !hasLine(normalized, 'X') ||
-    hasLine(normalized, 'O') ||
-    !hasValidFinalMove
-  ) {
-    throw new AppError(
-      400,
-      'INVALID_GAME_RESULT',
-      'The submitted game result is not a valid player win'
-    );
-  }
-  return play({ userId, region, game: 'tictactoe', won: true, reward: rewardFor('tictactoe') });
-}
-
-module.exports = { quiz, quizChallenge, spin, ticTacToe };
+module.exports = { quiz, quizChallenge, spin, play, rewardFor };
