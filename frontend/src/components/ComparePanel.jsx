@@ -1,3 +1,4 @@
+import { specLabels } from '../specLabels.mjs';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
@@ -13,34 +14,7 @@ const copy = {
   en: { title: 'Product comparison', close: 'Close', clear: 'Clear', remove: 'Remove', price: 'Price', condition: 'Condition', stock: 'Availability', region: 'Sales market', new: 'New', used: 'Pre-owned', differences: 'Differences only', missing: 'Not specified', empty: 'Add at least two products from one category to compare them side by side.', one: 'Add another product from this category.', add: 'Add product', same: 'No differences in the selected specifications.', feature: 'Specification', brand: 'Brand', model: 'Model' },
 };
 
-const specLabels = {
-  screen: { pl: 'Przekątna ekranu', uk: 'Діагональ екрана', en: 'Screen size' },
-  processor: { pl: 'Procesor', uk: 'Процесор', en: 'Processor' },
-  ram: { pl: 'Pamięć RAM', uk: 'Оперативна пам’ять', en: 'RAM' },
-  storage: { pl: 'Pamięć urządzenia', uk: 'Накопичувач', en: 'Storage' },
-  gpu: { pl: 'Karta graficzna', uk: 'Відеокарта', en: 'Graphics' },
-  os: { pl: 'System operacyjny', uk: 'Операційна система', en: 'Operating system' },
-  platform: { pl: 'Platforma', uk: 'Платформа', en: 'Platform' },
-  resolution: { pl: 'Rozdzielczość', uk: 'Роздільна здатність', en: 'Resolution' },
-  refreshRate: { pl: 'Odświeżanie', uk: 'Частота оновлення', en: 'Refresh rate' },
-  connectivity: { pl: 'Łączność', uk: 'Підключення', en: 'Connectivity' },
-  accessoryType: { pl: 'Rodzaj akcesorium', uk: 'Тип аксесуара', en: 'Accessory type' },
-  audioType: { pl: 'Rodzaj audio', uk: 'Тип аудіо', en: 'Audio type' },
-  displayType: { uk: 'Матриця екрана', pl: 'Matryca', en: 'Display type' },
-  battery: { uk: 'Ємність батареї', pl: 'Pojemność baterii', en: 'Battery capacity' },
-  charging: { uk: 'Заряджання', pl: 'Ładowanie', en: 'Charging' },
-  mainCamera: { uk: 'Основна камера', pl: 'Aparat główny', en: 'Main camera' },
-  frontCamera: { uk: 'Фронтальна камера', pl: 'Aparat przedni', en: 'Front camera' },
-  cameraFeatures: { uk: 'Функції камер', pl: 'Funkcje aparatu', en: 'Camera features' },
-  features: { uk: 'Можливості', pl: 'Funkcje', en: 'Features' },
-  sim: { uk: 'SIM', pl: 'SIM', en: 'SIM' },
-  wifi: { uk: 'Wi-Fi', pl: 'Wi-Fi', en: 'Wi-Fi' },
-  bluetooth: { uk: 'Bluetooth', pl: 'Bluetooth', en: 'Bluetooth' },
-  weight: { uk: 'Вага', pl: 'Waga', en: 'Weight' },
-  displayFeatures: { uk: 'Особливості дисплея', pl: 'Funkcje ekranu', en: 'Display features' },
-  ramType: { uk: 'Тип RAM', pl: 'Typ RAM', en: 'RAM type' },
-  color: { pl: 'Kolor', uk: 'Колір', en: 'Color' },
-};
+
 
 export default function ComparePanel({ onClose }) {
   const { comparison, toggleCompare, clearComparison, formatPrice, language } = useStore();

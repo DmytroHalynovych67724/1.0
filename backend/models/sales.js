@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { AppError } = require('../utils/errors');
 const { currencyForRegion } = require('../utils/regions');
+const { releaseCancelledPromo } = require('./promoRedemptions');
 const states = ['created','confirmed','shipped','delivered','completed','cancelled'];
 function parse(value, fallback) { try { const result=JSON.parse(value);return result && typeof result === 'object' ? result : fallback; } catch { return fallback; } }
 function lineCents(item) { const value=Number.isFinite(item.lineTotal)?item.lineTotal:Number(item.price)*Number(item.qty);return Number.isFinite(value)?Math.round(value*100):0; }
@@ -34,6 +35,7 @@ async function synchronizeOrder(db,order,changedBy) {
   const rows = await db.prepare('SELECT sellerId,status,updatedAt FROM order_fulfillments WHERE orderId=?').all(order.id);
   const status = aggregateStatus(rows);
   await db.prepare('UPDATE orders SET status=?,updatedAt=? WHERE id=?').run(status,Date.now(),order.id);
+  if (status === 'cancelled') await releaseCancelledPromo(db, order, changedBy);
   if (order.status !== status) await db.prepare('INSERT INTO order_status_history (id,orderId,status,changedBy,createdAt) VALUES (?,?,?,?,?)').run(uuidv4(),order.id,status,changedBy,Date.now());
   return rows;
 }

@@ -1,3 +1,4 @@
+import { specLabels as labels } from '../specLabels.mjs';
 import { safeStorage, safeSessionStorage } from '../browserStorage.mjs';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
@@ -22,34 +23,7 @@ const categories = [
   ['Akcesoria', { pl: 'Akcesoria', uk: 'Аксесуари', en: 'Accessories' }],
 ];
 
-const labels = {
-  screen: { pl: 'Przekątna ekranu', uk: 'Діагональ екрана', en: 'Screen size' },
-  processor: { pl: 'Procesor', uk: 'Процесор', en: 'Processor' },
-  ram: { pl: 'Pamięć RAM', uk: 'Оперативна пам’ять', en: 'RAM' },
-  storage: { pl: 'Pamięć urządzenia', uk: 'Накопичувач', en: 'Storage' },
-  gpu: { pl: 'Karta graficzna', uk: 'Відеокарта', en: 'Graphics' },
-  os: { pl: 'System operacyjny', uk: 'Операційна система', en: 'Operating system' },
-  platform: { pl: 'Platforma', uk: 'Платформа', en: 'Platform' },
-  resolution: { pl: 'Rozdzielczość', uk: 'Роздільна здатність', en: 'Resolution' },
-  refreshRate: { pl: 'Odświeżanie', uk: 'Частота оновлення', en: 'Refresh rate' },
-  connectivity: { pl: 'Łączność', uk: 'Підключення', en: 'Connectivity' },
-  accessoryType: { pl: 'Rodzaj akcesorium', uk: 'Тип аксесуара', en: 'Accessory type' },
-  audioType: { pl: 'Rodzaj audio', uk: 'Тип аудіо', en: 'Audio type' },
-  color: { pl: 'Kolor', uk: 'Колір', en: 'Color' },
-  displayType: { pl: 'Matryca ekranu', uk: 'Матриця екрана', en: 'Display type' },
-  battery: { pl: 'Pojemność baterii', uk: 'Ємність акумулятора', en: 'Battery capacity' },
-  charging: { pl: 'Moc ładowania', uk: 'Потужність заряджання', en: 'Charging power' },
-  mainCamera: { pl: 'Aparat główny', uk: 'Основна камера', en: 'Main camera' },
-  frontCamera: { pl: 'Aparat przedni', uk: 'Фронтальна камера', en: 'Front camera' },
-  cameraFeatures: { pl: 'Funkcje aparatu', uk: 'Особливості камери', en: 'Camera features' },
-  features: { pl: 'Funkcje i możliwości', uk: 'Функції та можливості', en: 'Features' },
-  sim: { pl: 'Karty SIM', uk: 'SIM-карти', en: 'SIM cards' },
-  wifi: { pl: 'Wi‑Fi', uk: 'Wi‑Fi', en: 'Wi-Fi' },
-  bluetooth: { pl: 'Wersja Bluetooth', uk: 'Версія Bluetooth', en: 'Bluetooth version' },
-  displayFeatures: { pl: 'Funkcje wyświetlacza', uk: 'Особливості дисплея', en: 'Display features' },
-  ramType: { pl: 'Typ pamięci RAM', uk: 'Тип оперативної пам’яті', en: 'RAM type' },
-  weight: { pl: 'Waga', uk: 'Вага', en: 'Weight' },
-};
+
 
 const categorySpecs = {
   Smartfony: ['screen', 'displayType', 'resolution', 'refreshRate', 'displayFeatures', 'processor', 'ram', 'ramType', 'storage', 'battery', 'charging', 'mainCamera', 'frontCamera', 'cameraFeatures', 'features', 'sim', 'os', 'connectivity', 'wifi', 'bluetooth', 'color', 'weight'],

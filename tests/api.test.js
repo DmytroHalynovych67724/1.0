@@ -1311,6 +1311,54 @@ test('tic-tac-toe records authoritative moves, isolates players and awards a win
   assert.equal((await request('/api/rewards/tictactoe/current', { token: player.token })).response.status, 410);
 });
 
+test('full cancellation releases a promo once while partial cancellation keeps it reserved', async () => {
+  const checkout = { paymentMethod: 'card', deliveryMethod: 'shipping' };
+  const buyer = await registerAndLogin('cancel-promo');
+  const secondSeller = await registerAndLogin('second-promo-seller');
+  await request(`/api/staff/users/${secondSeller.user.id}`, { method: 'PATCH', token: adminToken, body: { canSellNew: true, reason: 'Approved test store' } });
+  secondSeller.token = (await request('/api/auth/login', { method: 'POST', body: { username: secondSeller.username, password: secondSeller.password } })).body.token;
+  const first = await createProduct({ title: 'First promo item', condition: 'new', price: 100, stock: 4 });
+  const secondCreated = await request('/api/products', { method: 'POST', token: secondSeller.token, body: productPayload({ title: 'Second promo item', condition: 'new', price: 200, stock: 4 }) });
+  assert.equal(secondCreated.response.status, 201);
+  const second = secondCreated.body;
+  const code = `CANCEL-${sequence}`;
+  const expiresAt = Date.now() + 86400000;
+  await database.getDB().prepare(`INSERT INTO promo_codes (code,type,value,region,usageLimit,ownerId,createdAt,expiresAt) VALUES (?,'percent',10,'pl',1,?,?,?)`).run(code, buyer.user.id, Date.now(), expiresAt);
+  const order = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }, { id: second.id, qty: 1 }], promoCode: code, checkout } });
+  assert.equal(order.response.status, 201, JSON.stringify(order.body));
+  assert.equal(order.body.discount, 30);
+  const cancelSecond = await request(`/api/orders/sales/${order.body.id}/status`, { method: 'PATCH', token: secondSeller.token, body: { status: 'cancelled' } });
+  assert.equal(cancelSecond.response.status, 200);
+  assert.equal((await database.getDB().prepare('SELECT usedCount FROM promo_codes WHERE code = ?').get(code)).usedCount, 1);
+  const held = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: code, checkout } });
+  assert.equal(held.response.status, 400);
+  const cancelled = await request(`/api/orders/${order.body.id}/status`, { method: 'PATCH', token: adminToken, body: { status: 'cancelled' } });
+  assert.equal(cancelled.response.status, 200);
+  assert.ok(cancelled.body.promoReleasedAt);
+  assert.equal(cancelled.body.discount, 30); // The checkout snapshot remains historical.
+  assert.equal((await database.getDB().prepare('SELECT usedCount,expiresAt FROM promo_codes WHERE code = ?').get(code)).usedCount, 0);
+  assert.equal((await database.getDB().prepare('SELECT COUNT(*) AS total FROM promo_redemption_releases WHERE orderId = ?').get(order.body.id)).total, 1);
+  const reused = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: code, checkout } });
+  assert.equal(reused.response.status, 201);
+  assert.equal(reused.body.discount, 10);
+  assert.equal(reused.body.promoReleasedAt, null);
+  const duplicateCancel = await request(`/api/orders/${order.body.id}/status`, { method: 'PATCH', token: adminToken, body: { status: 'cancelled' } });
+  assert.equal(duplicateCancel.response.status, 409);
+  assert.equal((await database.getDB().prepare('SELECT usedCount FROM promo_codes WHERE code = ?').get(code)).usedCount, 1);
+  const releasedAgain = await request(`/api/orders/${reused.body.id}/status`, { method: 'PATCH', token: adminToken, body: { status: 'cancelled' } });
+  assert.equal(releasedAgain.response.status, 200);
+  assert.equal((await database.getDB().prepare('SELECT expiresAt FROM promo_codes WHERE code = ?').get(code)).expiresAt, expiresAt);
+  await database.getDB().prepare('UPDATE promo_codes SET expiresAt = ? WHERE code = ?').run(Date.now() - 1, code);
+  assert.equal((await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: code, checkout } })).response.status, 400);
+  const shipping = await request('/api/rewards/spin', { method: 'POST', token: buyer.token, body: { region: 'pl' } });
+  const shippingOrder = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: shipping.body.rewardCode, checkout } });
+  assert.equal(shippingOrder.response.status, 201);
+  assert.equal((await request(`/api/orders/${shippingOrder.body.id}/status`, { method: 'PATCH', token: adminToken, body: { status: 'cancelled' } })).response.status, 200);
+  const shippingAgain = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: shipping.body.rewardCode, checkout } });
+  assert.equal(shippingAgain.response.status, 201);
+  assert.equal(shippingAgain.body.shippingDiscount, shippingOrder.body.shippingDiscount);
+});
+
 test('technical assistant exposes connection state and refuses unrelated requests', async () => {
   const status = await request('/api/marketplace/assistant/status');
   assert.equal(status.body.configured,false);

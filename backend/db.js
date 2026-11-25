@@ -385,6 +385,7 @@ async function migrateOrders(database) {
     'INTEGER NOT NULL DEFAULT 0'
   );
   await addColumnIfMissing(database, 'orders', 'promoCode', 'TEXT');
+  await addColumnIfMissing(database, 'orders', 'promoReleasedAt', 'INTEGER');
   await addColumnIfMissing(database, 'orders', 'rewardType', 'TEXT');
   await addColumnIfMissing(database, 'orders', 'rewardGift', 'TEXT');
   await addColumnIfMissing(database, 'orders', 'checkoutData', "TEXT NOT NULL DEFAULT '{}'");
@@ -520,6 +521,16 @@ async function migratePromotions(database) {
     );
     CREATE INDEX IF NOT EXISTS idx_promo_codes_region_active ON promo_codes(region, active);
     CREATE INDEX IF NOT EXISTS idx_promo_redemptions_user ON promo_redemptions(userId, createdAt DESC);
+    CREATE TABLE IF NOT EXISTS promo_redemption_releases (
+      orderId TEXT PRIMARY KEY,
+      redemptionId TEXT NOT NULL,
+      code TEXT NOT NULL,
+      userId TEXT NOT NULL,
+      redeemedAt INTEGER NOT NULL,
+      releasedAt INTEGER NOT NULL,
+      changedBy TEXT,
+      FOREIGN KEY (orderId) REFERENCES orders(id) ON DELETE CASCADE
+    );
   `);
   await addColumnIfMissing(database, 'promo_codes', 'ownerId', 'TEXT');
   await addColumnIfMissing(

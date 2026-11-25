@@ -37,6 +37,7 @@ function normalizeOrder(row) {
     shippingDiscount: Number(row.shippingDiscount) || 0,
     total: Number(row.total) || 0,
     promoCode: row.promoCode || null,
+    promoReleasedAt: row.promoReleasedAt || null,
     rewardType: row.rewardType || null,
     rewardGift: row.rewardGift || null,
     checkout: parseCheckout(row.checkoutData),

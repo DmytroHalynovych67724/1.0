@@ -1,3 +1,4 @@
+import { specLabels } from '../specLabels.mjs';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
@@ -12,13 +13,7 @@ const words = {
   en: { title: 'Quick view', details: 'Full listing', chat: 'Message', alert: 'Watch price', saved: 'Price watch enabled', condition: 'Condition', delivery: 'Delivery', trade: 'Negotiable', both: 'Delivery or pickup', shipping: 'Delivery', pickup: 'Pickup' },
 };
 
-const specLabels = {
-  screen: { pl: 'Ekran', uk: 'Екран', en: 'Display' }, displayType: { pl: 'Matryca', uk: 'Матриця', en: 'Panel' },
-  resolution: { pl: 'Rozdzielczość', uk: 'Роздільна здатність', en: 'Resolution' }, refreshRate: { pl: 'Odświeżanie', uk: 'Частота оновлення', en: 'Refresh rate' },
-  processor: { pl: 'Procesor', uk: 'Процесор', en: 'Processor' }, ram: { pl: 'Pamięć RAM', uk: 'Оперативна пам’ять', en: 'RAM' },
-  storage: { pl: 'Pamięć', uk: 'Накопичувач', en: 'Storage' }, battery: { pl: 'Bateria', uk: 'Батарея', en: 'Battery' },
-  gpu: { pl: 'Grafika', uk: 'Відеокарта', en: 'Graphics' }, connectivity: { pl: 'Łączność', uk: 'Підключення', en: 'Connectivity' },
-};
+
 
 export default function QuickView({ product, onClose }) {
   const { language, formatPrice, addToCart, user, flash, t } = useStore();

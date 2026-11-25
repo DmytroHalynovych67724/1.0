@@ -1,3 +1,4 @@
+import { specLabels as listingSpecLabels } from '../specLabels.mjs';
 import SellerSales, { salesCopy } from '../components/SellerSales';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -56,34 +57,7 @@ const listingSpecs = {
   Foto: ['color', 'resolution', 'displayType', 'connectivity', 'wifi', 'bluetooth', 'features', 'weight'],
   Akcesoria: ['color', 'accessoryType', 'connectivity', 'bluetooth', 'battery', 'charging', 'features', 'weight'],
 };
-const listingSpecLabels = {
-  screen: { pl: 'Przekątna ekranu', uk: 'Діагональ екрана', en: 'Screen size' },
-  processor: { pl: 'Procesor', uk: 'Процесор', en: 'Processor' },
-  ram: { pl: 'Pamięć RAM', uk: 'Оперативна пам’ять', en: 'RAM' },
-  storage: { pl: 'Pamięć urządzenia', uk: 'Накопичувач', en: 'Storage' },
-  gpu: { pl: 'Karta graficzna', uk: 'Відеокарта', en: 'Graphics' },
-  os: { pl: 'System operacyjny', uk: 'Операційна система', en: 'Operating system' },
-  platform: { pl: 'Platforma', uk: 'Платформа', en: 'Platform' },
-  resolution: { pl: 'Rozdzielczość', uk: 'Роздільна здатність', en: 'Resolution' },
-  refreshRate: { pl: 'Odświeżanie', uk: 'Частота оновлення', en: 'Refresh rate' },
-  connectivity: { pl: 'Łączność', uk: 'Підключення', en: 'Connectivity' },
-  accessoryType: { pl: 'Rodzaj akcesorium', uk: 'Тип аксесуара', en: 'Accessory type' },
-  audioType: { pl: 'Rodzaj audio', uk: 'Тип аудіо', en: 'Audio type' },
-  color: { pl: 'Kolor', uk: 'Колір', en: 'Color' },
-  displayType: { pl: 'Matryca ekranu', uk: 'Матриця екрана', en: 'Display type' },
-  battery: { pl: 'Pojemność baterii', uk: 'Ємність батареї', en: 'Battery capacity' },
-  charging: { pl: 'Moc ładowania', uk: 'Потужність заряджання', en: 'Charging power' },
-  mainCamera: { pl: 'Aparat główny', uk: 'Основна камера', en: 'Main camera' },
-  frontCamera: { pl: 'Aparat przedni', uk: 'Фронтальна камера', en: 'Front camera' },
-  weight: { pl: 'Waga', uk: 'Вага', en: 'Weight' },
-  cameraFeatures: { pl: 'Funkcje aparatu', uk: 'Особливості камери', en: 'Camera features' },
-  features: { pl: 'Funkcje i możliwości', uk: 'Функції та можливості', en: 'Features' },
-  sim: { pl: 'Karty SIM', uk: 'SIM-карти', en: 'SIM cards' },
-  wifi: { pl: 'Wi‑Fi', uk: 'Wi‑Fi', en: 'Wi-Fi' },
-  bluetooth: { pl: 'Wersja Bluetooth', uk: 'Версія Bluetooth', en: 'Bluetooth version' },
-  displayFeatures: { pl: 'Funkcje wyświetlacza', uk: 'Особливості дисплея', en: 'Display features' },
-  ramType: { pl: 'Typ pamięci RAM', uk: 'Тип оперативної пам’яті', en: 'RAM type' },
-};
+
 const words = {
   pl: {
     hello: 'Dzień dobry',
@@ -914,9 +888,10 @@ export default function Account() {
                   </div>}
                   {(order.discount > 0 || order.shipping > 0 || order.rewardGift) && <dl className="order-benefits">
                     {order.discount > 0 && <div><dt>Promo</dt><dd>−{formatPrice(order.discount, order.currency)}</dd></div>}
-                    {order.shipping > 0 && <div><dt>{language === 'uk' ? 'Доставка' : language === 'en' ? 'Delivery' : 'Dostawa'}</dt><dd>{order.shippingDiscount > 0 ? <><s>{formatPrice(order.shipping, order.currency)}</s> {formatPrice(0, order.currency)}</> : formatPrice(order.shipping, order.currency)}</dd></div>}
+                    {order.shipping > 0 && <div><dt>{language === 'uk' ? 'Доставка' : language === 'en' ? 'Delivery' : 'Dostawa'}</dt><dd>{order.shippingDiscount > 0 ? <><s>{formatPrice(order.shipping, order.currency)}</s> {formatPrice(Math.max(0, order.shipping - order.shippingDiscount), order.currency)}</> : formatPrice(order.shipping, order.currency)}</dd></div>}
                     {order.rewardGift && <div className="is-gift"><dt>{language === 'uk' ? 'Подарунок' : language === 'en' ? 'Gift' : 'Prezent'}</dt><dd>{orderGiftLabels[language]?.[order.rewardGift] || order.rewardGift}</dd></div>}
                   </dl>}
+                  {order.promoCode && <p className="sales-note">{language === 'uk' ? 'Промокод' : language === 'en' ? 'Promo code' : 'Kod rabatowy'}: <b>{order.promoCode}</b>{order.promoReleasedAt && <span> · {language === 'uk' ? 'Використання скасовано разом з усім замовленням. Код можна застосувати знову за початковими умовами, якщо строк дії не минув. Це не повернення коштів.' : language === 'en' ? 'Redemption released after full cancellation. The code can be used again under its original terms if it has not expired. This is not a payment refund.' : 'Użycie cofnięto po anulowaniu całego zamówienia. Kod można wykorzystać ponownie na pierwotnych warunkach, jeśli nie wygasł. To nie jest zwrot płatności.'}</span>}</p>}
                   {order.fulfillments?.map(fulfillment=><div className="buyer-fulfillment" key={fulfillment.sellerId}><span>{order.items.find(item=>item.sellerId===fulfillment.sellerId)?.seller || 'NaShary'} · {salesCopy[language].status[fulfillment.status]}</span>{fulfillment.status==='delivered' && <button className="quiet-button" type="button" disabled={!!receiptBusy} onClick={()=>confirmReceipt(order.id,fulfillment.sellerId)}>{salesCopy[language].receipt}</button>}</div>)}
                   <footer>
                     <small>{new Date(order.createdAt).toLocaleDateString()}</small>

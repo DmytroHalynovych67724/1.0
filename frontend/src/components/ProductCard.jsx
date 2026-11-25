@@ -1,3 +1,4 @@
+import { specLabels } from '../specLabels.mjs';
 import { conditionCopy } from '../deviceCondition.mjs';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -14,21 +15,7 @@ const copy = {
   en: { compare: 'Compare', low: 'Low stock', verified: 'Verified', quick: 'Quick view', urgent: 'Urgent', reserved: 'Reserved', model: 'All model offers' },
 };
 
-const specLabels = {
-  screen: { pl: 'Ekran', uk: 'Екран', en: 'Screen' },
-  processor: { pl: 'Procesor', uk: 'Процесор', en: 'Processor' },
-  ram: { pl: 'RAM', uk: 'RAM', en: 'RAM' },
-  storage: { pl: 'Pamięć', uk: 'Накопичувач', en: 'Storage' },
-  gpu: { pl: 'Grafika', uk: 'Відеокарта', en: 'Graphics' },
-  os: { pl: 'System', uk: 'Система', en: 'System' },
-  platform: { pl: 'Platforma', uk: 'Платформа', en: 'Platform' },
-  resolution: { pl: 'Rozdzielczość', uk: 'Роздільна здатність', en: 'Resolution' },
-  refreshRate: { pl: 'Odświeżanie', uk: 'Частота', en: 'Refresh rate' },
-  connectivity: { pl: 'Łączność', uk: 'Підключення', en: 'Connectivity' },
-  accessoryType: { pl: 'Rodzaj', uk: 'Тип', en: 'Type' },
-  audioType: { pl: 'Rodzaj', uk: 'Тип', en: 'Type' },
-  color: { pl: 'Kolor', uk: 'Колір', en: 'Color' },
-};
+
 
 function PreviewIcon() {
   return (
