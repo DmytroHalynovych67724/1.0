@@ -7,31 +7,31 @@ import { sectionPath } from '../catalogSections.mjs';
 
 const copy = {
   pl: {
-    title: 'Wyszukiwarka NaShary', beta: 'smart search',
-    lead: 'Opisz sprzęt własnymi słowami — rozpoznam budżet, stan i kategorię.',
-    welcome: 'Cześć! Mogę znaleźć ofertę w Twoim regionie. Napisz np. „używany iPhone do 2000 zł” albo wybierz podpowiedź.',
+    title: 'Doradca NaShary', beta: 'elektronika · dobór ofert', ai: 'AI · Groq', local: 'Wyszukiwanie', restricted: 'Tylko elektronika', setup: 'AI nie jest jeszcze podłączone. Wyszukiwanie ofert działa.',
+    lead: 'Porady o elektronice przez Groq. Sprawdzaj dokładny wariant; ceny i dostępność są w kartach ofert.',
+    welcome: 'Cześć! Zapytaj o parametry, porównanie lub zgodność sprzętu. Podaj model i budżet, a znajdę rzeczywiste oferty NaShary w Twoim regionie.',
     placeholder: 'Czego szukasz?', send: 'Wyślij', clear: 'Wyczyść rozmowę', close: 'Zamknij',
     showAll: 'Pokaż wszystkie wyniki', error: 'Nie udało się teraz przeszukać katalogu. Spróbuj ponownie.',
     region: 'Oferty tylko z regionu', used: 'Używane', new: 'Nowe', verified: 'Zweryfikowany',
-    quick: ['Telefon do 2000 zł', 'Używany laptop do 3000 zł', 'Gaming z dostawą', 'Nowe słuchawki'],
+    quick: ['Czym OLED różni się od IPS?', 'Ile RAM potrzebuje laptop?', 'Używany iPhone do 2000 zł'],
   },
   uk: {
-    title: 'Пошук NaShary', beta: 'розумний пошук',
-    lead: 'Опиши техніку своїми словами — я визначу бюджет, стан і категорію.',
-    welcome: 'Привіт! Я знайду пропозиції у твоєму регіоні. Напиши, наприклад, «вживаний iPhone до 2000» або вибери підказку.',
+    title: 'Техноконсультант NaShary', beta: 'техніка · підбір товарів', ai: 'AI · Groq', local: 'Пошук каталогу', restricted: 'Лише про техніку', setup: 'AI-консультації ще не підключені. Пошук товарів працює.',
+    lead: 'Консультації про електроніку через Groq. Перевіряй точну версію пристрою; ціни й наявність — у картках товарів.',
+    welcome: 'Привіт! Запитай про характеристики, порівняння чи сумісність техніки. Або напиши модель і бюджет — підберу реальні оголошення NaShary у твоєму регіоні.',
     placeholder: 'Що шукаєш?', send: 'Надіслати', clear: 'Очистити розмову', close: 'Закрити',
     showAll: 'Показати всі результати', error: 'Зараз не вдалося перевірити каталог. Спробуй ще раз.',
     region: 'Пропозиції лише з регіону', used: 'Вживане', new: 'Нове', verified: 'Позначений акаунт продавця',
-    quick: ['Телефон до 2000', 'Вживаний ноутбук до 3000', 'Геймінг з доставкою', 'Нові навушники'],
+    quick: ['Чим OLED відрізняється від IPS?', 'Скільки RAM потрібно ноутбуку?', 'Вживаний iPhone до 2000'],
   },
   en: {
-    title: 'NaShary search', beta: 'smart search',
-    lead: 'Describe the device naturally — I will identify budget, condition and category.',
-    welcome: 'Hi! I can find offers in your region. Try “pre-owned iPhone under 2000” or choose a suggestion.',
+    title: 'NaShary tech adviser', beta: 'electronics · product finder', ai: 'AI · Groq', local: 'Catalog search', restricted: 'Electronics only', setup: 'AI is not connected yet. Product search still works.',
+    lead: 'Electronics advice via Groq. Verify the exact device version; prices and availability appear in product cards.',
+    welcome: 'Hi! Ask about device specifications, comparisons or compatibility. Give me a model and budget to find real NaShary offers in your region.',
     placeholder: 'What are you looking for?', send: 'Send', clear: 'Clear conversation', close: 'Close',
     showAll: 'Show all results', error: 'I could not search the catalog right now. Please try again.',
     region: 'Offers only from', used: 'Pre-owned', new: 'New', verified: 'Verified',
-    quick: ['Phone under 2000', 'Used laptop under 3000', 'Gaming with delivery', 'New headphones'],
+    quick: ['How does OLED differ from IPS?', 'How much RAM does a laptop need?', 'Used iPhone under 2000'],
   },
 };
 
@@ -59,11 +59,19 @@ function CatalogSearchAssistant() {
   const { pathname } = useLocation();
   const c = copy[language] || copy.pl;
   const [open, setOpen] = useState(false);
+  const [aiConfigured, setAIConfigured] = useState(null);
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
   const messagesRef = useRef(null);
   const requestRef = useRef(0);
+  useEffect(() => {
+    if (!open) return undefined;
+    let active = true;
+    api('/marketplace/assistant/status').then(data => { if (active) setAIConfigured(data.configured); }).catch(() => {});
+    return () => { active = false; };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return undefined;
     const onKeyDown = (event) => { if (event.key === 'Escape') setOpen(false); };
@@ -77,7 +85,7 @@ function CatalogSearchAssistant() {
 
   const runSearch = async (value) => {
     const text = String(value || '').trim();
-    if (text.length < 2) return;
+    if (text.length < 2 || busy) return;
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     const messageId = `assistant-${requestId}`;
@@ -135,6 +143,7 @@ function CatalogSearchAssistant() {
           </header>
 
           <div className="assistant-messages-react" ref={messagesRef} aria-live="polite">
+            {aiConfigured === false && <p className="assistant-connection-note">{c.setup}</p>}
             <div className="assistant-bubble assistant-bubble--assistant"><span className="assistant-avatar"><BrandMark /></span><p>{c.welcome}</p></div>
             {messages.map((message) => message.role === 'user' ? (
               <div className="assistant-bubble assistant-bubble--user" key={message.id}><p>{message.text}</p></div>
@@ -142,6 +151,7 @@ function CatalogSearchAssistant() {
               <div className="assistant-bubble assistant-bubble--assistant" key={message.id}>
                 <span className="assistant-avatar"><BrandMark /></span>
                 <div className="assistant-answer">
+                  {message.assistantMode && <small className="assistant-mode">{message.assistantMode === 'ai' ? c.ai : message.assistantMode === 'restricted' ? c.restricted : c.local}</small>}
                   <p>{message.reply}</p>
                   {message.results?.length > 0 && <div className="assistant-products">{message.results.map((product) => <AssistantProduct product={product} language={language} formatPrice={formatPrice} close={() => setOpen(false)} key={product.id} />)}</div>}
                   {message.catalogQuery && <Link className="assistant-show-all" to={`${sectionPath(message.filters?.condition === 'used' ? 'used' : 'new')}?${message.catalogQuery}`} onClick={() => setOpen(false)}>{c.showAll}<span>→</span></Link>}
@@ -153,7 +163,7 @@ function CatalogSearchAssistant() {
 
           <div className="assistant-quick-react">{c.quick.map((item) => <button type="button" onClick={() => runSearch(item)} disabled={busy} key={item}>{item}</button>)}</div>
           <form className="assistant-form-react" onSubmit={submit}>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.placeholder} autoComplete="off" />
+            <input maxLength={600} aria-label={c.placeholder} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.placeholder} autoComplete="off" />
             <button type="submit" disabled={busy || query.trim().length < 2} aria-label={c.send}>↑</button>
           </form>
           <p className="assistant-disclaimer">{c.lead}</p>

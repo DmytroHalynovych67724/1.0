@@ -1,3 +1,4 @@
+import { normalizeComparison, comparisonAction } from './comparisonPolicy.mjs';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from './api';
 import { languages, translate } from './i18n';
@@ -19,7 +20,7 @@ function readFavorites() {
 }
 function readComparison() {
   const items = read('nashary-react-comparison', []);
-  return Array.isArray(items) ? items.filter((p) => p && typeof p.id === 'string').slice(0, 4).map(compactProduct) : [];
+  return normalizeComparison(items).map(compactProduct);
 }
 
 export function StoreProvider({ children }) {
@@ -45,7 +46,7 @@ export function StoreProvider({ children }) {
         if (!active) return;
         const fresh = new Map(products.filter(Boolean).map((product) => [product.id, product]));
         setCart((items) => items.map((item) => fresh.has(item.id) ? { ...item, product: fresh.get(item.id) } : item));
-        setComparison((items) => items.map((item) => fresh.get(item.id) || item));
+        setComparison((items) => normalizeComparison(items.map((item) => fresh.get(item.id) || item)));
       });
     return () => { active = false; };
   }, [initialProductIds]);
@@ -153,25 +154,18 @@ export function StoreProvider({ children }) {
     setFavorites((items) =>
       items.includes(id) ? items.filter((value) => value !== id) : [...items, id]
     );
-  const toggleCompare = useCallback(
-    (product) =>
-      setComparison((items) => {
-        if (items.some((item) => item.id === product.id))
-          return items.filter((item) => item.id !== product.id);
-        if (items.length >= 4) {
-          flash(
-            language === 'uk'
-              ? 'Можна порівняти не більше чотирьох товарів.'
-              : language === 'en'
-                ? 'You can compare up to four products.'
-                : 'Możesz porównać maksymalnie cztery produkty.'
-          );
-          return items;
-        }
-        return [...items, product];
-      }),
-    [flash, language]
-  );
+  const toggleCompare = useCallback((product) => {
+    const action = comparisonAction(comparison, product);
+    if (action === 'category') {
+      flash(language === 'uk' ? 'Порівнювати можна лише товари однієї категорії. Очисть список, щоб змінити категорію.' : language === 'en' ? 'Compare devices from one category. Clear the list to change category.' : 'Porównuj produkty jednej kategorii. Wyczyść listę, aby zmienić kategorię.');
+      return;
+    }
+    if (action === 'limit') {
+      flash(language === 'uk' ? 'Можна порівняти не більше чотирьох товарів.' : language === 'en' ? 'You can compare up to four products.' : 'Możesz porównać maksymalnie cztery produkty.');
+      return;
+    }
+    setComparison((items) => action === 'remove' ? items.filter((item) => item.id !== product.id) : normalizeComparison([...items, product]));
+  }, [comparison, flash, language]);
   const clearComparison = useCallback(() => setComparison([]), []);
   const t = useCallback((key) => translate(language, key), [language]);
   const formatPrice = useCallback(

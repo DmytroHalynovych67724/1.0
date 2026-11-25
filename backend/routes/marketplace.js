@@ -1,9 +1,10 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { requireAuth, requireModerator } = require('../middleware/auth');
 const { listProducts, getProduct } = require('../models/products');
-const { AppError, asyncHandler } = require('../utils/errors');
+const { AppError, asyncHandler, sendError } = require('../utils/errors');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
 const { searchCatalogWithAssistant } = require('../services/catalogAssistant');
 const { enhanceAssistantResult } = require('../services/groqAssistant');
@@ -20,7 +21,7 @@ const parse = (value) => {
 
 async function assistantHandler(req, res) {
   const source = req.method === 'POST' ? req.body : req.query;
-  const query = clean(source?.q, 180);
+  const query = clean(source?.q, 600);
   const language = ['pl', 'uk', 'en'].includes(source?.language) ? source.language : 'pl';
   const region = normalizeRegion(source?.region);
   if (query.length < 2)
@@ -36,8 +37,10 @@ async function assistantHandler(req, res) {
   );
 }
 
-router.get('/assistant', asyncHandler(assistantHandler));
-router.post('/assistant', asyncHandler(assistantHandler));
+const assistantLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: process.env.NODE_ENV === 'test' ? 1000 : 30, standardHeaders: true, legacyHeaders: false, handler: (_req,res) => sendError(res,429,'ASSISTANT_RATE_LIMITED','Too many assistant requests; please try again later') });
+router.get('/assistant/status', (_req,res) => res.json({ configured: Boolean(process.env.GROQ_API_KEY?.trim()) }));
+router.get('/assistant', assistantLimiter, asyncHandler(assistantHandler));
+router.post('/assistant', assistantLimiter, asyncHandler(assistantHandler));
 
 router.post(
   '/newsletter',

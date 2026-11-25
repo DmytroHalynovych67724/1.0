@@ -16,6 +16,7 @@ const developmentDatabasePath = path.resolve(__dirname, '..', 'data', 'db.sqlite
 assert.notEqual(path.resolve(testDatabasePath), developmentDatabasePath);
 
 process.env.NODE_ENV = 'test';
+process.env.GROQ_API_KEY = ''; // Integration tests never call a paid external AI service.
 process.env.DEMO_CATALOG_ENABLED = 'true';
 process.env.DB_PATH = testDatabasePath;
 process.env.DB_FILE = testDatabasePath;
@@ -1212,4 +1213,17 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   assert.equal(ticTacToe.response.status, 200);
   assert.equal(ticTacToe.body.percent <= 10, true);
   assert.match(ticTacToe.body.rewardCode, /^TTT-[A-F0-9]{8}$/);
+});
+
+test('technical assistant exposes connection state and refuses unrelated requests', async () => {
+  const status = await request('/api/marketplace/assistant/status');
+  assert.deepEqual(status.body,{configured:false});
+  const offTopic = await request('/api/marketplace/assistant',{method:'POST',body:{q:'Напиши рецепт борщу',language:'uk',region:'pl'}});
+  assert.equal(offTopic.response.status,200);
+  assert.equal(offTopic.body.assistantMode,'restricted');
+  assert.deepEqual(offTopic.body.results,[]);
+  const advice = await request('/api/marketplace/assistant',{method:'POST',body:{q:'Поясни різницю між OLED та IPS',language:'uk',region:'pl'}});
+  assert.equal(advice.body.intent,'advice');
+  assert.equal(advice.body.failureReason,'not_configured');
+  assert.deepEqual(advice.body.results,[]);
 });

@@ -1,4 +1,26 @@
 /* Shared NaShary NS identity. Brand accents are blue in both themes. */
+.assistant-answer > p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.assistant-mode { display: block; margin-bottom: 7px; font-size: 10px; font-weight: 750; color: var(--brand); }
+.assistant-connection-note { font-size: 12px; line-height: 1.65; color: var(--muted); background: var(--brand-soft); border-radius: 10px; padding: 12px; }
+.compare-panel { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); min-height: 0; }
+.compare-panel h2 small { font-size: 14px; color: var(--muted); white-space: nowrap; }
+.comparison-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0 18px; font-size: 13px; }
+.comparison-toolbar label { display: flex; gap: 10px; align-items: center; }
+.comparison-toolbar a { color: var(--brand); font-weight: 700; }
+.compare-table-wrap { flex: 1 1 auto; min-height: 0; max-height: none; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 12px; }
+.comparison-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 100%; min-width: calc(150px + var(--product-count) * 210px); font-size: 13px; }
+.comparison-table th, .comparison-table td { padding: 14px; text-align: left; vertical-align: top; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); overflow-wrap: anywhere; line-height: 1.65; }
+.comparison-table th:first-child { width: 150px; position: sticky; left: 0; z-index: 2; background: var(--paper); color: var(--muted); font-weight: 500; }
+.comparison-table thead th { position: sticky; top: 0; z-index: 3; background: var(--paper); }
+.comparison-table thead th:first-child { z-index: 4; }
+.comparison-table tr.has-difference td { background: var(--brand-soft); }
+.comparison-product { position: relative; padding-top: 22px; }
+.comparison-product img { display: block; width: 100%; height: 100px; object-fit: contain; margin-bottom: 12px; }
+.comparison-product a { display: block; min-height: 46px; font-weight: 700; color: var(--ink); line-height: 1.45; }
+.comparison-product > button { position: absolute; right: 0; top: -8px; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 50%; background: var(--paper); color: var(--ink); cursor: pointer; }
+.comparison-empty { padding: 32px 0; color: var(--muted); }
+.comparison-hint { font-size: 13px; color: var(--muted); margin-top: 0; }
+@media (max-width: 600px) { .compare-panel { max-height: calc(100dvh - 24px); } .comparison-table { min-width: calc(115px + var(--product-count) * 175px); font-size: 12px; } .comparison-table th:first-child { width: 115px; } .comparison-table th, .comparison-table td { padding: 10px; } .comparison-product img { height: 72px; } }
 .guide-topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; }
 .guide-topics a { border: 1px solid var(--line); border-radius: 30px; padding: 10px 14px; font-size: 12px; color: var(--ink); }
 .guide-topics a:hover { background: var(--brand-soft); border-color: var(--brand); }
