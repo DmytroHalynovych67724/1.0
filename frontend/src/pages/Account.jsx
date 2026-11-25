@@ -1,3 +1,5 @@
+import { preparePhoto } from '../preparePhoto';
+import { photoCopy } from '../photoPolicy.mjs';
 import { specLabels as listingSpecLabels } from '../specLabels.mjs';
 import SellerSales, { salesCopy } from '../components/SellerSales';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -228,6 +230,10 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
       : { ...blankListing, condition: canSellNew ? 'new' : 'used' }
   );
   const [busy, setBusy] = useState(false);
+  const [photosBusy, setPhotosBusy] = useState(false);
+  const [photoNotice, setPhotoNotice] = useState('');
+  const photosGate = useRef(false);
+  const pc = photoCopy[language] || photoCopy.pl;
   const [specsBusy, setSpecsBusy] = useState(false);
   const [specMatches, setSpecMatches] = useState([]);
   const [selectedSpecKey, setSelectedSpecKey] = useState('');
@@ -251,14 +257,31 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
     });
   };
   const addPhotoFiles = async (selectedFiles) => {
-    const files = [...selectedFiles].slice(0, 8 - form.images.length);
-    const acceptable = files.filter((file) => file.size <= 750_000 && /^image\/(png|jpeg|webp)$/.test(file.type));
-    const encoded = await Promise.all(acceptable.map((file) => new Promise((resolve) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); })));
-    setForm((current) => ({ ...current, images: [...current.images, ...encoded].slice(0, 8) }));
+    if (photosGate.current) return;
+    const selected = [...selectedFiles];
+    const remaining = 8 - form.images.length;
+    if (!selected.length) return;
+    if (remaining <= 0) { setPhotoNotice(pc.limit); return; }
+    photosGate.current = true; setPhotosBusy(true); setPhotoNotice(pc.busy);
+    const files = selected.slice(0, remaining);
+    const encoded = [];
+    const problems = new Set();
+    if (selected.length > files.length) problems.add(pc.limit);
+    try {
+      for (let index = 0; index < files.length; index += 1) {
+        setPhotoNotice(`${pc.busy} ${index + 1}/${files.length}`);
+        try { encoded.push(await preparePhoto(files[index])); }
+        catch (error) { problems.add(pc[error.message] || pc.decode); }
+      }
+      setForm((current) => ({ ...current, images: [...current.images, ...encoded].slice(0, 8) }));
+      const skipped = selected.length - encoded.length;
+      setPhotoNotice(`${pc.added}: ${encoded.length}.${skipped ? ` ${pc.skipped}: ${skipped}.` : ''} ${[...problems].join(' ')}`);
+    } finally { photosGate.current = false; setPhotosBusy(false); }
   };
   const addPhotos = async (event) => {
-    await addPhotoFiles(event.target.files);
-    event.target.value = '';
+    const input = event.target;
+    await addPhotoFiles(input.files);
+    input.value = '';
   };
   const specKey = (match) => String(match.icecatId || `${match.source}:${match.title}`);
   const applySpecMatch = useCallback((match, query) => {
@@ -321,6 +344,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language, lookupAttempt, lookupQuery]);
   const submit = async (event) => {
     event.preventDefault();
+    if (busy || photosBusy || photosGate.current) return;
     setBusy(true);
     const payload = {
       ...form,
@@ -458,7 +482,16 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
               onChange={(event) => change('location', event.target.value)}
             />
           </label>
-          <div className="span-2 listing-photo-field"><span className="listing-field-label">{c.photos}</span><label className="photo-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); addPhotoFiles(event.dataTransfer.files); }}><input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={addPhotos} /><i>＋</i><b>{language === 'pl' ? 'Dodaj zdjęcia urządzenia' : language === 'uk' ? 'Додайте фотографії пристрою' : 'Add device photos'}</b><small>{c.photoHint}</small></label>{form.images.length > 0 && <div className="listing-photo-grid">{form.images.map((image, index) => <figure key={`${image.slice(0, 30)}-${index}`}><img src={imageUrl(image)} alt="" /><button type="button" onClick={() => change('images', form.images.filter((_, itemIndex) => itemIndex !== index))}>×</button>{index === 0 && <span>Cover</span>}</figure>)}</div>}</div>
+          <div className="span-2 listing-photo-field"><span className="listing-field-label">{c.photos}</span>
+            <label className="photo-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); addPhotoFiles(event.dataTransfer.files); }}>
+              <input type="file" aria-label={c.photos} accept="image/png,image/jpeg,image/webp" multiple disabled={photosBusy} onChange={addPhotos}/><i>＋</i><b>{photosBusy ? pc.busy : language === 'pl' ? 'Dodaj zdjęcia urządzenia' : language === 'uk' ? 'Додайте фотографії пристрою' : 'Add device photos'}</b><small>{pc.hint}</small>
+            </label>
+            <p className="photo-status" role="status">{photoNotice}</p>
+            {form.images.length > 0 && <div className="listing-photo-grid">{form.images.map((image, index) => <figure key={`${image.slice(0, 30)}-${index}`}><img src={imageUrl(image)} alt={`${language === 'uk' ? 'Фото' : language === 'en' ? 'Photo' : 'Zdjęcie'} ${index + 1}`}/>
+              <button type="button" disabled={photosBusy} aria-label={`${pc.remove} ${index + 1}`} onClick={() => change('images', form.images.filter((_, itemIndex) => itemIndex !== index))}>×</button>
+              {index === 0 ? <span>{pc.cover}</span> : <button type="button" className="make-cover" disabled={photosBusy} onClick={() => change('images', [image, ...form.images.filter((_, itemIndex) => itemIndex !== index)])}>{pc.makeCover}</button>}
+            </figure>)}</div>}
+          </div>
           {form.condition === 'new' && <SupplyFields value={form.supplyDetails} onChange={(value) => change('supplyDetails', value)} language={language} />}
           <label>{c.warranty}<select value={form.warranty} onChange={(event) => change('warranty', event.target.value)}><option value="none">—</option><option value="seller">Seller</option><option value="manufacturer">Manufacturer</option></select></label>
           <label>{c.status}<select value={form.status} onChange={(event) => change('status', event.target.value)}>{['active','reserved','sold','draft'].map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></label>
@@ -492,7 +525,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
           <button className="quiet-button" type="button" onClick={onClose}>
             {c.cancel}
           </button>
-          <button className="primary-button" disabled={busy} type="submit">
+          <button className="primary-button" disabled={busy || photosBusy} type="submit">
             {busy ? '…' : c.save}
           </button>
         </div>
@@ -644,25 +677,19 @@ export default function Account() {
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const avatarInput = useRef(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const avatarGate = useRef(false);
   const uploadAvatar = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/') || file.size > 700_000)
-      return flash('Max 700 KB · JPG, PNG, WebP');
-    const avatar = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file || avatarGate.current) return;
+    avatarGate.current = true; setAvatarBusy(true);
     try {
+      const avatar = await preparePhoto(file, { maxSide: 384, maxLength: 180_000 });
       const result = await api('/auth/me', { method: 'PATCH', body: JSON.stringify({ avatar }) });
-      updateProfile(result.user);
-      flash(c.avatarSaved);
-    } catch (error) {
-      flash(error.message);
-    }
-    event.target.value = '';
+      updateProfile(result.user); flash(c.avatarSaved);
+    } catch (error) { flash((photoCopy[language] || photoCopy.pl)[error.message] || error.message); }
+    finally { avatarGate.current = false; setAvatarBusy(false); input.value = ''; }
   };
   const refresh = useCallback(() => {
     if (!user) return;
@@ -712,7 +739,9 @@ export default function Account() {
             className="profile-avatar"
             type="button"
             onClick={() => avatarInput.current?.click()}
-            title={c.avatar}
+            title={avatarBusy ? (photoCopy[language] || photoCopy.pl).busy : c.avatar}
+            disabled={avatarBusy}
+            aria-busy={avatarBusy}
           >
             {user.avatar ? (
               <img src={user.avatar} alt="" />
