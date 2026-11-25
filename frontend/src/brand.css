@@ -1,4 +1,38 @@
 /* Shared NaShary NS identity. Brand accents are blue in both themes. */
+.guide-topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0; }
+.guide-topics a { border: 1px solid var(--line); border-radius: 30px; padding: 10px 14px; font-size: 12px; color: var(--ink); }
+.guide-topics a:hover { background: var(--brand-soft); border-color: var(--brand); }
+.guide-note { padding: 18px 22px; background: var(--brand-soft); border-radius: 14px; color: var(--muted); line-height: 1.7; }
+.guides-grid article { scroll-margin-top: 160px; min-width: 0; }
+.guides-grid ol { padding-left: 22px; margin-bottom: 0; }
+.guides-grid li { color: var(--muted); font-size: 14px; line-height: 1.8; margin-block: 14px; }
+.guide-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.app-footer { padding-top: 0; margin-top: 48px; }
+.footer-main { padding: 48px 0 24px; background: #0c1729; border-top: 1px solid #293c59; }
+.footer-brand > .brand-logo { filter: none; color: #edf3ff; }
+.footer-brand .brand-mark { color: #335cff; }
+.footer-brand .brand-wordmark { color: #edf3ff; }
+.footer-grid p { color: #aab8d0; font-size: 13px; margin-block: 8px; }
+.footer-grid a { color: #b6c5df; }
+.footer-grid a:hover { color: #fff; }
+.footer-brand > span { color: #8aa6ff; }
+.footer-bottom { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: #aab8d0; border-color: #293c59; }
+.games-page--single .game-panel--ttt { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 390px); grid-template-rows: auto auto auto minmax(64px, auto) minmax(96px, auto) auto; align-items: start; }
+.games-page--single .ttt-board { grid-column: 2; grid-row: 1 / 6; align-self: start; width: 100%; height: auto; aspect-ratio: 1; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); overflow: hidden; }
+.ttt-board button { min-width: 0; min-height: 0; padding: 0; line-height: 1; display: grid; place-items: center; overflow: hidden; }
+.ttt-board button:not(:disabled):hover { transform: none; }
+.games-page--single .ttt-actions { grid-column: 1; grid-row: 5; min-height: 96px; align-self: start; }
+.games-page--single .ttt-meta { grid-column: 1; grid-row: 4; min-height: 64px; align-self: start; }
+.games-page--single .game-panel--ttt > .reward-code { grid-column: 1 / -1; grid-row: 6; }
+.game-reward-rules { padding: 24px; border: 1px solid var(--line); border-radius: 18px; margin-block: 24px; background: var(--paper); }
+.game-reward-rules h2 { font-size: 18px; margin-top: 0; }
+.game-reward-rules p, .game-reward-rules li { color: var(--muted); font-size: 13px; line-height: 1.8; }
+@media (max-width: 800px) {
+  .games-page--single .game-panel--ttt { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+  .games-page--single .ttt-board { grid-column: 1; grid-row: 5; width: min(100%, 350px); justify-self: center; margin-block: 16px; }
+  .games-page--single .ttt-actions { grid-row: 6; }
+  .games-page--single .game-panel--ttt > .reward-code { grid-row: 7; }
+}
 .manufacturer-logo { display: inline-flex; width: 110px; height: 40px; align-items: center; justify-content: center; flex: 0 0 auto; }
 .manufacturer-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .manufacturer-logo__fallback { font-size: 15px; font-weight: 750; letter-spacing: -.025em; color: var(--ink); }

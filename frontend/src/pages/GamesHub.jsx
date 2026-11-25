@@ -1,3 +1,4 @@
+import RewardRules from '../components/RewardRules';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store';
 
@@ -86,6 +87,7 @@ export default function GamesHub() {
           </Link>
         ))}
       </div>
+      <RewardRules />
     </main>
   );
 }

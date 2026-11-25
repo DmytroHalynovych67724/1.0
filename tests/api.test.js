@@ -1087,6 +1087,13 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   assert.equal(spin.response.status, 200);
   assert.equal(spin.body.won, true);
   assert.match(spin.body.rewardCode, /^SPIN-[A-F0-9]{8}$/);
+  assert.equal(spin.body.rewardType, 'shipping');
+  assert.equal(spin.body.percent, 0);
+  assert.equal(spin.body.giftKey, null);
+  assert.equal(spin.body.maxDiscountCents, 2000);
+  assert.equal(spin.body.currency, 'PLN');
+  assert.equal(spin.body.expiresInDays, 7);
+  assert.ok(spin.body.expiresAt > Date.now());
 
   const stolen = await request('/api/orders', {
     method: 'POST',
@@ -1095,6 +1102,13 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   });
   assert.equal(stolen.response.status, 400);
   assert.equal(stolen.body.code, 'INVALID_PROMO_CODE');
+
+  const usedRewardProduct = await createProduct({ title: 'Used reward exclusion', condition: 'used', price: 200, stock: 3 });
+  for (const items of [[{ id: usedRewardProduct.id, qty: 1 }], [{ id: usedRewardProduct.id, qty: 1 }, { id: product.id, qty: 1 }]]) {
+    const rejected = await request('/api/orders', { method: 'POST', token: player.token, body: { items, promoCode: spin.body.rewardCode } });
+    assert.equal(rejected.response.status, 400);
+    assert.equal(rejected.body.code, 'PROMO_NOT_APPLICABLE');
+  }
 
   const rewardedOrder = await request('/api/orders', {
     method: 'POST',
@@ -1121,14 +1135,31 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   assert.equal(repeatedSpin.response.status, 409);
   assert.equal(repeatedSpin.body.code, 'DAILY_ATTEMPT_USED');
 
+  const legacyQuiz = await request('/api/rewards/quiz', { method: 'POST', token: player.token, body: { region: 'pl', answer: 'ssd' } });
+  assert.equal(legacyQuiz.response.status, 400);
+  const dailyQuiz = await request('/api/rewards/quiz?language=en', { token: player.token });
+  const correctAnswers = { storage: 'ssd', refresh: 'refresh', usb: 'usb-c', battery: 'cool', oled: 'oled', ram: 'active', ip68: 'water', nfc: 'nfc', wifi6: 'wireless', gpu: 'gpu', resolution: '4k', backup: 'backup', hdmi: 'hdmi', cores: 'units', 'used-phone': 'imei' };
+  const fullAnswers = dailyQuiz.body.questions.map((question) => ({ questionId: question.id, answer: correctAnswers[question.id] }));
+  const incompleteQuiz = await request('/api/rewards/quiz', { method: 'POST', token: player.token, body: { region: 'pl', answers: fullAnswers.slice(0, 7) } });
+  assert.equal(incompleteQuiz.response.status, 400);
   const quiz = await request('/api/rewards/quiz', {
     method: 'POST',
     token: player.token,
-    body: { region: 'pl', answer: 'ssd' },
+    body: { region: 'pl', answers: fullAnswers },
   });
   assert.equal(quiz.response.status, 200);
-  assert.equal(quiz.body.percent <= 10, true);
+  assert.equal(quiz.body.percent, 10);
+  assert.equal(quiz.body.maxDiscountCents, 30000);
+  assert.equal(quiz.body.giftKey, null);
   assert.match(quiz.body.rewardCode, /^QUIZ-[A-F0-9]{8}$/);
+  const expensiveRewardProduct = await createProduct({ title: 'Reward cap device', condition: 'new', price: 9999, stock: 2 });
+  const cappedOrder = await request('/api/orders', { method: 'POST', token: player.token, body: { items: [{ id: expensiveRewardProduct.id, qty: 1 }], promoCode: quiz.body.rewardCode } });
+  assert.equal(cappedOrder.response.status, 201);
+  assert.equal(cappedOrder.body.discount, 300);
+  assert.equal(cappedOrder.body.rewardGift, null);
+  const reusedCode = await request('/api/orders', { method: 'POST', token: player.token, body: { items: [{ id: expensiveRewardProduct.id, qty: 1 }], promoCode: quiz.body.rewardCode } });
+  assert.equal(reusedCode.response.status, 400);
+
 
   const usedQuiz = await request('/api/rewards/quiz?language=pl', {
     token: player.token,
@@ -1145,6 +1176,20 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   assert.equal(localizedQuestion.body.requiredCorrect, 7);
   assert.match(localizedQuestion.body.questions[0].prompt, /[А-Яа-яІіЇїЄє]/);
   assert.equal(Array.isArray(localizedQuestion.body.questions[0].options), true);
+  const sevenAnswers = localizedQuestion.body.questions.map((question, index) => ({ questionId: question.id, answer: index ? correctAnswers[question.id] : question.options.find((option) => option.value !== correctAnswers[question.id]).value }));
+  const sevenQuiz = await request('/api/rewards/quiz', { method: 'POST', token: intruder.token, body: { region: 'pl', answers: sevenAnswers } });
+  assert.equal(sevenQuiz.response.status, 200);
+  assert.equal(sevenQuiz.body.correct, 7);
+  assert.equal(sevenQuiz.body.percent, 5);
+  assert.equal(sevenQuiz.body.maxDiscountCents, 15000);
+  const euShipping = await request('/api/rewards/spin', { method: 'POST', token: intruder.token, body: { region: 'eu' } });
+  assert.equal(euShipping.body.maxDiscountCents, 800);
+  const euProduct = await createProduct({ title: 'EU delivery cap', region: 'eu', currency: 'EUR', condition: 'new', stock: 2 });
+  const euOrder = await request('/api/orders', { method: 'POST', token: intruder.token, body: { items: [{ id: euProduct.id, qty: 1 }], promoCode: euShipping.body.rewardCode, checkout: { paymentMethod: 'card', deliveryMethod: 'shipping' } } });
+  assert.equal(euOrder.response.status, 201);
+  assert.ok(euOrder.body.shipping > 8);
+  assert.equal(euOrder.body.shippingDiscount, 8);
+
 
   const ticTacToe = await request('/api/rewards/tictactoe', {
     method: 'POST',

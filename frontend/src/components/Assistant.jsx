@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
 import BrandMark from './BrandMark';
 
 const copy = {
   pl: {
-    title: 'Pomocnik NaShary', beta: 'smart search',
+    title: 'Wyszukiwarka NaShary', beta: 'smart search',
     lead: 'Opisz sprzęt własnymi słowami — rozpoznam budżet, stan i kategorię.',
     welcome: 'Cześć! Mogę znaleźć ofertę w Twoim regionie. Napisz np. „używany iPhone do 2000 zł” albo wybierz podpowiedź.',
     placeholder: 'Czego szukasz?', send: 'Wyślij', clear: 'Wyczyść rozmowę', close: 'Zamknij',
@@ -15,16 +15,16 @@ const copy = {
     quick: ['Telefon do 2000 zł', 'Używany laptop do 3000 zł', 'Gaming z dostawą', 'Nowe słuchawki'],
   },
   uk: {
-    title: 'Помічник NaShary', beta: 'розумний пошук',
+    title: 'Пошук NaShary', beta: 'розумний пошук',
     lead: 'Опиши техніку своїми словами — я визначу бюджет, стан і категорію.',
     welcome: 'Привіт! Я знайду пропозиції у твоєму регіоні. Напиши, наприклад, «вживаний iPhone до 2000» або вибери підказку.',
     placeholder: 'Що шукаєш?', send: 'Надіслати', clear: 'Очистити розмову', close: 'Закрити',
     showAll: 'Показати всі результати', error: 'Зараз не вдалося перевірити каталог. Спробуй ще раз.',
-    region: 'Пропозиції лише з регіону', used: 'Вживане', new: 'Нове', verified: 'Перевірений',
+    region: 'Пропозиції лише з регіону', used: 'Вживане', new: 'Нове', verified: 'Позначений акаунт продавця',
     quick: ['Телефон до 2000', 'Вживаний ноутбук до 3000', 'Геймінг з доставкою', 'Нові навушники'],
   },
   en: {
-    title: 'NaShary assistant', beta: 'smart search',
+    title: 'NaShary search', beta: 'smart search',
     lead: 'Describe the device naturally — I will identify budget, condition and category.',
     welcome: 'Hi! I can find offers in your region. Try “pre-owned iPhone under 2000” or choose a suggestion.',
     placeholder: 'What are you looking for?', send: 'Send', clear: 'Clear conversation', close: 'Close',
@@ -49,7 +49,13 @@ function AssistantProduct({ product, language, formatPrice, close }) {
 }
 
 export default function Assistant() {
+  const { region, language } = useStore();
+  return <CatalogSearchAssistant key={`${region}:${language}`} />;
+}
+
+function CatalogSearchAssistant() {
   const { language, region, regions, formatPrice } = useStore();
+  const { pathname } = useLocation();
   const c = copy[language] || copy.pl;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -57,7 +63,6 @@ export default function Assistant() {
   const [busy, setBusy] = useState(false);
   const messagesRef = useRef(null);
   const requestRef = useRef(0);
-
   useEffect(() => {
     if (!open) return undefined;
     const onKeyDown = (event) => { if (event.key === 'Escape') setOpen(false); };
@@ -112,6 +117,7 @@ export default function Assistant() {
     setQuery('');
   };
 
+  if (pathname.startsWith('/games') || pathname === '/cart' || pathname === '/auth') return null;
   return (
     <div className={`assistant${open ? ' is-open' : ''}`}>
       <button className="assistant-toggle" type="button" onClick={() => setOpen((value) => !value)} aria-label={c.title} aria-expanded={open} aria-controls="nashary-assistant">

@@ -1,3 +1,4 @@
+import RewardRules from '../components/RewardRules';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
@@ -14,7 +15,7 @@ const text = {
     precision: 'Strefa precyzji',
     precisionText: 'Zatrzymaj szybszy wskaźnik w bardzo wąskiej strefie. Jej pozycja i tempo zmieniają się przy każdym starcie.',
     start: 'Uruchom', stop: 'Zatrzymaj', miss: 'Prawie — wskaźnik zatrzymał się poza polem. Spróbuj ponownie.',
-    hit: 'Celnie! Losujemy małą, uczciwą nagrodę…', quiz: 'Tech quiz',
+    hit: 'Celnie! Przygotowujemy nagrodę…', quiz: 'Tech quiz',
     quizText: 'Osiem pytań z różnych dziedzin technologii. Do nagrody potrzebujesz co najmniej 7 poprawnych odpowiedzi.',
     question: 'Pytanie', of: 'z', score: 'Twój wynik', required: 'Do nagrody potrzeba 7/8.',
     ttt: 'Kółko i krzyżyk', tttText: 'Pokonaj sprytnego, ale omylnego bota. Zaczynasz jako X.',
@@ -95,15 +96,19 @@ function botMove(board) {
 }
 
 function Reward({ result, copy, hint, c }) {
+  const { formatPrice, language } = useStore();
   if (!result?.rewardCode) return null;
   const gift = c.gifts[result.giftKey] || c.usedGift;
-  const title = result.rewardType === 'shipping' ? c.freeShipping : `${result.percent}% ${c.newDiscount}`;
+  const shippingTitle = { uk: 'Знижка на доставку', pl: 'Rabat na dostawę', en: 'Shipping discount' }[language];
+  const title = result.rewardType === 'shipping' ? shippingTitle : `${result.percent}% ${c.newDiscount}`;
   const alternative = result.rewardType === 'smart' ? `${gift} — ${c.usedGift}` : null;
   return (
-    <button className="reward-code" type="button" onClick={() => { navigator.clipboard.writeText(result.rewardCode); copy(); }}>
-      <span>{result.rewardType === 'shipping' ? '0 zł' : `${result.percent}%`}</span>
+    <button className="reward-code" type="button" onClick={() => { navigator.clipboard.writeText(result.rewardCode).then(copy).catch(() => {}); }}>
+      <span>{result.rewardType === 'shipping' ? formatPrice((result.maxDiscountCents || 0) / 100, result.currency) : `${result.percent}%`}</span>
       <b>{title}</b>
       {alternative && <small>{alternative}</small>}
+      {result.maxDiscountCents != null && <small>{language === 'uk' ? 'Максимум' : language === 'en' ? 'Maximum' : 'Maksymalnie'}: {formatPrice(result.maxDiscountCents / 100, result.currency)}</small>}
+      <small>{language === 'uk' ? '7 днів · один раз · нова техніка магазину' : language === 'en' ? '7 days · single use · new store devices' : '7 dni · jeden raz · nowy sprzęt sklepu'}</small>
       <code>{result.rewardCode}</code>
       <small>{hint}</small>
     </button>
@@ -132,6 +137,7 @@ export default function Games({ game }) {
   const [board, setBoard] = useState(Array(9).fill(null));
   const [gameMessage, setGameMessage] = useState('');
   const [tttReward, setTttReward] = useState(null);
+  const [tttBusy, setTttBusy] = useState(false);
 
   useEffect(() => {
     if (!user || game !== 'quiz') return;
@@ -212,13 +218,14 @@ export default function Games({ game }) {
     const next = [...board]; next[index] = 'X'; setBoard(next);
     const result = resultFor(next).winner;
     if (result === 'X') {
+      setTttBusy(true);
       setGameMessage('…');
       try {
         setTttReward(await api('/rewards/tictactoe', { method: 'POST', body: JSON.stringify({ region, board: next }) }));
         setGameMessage(c.won);
       } catch (error) {
         setGameMessage(error.code === 'DAILY_ATTEMPT_USED' ? c.used : error.message);
-      }
+      } finally { setTttBusy(false); }
     } else if (result === 'draw') setGameMessage(c.draw);
   };
   const reset = () => { setBoard(Array(9).fill(null)); setGameMessage(''); setTttReward(null); };
@@ -261,10 +268,11 @@ export default function Games({ game }) {
           <div className="ttt-board">
             {board.map((cell, index) => <button className={`${cell ? `is-${cell.toLowerCase()}` : ''} ${gameState.line.includes(index) ? 'is-winning' : ''}`} disabled={Boolean(cell) || Boolean(gameState.winner) || botTurn} type="button" key={index} onClick={() => playCell(index)} aria-label={`cell ${index + 1}`}>{cell}</button>)}
           </div>
-          <div className="ttt-actions"><button className="quiet-button" type="button" onClick={reset}>{c.reset}</button><span>{gameMessage}</span></div>
+          <div className="ttt-actions"><button className="quiet-button" type="button" disabled={tttBusy} onClick={reset}>{c.reset}</button><span role="status">{gameMessage}</span></div>
           <Reward result={tttReward} copy={() => flash(c.copied)} hint={c.copyHint} c={c} />
         </section>}
       </div>
+      <RewardRules />
     </main>
   );
 }

@@ -274,7 +274,12 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
             'This code is valid only for a delivery order'
           );
         }
-        shippingDiscountCents = shippingCents;
+        // Bounded shipping rewards are funded only for new store orders.
+        // Previously issued unbounded shipping codes retain their original terms.
+        if (promo.maxDiscountCents != null && snapshot.some((item) => item.condition !== 'new' || item.sellerType !== 'store')) {
+          throw new AppError(400, 'PROMO_NOT_APPLICABLE', 'Delivery rewards apply only to orders containing new store items');
+        }
+        shippingDiscountCents = promo.maxDiscountCents == null ? shippingCents : Math.min(shippingCents, promo.maxDiscountCents);
       } else if (rewardType === 'gift') {
         if (!hasUsedItem) {
           throw new AppError(

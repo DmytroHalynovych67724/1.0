@@ -2,7 +2,8 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { AppError } = require('../utils/errors');
-const { normalizeRegion } = require('../utils/regions');
+const { normalizeRegion, currencyForRegion } = require('../utils/regions');
+const rewardPolicy = require('../../shared/rewardPolicy.json');
 
 const DAY = 24 * 60 * 60 * 1000;
 const QUIZ_DAILY_TOTAL = 8;
@@ -330,34 +331,15 @@ async function quizChallenge({ userId, language = 'pl' }) {
 }
 
 function maxDiscount(region, percent) {
-  const caps = {
-    pl: percent === 10 ? 30000 : 15000,
-    ua: percent === 10 ? 200000 : 100000,
-    eu: percent === 10 ? 8000 : 4000,
-  };
-  return caps[normalizeRegion(region)];
+  return rewardPolicy.capsCents[normalizeRegion(region)][String(percent)];
 }
 
 function rewardFor(game, { perfect = false } = {}) {
-  if (game === 'quiz' && perfect) return { rewardType: 'smart', value: 10, giftKey: 'usb_c_cable' };
-  const pools = {
-    spin: [
-      { rewardType: 'shipping', value: 0, giftKey: null },
-      { rewardType: 'smart', value: 5, giftKey: 'care_kit' },
-      { rewardType: 'smart', value: 5, giftKey: 'eco_pack' },
-    ],
-    quiz: [
-      { rewardType: 'smart', value: 5, giftKey: 'usb_c_cable' },
-      { rewardType: 'shipping', value: 0, giftKey: null },
-    ],
-    tictactoe: [
-      { rewardType: 'smart', value: 10, giftKey: 'device_inspection' },
-      { rewardType: 'smart', value: 5, giftKey: 'usb_c_cable' },
-      { rewardType: 'shipping', value: 0, giftKey: null },
-    ],
+  return {
+    rewardType: game === 'spin' ? 'shipping' : 'discount',
+    value: game === 'quiz' && perfect ? rewardPolicy.perfectQuizPercent : rewardPolicy.standardPercent,
+    giftKey: null,
   };
-  const pool = pools[game];
-  return pool[crypto.randomInt(pool.length)];
 }
 
 async function play({ userId, region, game, won, reward, result = {} }) {
@@ -391,8 +373,8 @@ async function play({ userId, region, game, won, reward, result = {} }) {
           rewardCode,
           reward.value,
           normalizeRegion(region),
-          reward.rewardType === 'smart' ? maxDiscount(region, reward.value) : null,
-          createdAt + 7 * DAY,
+          reward.rewardType === 'shipping' ? rewardPolicy.shippingCapsCents[normalizeRegion(region)] : maxDiscount(region, reward.value),
+          createdAt + rewardPolicy.expiresInDays * DAY,
           userId,
           reward.rewardType,
           reward.giftKey,
@@ -415,12 +397,16 @@ async function play({ userId, region, game, won, reward, result = {} }) {
     rewardType: won ? reward.rewardType : null,
     rewardKey: won
       ? reward.rewardType === 'shipping'
-        ? 'free_shipping'
-        : `smart_${reward.value}_${reward.giftKey}`
+        ? 'shipping_discount'
+        : `discount_${reward.value}`
       : null,
-    percent: won && reward.rewardType === 'smart' ? reward.value : 0,
+    percent: won && reward.rewardType !== 'shipping' ? reward.value : 0,
+    region: normalizeRegion(region),
+    currency: currencyForRegion(region),
+    maxDiscountCents: won ? reward.rewardType === 'shipping' ? rewardPolicy.shippingCapsCents[normalizeRegion(region)] : maxDiscount(region, reward.value) : null,
+    expiresAt: won ? createdAt + rewardPolicy.expiresInDays * DAY : null,
     giftKey: won ? reward.giftKey : null,
-    expiresInDays: won ? 7 : 0,
+    expiresInDays: won ? rewardPolicy.expiresInDays : 0,
     ...result,
   };
 }
@@ -430,7 +416,7 @@ async function spin({ userId, region }) {
   return play({ userId, region, game: 'spin', won: true, reward });
 }
 
-async function quiz({ userId, region, answers, answer, questionId }) {
+async function quiz({ userId, region, answers }) {
   let correct = 0;
   let total = 0;
   if (Array.isArray(answers)) {
@@ -444,17 +430,11 @@ async function quiz({ userId, region, answers, answer, questionId }) {
     });
     total = expected.size;
     correct = [...unique].filter(([id, value]) => expected.get(id) === value).length;
-  } else {
-    const question = QUIZ_QUESTIONS.find((item) => item.id === questionId) || QUIZ_QUESTIONS[0];
-    total = 1;
-    correct =
-      String(answer || '')
-        .trim()
-        .toLowerCase() === question.answer
-        ? 1
-        : 0;
   }
-  const requiredCorrect = total === 1 ? 1 : QUIZ_REQUIRED_CORRECT;
+  if (!Array.isArray(answers) || answers.length !== QUIZ_DAILY_TOTAL || new Set(answers.map((item) => item?.questionId)).size !== QUIZ_DAILY_TOTAL || total !== QUIZ_DAILY_TOTAL || answers.some((item) => !dailyQuestions(userId).some((question) => question.id === item?.questionId && question.options.some(([value]) => value === item?.answer)))) {
+    throw new AppError(400, 'INVALID_QUIZ_ANSWERS', 'Submit one valid answer for each daily question');
+  }
+  const requiredCorrect = QUIZ_REQUIRED_CORRECT;
   const won = correct >= requiredCorrect;
   const reward = rewardFor('quiz', { perfect: won && correct === total });
   return play({

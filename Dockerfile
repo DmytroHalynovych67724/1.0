@@ -3,6 +3,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm ci
 COPY frontend ./frontend
+COPY shared ./shared
 RUN npm run build
 
 FROM node:20-alpine
@@ -15,6 +16,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY backend ./backend
+COPY shared ./shared
 COPY frontend/assets ./frontend/assets
 COPY --from=build /usr/src/app/frontend/dist ./frontend/dist
 RUN mkdir -p /usr/src/app/data

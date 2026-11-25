@@ -1,0 +1,24 @@
+{
+  "standardPercent": 5,
+  "perfectQuizPercent": 10,
+  "expiresInDays": 7,
+  "capsCents": {
+    "pl": {
+      "5": 15000,
+      "10": 30000
+    },
+    "ua": {
+      "5": 100000,
+      "10": 200000
+    },
+    "eu": {
+      "5": 4000,
+      "10": 8000
+    }
+  },
+  "shippingCapsCents": {
+    "pl": 2000,
+    "ua": 20000,
+    "eu": 800
+  }
+}
