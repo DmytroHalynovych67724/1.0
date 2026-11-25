@@ -16,3 +16,9 @@ yarn-error.log*
 data/*.sqlite
 data/*.sqlite-*
 data/icecat-smartphones.json
+
+# Backups contain private account and order data, never publish them.
+/backups/
+*.sqlite
+*.sqlite-*
+*.sqlite.manifest.json

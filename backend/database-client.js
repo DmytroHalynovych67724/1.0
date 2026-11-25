@@ -22,8 +22,8 @@ function normalizeRemoteRun(result) {
   };
 }
 
-function createLocalDatabase(filename) {
-  const driver = new Database(filename);
+function createLocalDatabase(filename, options = {}) {
+  const driver = new Database(filename, options);
 
   const database = {
     kind: 'sqlite',
@@ -68,13 +68,15 @@ function createLocalDatabase(filename) {
     close() {
       return driver.close();
     },
+    backup(filename) { return driver.backup(filename); },
+    readTransaction(callback) { return database.transaction(callback)(); },
   };
 
   return database;
 }
 
-function createRemoteDatabase({ url, authToken }) {
-  const client = createClient({ url, authToken });
+function createRemoteDatabase({ url, authToken, intMode }) {
+  const client = createClient({ url, authToken, ...(intMode ? { intMode } : {}) });
 
   function executor() {
     return transactionContext.getStore() || client;
@@ -137,6 +139,17 @@ function createRemoteDatabase({ url, authToken }) {
     },
     async close() {
       client.close();
+    },
+    async readTransaction(callback) {
+      const transaction = await client.transaction('read');
+      try {
+        const result = await transactionContext.run(transaction, callback);
+        await transaction.commit();
+        return result;
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      } finally { transaction.close(); }
     },
   };
 

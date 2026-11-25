@@ -18,6 +18,9 @@
     "test:api": "node --test tests/api.test.js",
     "check": "npm run lint && npm run build && npm test",
     "seed": "node backend/seed.js",
+    "db:backup": "node scripts/database-backup.js backup",
+    "db:verify": "node scripts/database-backup.js verify",
+    "db:restore": "node scripts/database-backup.js restore",
     "docker:build": "docker build -t na-shary-marketplace .",
     "docker:up": "docker compose up --build -d"
   },
