@@ -25,3 +25,8 @@ test('assistant ranks title and model matches above unrelated listings', () => {
   const unrelated = productScore({ title: 'Samsung Galaxy S23', brand: 'Samsung', model: 'Galaxy S23', category: 'Smartfony', specs: {} }, ['iphone', '15', 'pro']);
   assert.ok(wanted > unrelated);
 });
+
+test('Ukrainian condition and warranty words do not become product-name filters', () => {
+  assert.deepEqual(parseAssistantQuery('вживаний iPhone до 2000').searchTokens, ['iphone']);
+  assert.deepEqual(parseAssistantQuery('Потрібен вживаний ноутбук до 3000 з гарантією').searchTokens, []);
+});

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
 import BrandMark from './BrandMark';
+import { sectionPath } from '../catalogSections.mjs';
 
 const copy = {
   pl: {
@@ -143,7 +144,7 @@ function CatalogSearchAssistant() {
                 <div className="assistant-answer">
                   <p>{message.reply}</p>
                   {message.results?.length > 0 && <div className="assistant-products">{message.results.map((product) => <AssistantProduct product={product} language={language} formatPrice={formatPrice} close={() => setOpen(false)} key={product.id} />)}</div>}
-                  {message.catalogQuery && <Link className="assistant-show-all" to={`/catalog?${message.catalogQuery}`} onClick={() => setOpen(false)}>{c.showAll}<span>→</span></Link>}
+                  {message.catalogQuery && <Link className="assistant-show-all" to={`${sectionPath(message.filters?.condition === 'used' ? 'used' : 'new')}?${message.catalogQuery}`} onClick={() => setOpen(false)}>{c.showAll}<span>→</span></Link>}
                 </div>
               </div>
             ))}

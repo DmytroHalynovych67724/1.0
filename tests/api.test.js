@@ -403,6 +403,16 @@ test('catalog assistant turns natural language into regional product matches', a
   assert.equal(result.body.filters.condition, 'used');
   assert.equal(result.body.filters.maxPrice, 2500);
   assert.ok(result.body.results.some((item) => item.id === product.id));
+  const ukQuery = new URLSearchParams({ q: 'вживаний iPhone 15 Pro до 2500', region: 'pl', language: 'uk' });
+  const ukAssistant = await request(`/api/marketplace/assistant?${ukQuery}`);
+  assert.equal(ukAssistant.response.status, 200);
+  const catalogResults = await request(`/api/products?${ukAssistant.body.catalogQuery}&region=pl`);
+  assert.equal(catalogResults.response.status, 200);
+  assert.ok(catalogResults.body.some((item) => item.id === product.id));
+  const defaultNew = await request('/api/marketplace/assistant?q=iPhone&region=pl');
+  assert.equal(defaultNew.body.filters.condition, 'new');
+  assert.ok(defaultNew.body.results.every((item) => item.condition === 'new'));
+
 });
 
 test('device specification lookup fills common phone data', async () => {

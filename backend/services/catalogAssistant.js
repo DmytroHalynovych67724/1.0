@@ -58,6 +58,8 @@ function normalize(value = '') {
     .trim()} `;
 }
 
+const normalizedStopWords = new Set([...STOP_WORDS].map((word) => normalize(word).trim()));
+
 function moneyValue(value) {
   const number = Number(String(value || '').replace(/[\s,]/g, ''));
   return Number.isFinite(number) && number > 0 ? number : undefined;
@@ -95,8 +97,9 @@ function parseAssistantQuery(input) {
   const searchTokens = normalize(original)
     .trim()
     .split(' ')
-    .filter((token) => token.length > 1 && !STOP_WORDS.has(token) && !GENERIC_CATEGORY_WORDS.has(token) && !priceValues.has(token))
-    .filter((token) => !/^(do|od|under|from|max|maximum|до|від)$/.test(token));
+    .filter((token) => token.length > 1 && !normalizedStopWords.has(token) && !GENERIC_CATEGORY_WORDS.has(token) && !priceValues.has(token))
+    .filter((token) => !/^(do|od|under|from|max|maximum|до|від)$/.test(token))
+    .filter((token) => !/^(вживан|uzywan|гарант|gwaranc|warrant|достав|dostaw|wysyl)/.test(token));
 
   return {
     original,
@@ -137,12 +140,13 @@ function localizedReply(language, count, filters) {
 
 async function searchCatalogWithAssistant(input, { region = 'pl', language = 'pl' } = {}) {
   const parsed = parseAssistantQuery(input);
+  parsed.filters.condition ||= 'new';
   const filters = Object.fromEntries(
     Object.entries({ ...parsed.filters, region, inStock: true }).filter(([, value]) => value !== undefined && value !== false)
   );
   const wantsWarranty = Boolean(filters.warranty);
   delete filters.warranty;
-  const products = await listProducts({ ...filters, sort: 'price_asc' });
+  const products = await listProducts({ ...filters, q: parsed.searchTokens.join(' '), sort: 'price_asc' });
   const ranked = products
     .filter((product) => !wantsWarranty || product.warranty !== 'none')
     .map((product) => ({ product, score: productScore(product, parsed.searchTokens) }))
