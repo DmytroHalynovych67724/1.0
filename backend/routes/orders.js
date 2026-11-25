@@ -1,3 +1,4 @@
+const { listSales, changeSale } = require('../models/sales');
 const express = require('express');
 const { createOrder, getOrder, listOrders, updateOrderStatus } = require('../models/orders');
 const { requireAdmin, requireAuth } = require('../middleware/auth');
@@ -19,12 +20,29 @@ router.get(
     const pagination = validatePagination(req.query);
     const orders = await listOrders({
       userId: req.user.id,
-      includeAll: req.user.role === 'admin',
+      includeAll: req.user.role === 'admin' && req.query.scope !== 'mine',
       ...pagination,
     });
     res.json(orders);
   })
 );
+
+router.get('/sales', asyncHandler(async(req,res)=>{
+  const region=req.query.region || 'pl';
+  const days=req.query.days === 'all' ? 0 : Number(req.query.days || 30);
+  const status=req.query.status || '';
+  if (!['pl','ua','eu'].includes(region) || ![0,7,30,90].includes(days) || !['','created','confirmed','shipped','delivered','completed','cancelled'].includes(status)) throw new AppError(400,'VALIDATION_ERROR','Invalid sales filters');
+  res.json(await listSales({sellerId:req.user.id,region,days,status,...validatePagination(req.query)}));
+}));
+router.patch('/sales/:id/status', asyncHandler(async(req,res)=>{
+  const status=typeof req.body?.status==='string'?req.body.status:'';
+  await changeSale({orderId:req.params.id,sellerId:req.user.id,actorId:req.user.id,status});
+  res.json({ok:true});
+}));
+router.patch('/:id/receipt/:sellerId', asyncHandler(async(req,res)=>{
+  await changeSale({orderId:req.params.id,sellerId:req.params.sellerId,actorId:req.user.id,status:'completed',buyerReceipt:true});
+  res.json(await getOrder(req.params.id));
+}));
 
 router.patch(
   '/:id/status',

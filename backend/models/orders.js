@@ -1,3 +1,4 @@
+const { insertFulfillments, changeGlobalStatus, orderFulfillments } = require('./sales');
 const { v4: uuidv4 } = require('uuid');
 const { getDB } = require('../db');
 const { AppError } = require('../utils/errors');
@@ -395,6 +396,8 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         createdAt
       );
 
+    await insertFulfillments(db,id,snapshot,createdAt);
+
     if (appliedPromo) {
       await db
         .prepare('UPDATE promo_codes SET usedCount = usedCount + 1 WHERE code = ? COLLATE NOCASE')
@@ -418,7 +421,8 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
 }
 
 async function getOrder(id) {
-  return normalizeOrder(await getDB().prepare('SELECT * FROM orders WHERE id = ?').get(id));
+  const order=normalizeOrder(await getDB().prepare('SELECT * FROM orders WHERE id = ?').get(id));
+  return order ? {...order,fulfillments:await orderFulfillments(id)} : null;
 }
 
 async function listOrders({ userId, includeAll = false, limit = 50, offset = 0 }) {
@@ -430,45 +434,12 @@ async function listOrders({ userId, includeAll = false, limit = 50, offset = 0 }
     : await db
         .prepare('SELECT * FROM orders WHERE userId = ? ORDER BY createdAt DESC LIMIT ? OFFSET ?')
         .all(userId, limit, offset);
-  return rows.map(normalizeOrder);
+  return Promise.all(rows.map(async row=>({...normalizeOrder(row),fulfillments:await orderFulfillments(row.id)})));
 }
 
-async function updateOrderStatus({ orderId, status, changedBy }) {
-  const transitions = {
-    created: ['confirmed', 'cancelled'],
-    confirmed: ['shipped', 'cancelled'],
-    shipped: ['delivered'],
-    delivered: ['completed'],
-    completed: [],
-    cancelled: [],
-  };
-  const db = getDB();
-  const now = Date.now();
-  const changeStatus = db.transaction(async () => {
-    const order = await db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-    if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found');
-    if (!Object.hasOwn(transitions, status) || !transitions[order.status]?.includes(status)) {
-      throw new AppError(409, 'INVALID_STATUS_TRANSITION', `Order cannot move from ${order.status} to ${status}`);
-    }
-    const changed = await db
-      .prepare('UPDATE orders SET status = ?, updatedAt = ? WHERE id = ? AND status = ?')
-      .run(status, now, orderId, order.status);
-    if (!changed.changes) throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Order status has already changed');
-    if (status === 'cancelled') {
-      for (const item of parseItems(order.items)) {
-        if (!Number.isInteger(item.qty) || item.qty <= 0) throw new AppError(409, 'INVALID_ORDER_ITEMS', 'Order items cannot be restored safely');
-        await db.prepare('UPDATE products SET stock = stock + ?, updatedAt = ? WHERE id = ?')
-          .run(item.qty, now, item.productId || item.id);
-      }
-    }
-    await db
-      .prepare(
-        'INSERT INTO order_status_history (id, orderId, status, changedBy, createdAt) VALUES (?, ?, ?, ?, ?)'
-      )
-      .run(uuidv4(), orderId, status, changedBy, now);
-    return normalizeOrder(await db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId));
-  });
-  return changeStatus.immediate();
+async function updateOrderStatus(options) {
+  await changeGlobalStatus(options);
+  return getOrder(options.orderId);
 }
 
 module.exports = { createOrder, getOrder, listOrders, normalizeOrder, updateOrderStatus };

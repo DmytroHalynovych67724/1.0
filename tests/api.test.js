@@ -1228,3 +1228,105 @@ test('technical assistant exposes connection state and refuses unrelated request
   assert.equal(advice.body.failureReason,'not_configured');
   assert.deepEqual(advice.body.results,[]);
 });
+
+test('seller sales isolate a multi-seller order and complete only after buyer receipt', async () => {
+  const a=await registerAndLogin('sales-a'), b=await registerAndLogin('sales-b'), buyer=await registerAndLogin('sales-buyer'), outsider=await registerAndLogin('sales-outsider');
+  const make=async(owner,title,price)=>{const result=await request('/api/products',{method:'POST',token:owner.token,body:productPayload({title,price,stock:8,condition:'used'})});assert.equal(result.response.status,201);return result.body;};
+  const pa=await make(a,'Seller A private item',123.45),pb=await make(b,'Seller B secret item',50);
+  const placed=await request('/api/orders',{method:'POST',token:buyer.token,body:{items:[{id:pa.id,qty:2},{id:pb.id,qty:1}],checkout:{deliveryMethod:'shipping',name:'Recipient Test',phone:'+48123456789',email:'private-buyer@example.test',address:'Secret Road 1',city:'Warsaw',postalCode:'00-001'}}});
+  assert.equal(placed.response.status,201);
+  const id=placed.body.id;
+  const sales=await request('/api/orders/sales?region=pl&days=all',{token:a.token});
+  assert.equal(sales.response.status,200);
+  assert.equal(sales.body.total,1);
+  assert.equal(sales.body.items[0].items.length,1);
+  assert.equal(sales.body.items[0].items[0].id,pa.id);
+  assert.equal(sales.body.items[0].goodsTotal,246.9);
+  assert.equal(sales.body.summary.orderedCents,24690);
+  assert.doesNotMatch(JSON.stringify(sales.body),/Seller B secret|private-buyer|Secret Road|123456789/);
+  const change=(token,status)=>request(`/api/orders/sales/${id}/status`,{method:'PATCH',token,body:{status,paymentStatus:'paid'}});
+  assert.equal((await change(outsider.token,'confirmed')).response.status,404);
+  assert.equal((await change(adminToken,'confirmed')).response.status,404);
+  assert.equal((await change(a.token,'completed')).response.status,403);
+  assert.equal((await request(`/api/orders/${id}/receipt/${a.user.id}`,{method:'PATCH',token:buyer.token})).response.status,409);
+  assert.equal((await change(a.token,'confirmed')).response.status,200);
+  const accepted=await request('/api/orders/sales?region=pl&days=all',{token:a.token});
+  assert.equal(accepted.body.items[0].recipient.address,'Secret Road 1');
+  assert.equal(accepted.body.items[0].recipient.email,undefined);
+  assert.notEqual(accepted.body.items[0].delivery.paymentStatus,'paid');
+  assert.equal((await change(a.token,'shipped')).response.status,200);
+  const cancels=await Promise.all([change(b.token,'cancelled'),change(b.token,'cancelled')]);
+  assert.deepEqual(cancels.map(r=>r.response.status).sort(),[200,409]);
+  assert.equal((await request(`/api/products/${pb.id}`)).body.stock,8);
+  assert.equal((await request(`/api/products/${pa.id}`)).body.stock,6);
+  assert.equal((await request(`/api/orders/${id}/status`,{method:'PATCH',token:adminToken,body:{status:'cancelled'}})).response.status,409);
+  assert.equal((await change(a.token,'delivered')).response.status,200);
+  assert.equal((await request(`/api/orders/${id}/receipt/${a.user.id}`,{method:'PATCH',token:outsider.token})).response.status,404);
+  const received=await request(`/api/orders/${id}/receipt/${a.user.id}`,{method:'PATCH',token:buyer.token});
+  assert.equal(received.response.status,200);
+  assert.equal(received.body.status,'completed');
+  assert.equal(received.body.fulfillments.find(f=>f.sellerId===b.user.id).status,'cancelled');
+  assert.equal((await request(`/api/orders/${id}/receipt/${a.user.id}`,{method:'PATCH',token:buyer.token})).response.status,409);
+  const completed=await request('/api/orders/sales?region=pl&days=all',{token:a.token});
+  assert.equal(completed.body.summary.completedCents,24690);
+  assert.equal(completed.body.summary.completedUnits,2);
+  const cancelled=await request('/api/orders/sales?region=pl&days=all',{token:b.token});
+  assert.equal(cancelled.body.summary.cancelled,1);
+  assert.equal(cancelled.body.summary.completedCents,0);
+  assert.deepEqual(cancelled.body.items[0].recipient,{});
+  assert.equal((await request(`/api/trust/products/${pa.id}/review-eligibility`,{token:buyer.token})).body.eligible,true);
+  assert.equal((await request(`/api/trust/products/${pb.id}/review-eligibility`,{token:buyer.token})).body.eligible,false);
+  const review=await request('/api/trust/reviews',{method:'POST',token:buyer.token,body:{orderId:id,productId:pb.id,rating:5,comment:'Cancelled'}});
+  assert.equal(review.response.status,409);
+});
+
+test('sales statistics filter by market and period, retain snapshot ownership and paginate independently', async () => {
+  const owner=await registerAndLogin('sales-stats'),buyer=await registerAndLogin('sales-stats-buyer'),newOwner=await registerAndLogin('sales-new-owner');
+  const products=[];
+  for(const region of ['pl','pl','eu']) {
+    const result=await request('/api/products',{method:'POST',token:owner.token,body:productPayload({region,condition:'used',price:100,stock:4})});
+    assert.equal(result.response.status,201);products.push(result.body);
+  }
+  const orders=[];
+  for(const product of products) {
+    const result=await request('/api/orders',{method:'POST',token:buyer.token,body:{items:[{id:product.id,qty:1}],checkout:{deliveryMethod:'pickup'}}});
+    assert.equal(result.response.status,201);orders.push(result.body);
+  }
+  await database.getDB().prepare('UPDATE orders SET createdAt=? WHERE id=?').run(Date.now()-45*86400000,orders[0].id);
+  const recent=await request('/api/orders/sales?region=pl&days=30',{token:owner.token});
+  assert.equal(recent.body.total,1);assert.equal(recent.body.summary.orderedCents,10000);
+  const all=await request('/api/orders/sales?region=pl&days=all&limit=1',{token:owner.token});
+  assert.equal(all.body.items.length,1);assert.equal(all.body.total,2);assert.equal(all.body.summary.orders,2);
+  const next=await request('/api/orders/sales?region=pl&days=all&limit=1&offset=1',{token:owner.token});
+  assert.notEqual(next.body.items[0].orderId,all.body.items[0].orderId);
+  const euro=await request('/api/orders/sales?region=eu&days=all',{token:owner.token});
+  assert.equal(euro.body.currency,'EUR');assert.equal(euro.body.total,1);assert.equal(euro.body.summary.orderedCents,10000);
+  await database.getDB().prepare('UPDATE products SET createdBy=? WHERE id=?').run(newOwner.user.id,products[1].id);
+  assert.equal((await request('/api/orders/sales?region=pl&days=all',{token:newOwner.token})).body.total,0);
+  assert.equal((await request('/api/orders/sales?region=pl&days=all',{token:owner.token})).body.total,2);
+  for(const query of ['region=bad','days=-1','status=paid','offset=-1']) assert.equal((await request(`/api/orders/sales?${query}`,{token:owner.token})).response.status,400);
+  const ownPurchases=await request('/api/orders?scope=mine',{token:adminToken});
+  assert.ok(ownPurchases.body.every(order=>order.userId!==buyer.user.id));
+});
+
+test('pickup sales skip shipping and migration backfills historical seller snapshots once', async () => {
+  const seller=await registerAndLogin('sales-pickup'),buyer=await registerAndLogin('sales-pickup-buyer');
+  const product=await request('/api/products',{method:'POST',token:seller.token,body:productPayload({condition:'used',stock:3})});
+  const ordered=await request('/api/orders',{method:'POST',token:buyer.token,body:{items:[{id:product.body.id,qty:1}],checkout:{deliveryMethod:'pickup'}}});
+  assert.equal(ordered.response.status,201);
+  const id=ordered.body.id;
+  const change=status=>request(`/api/orders/sales/${id}/status`,{method:'PATCH',token:seller.token,body:{status}});
+  assert.equal((await change('confirmed')).response.status,200);
+  assert.equal((await change('shipped')).response.status,409);
+  assert.equal((await change('delivered')).response.status,200);
+  const db=database.getDB();
+  await db.prepare('DELETE FROM fulfillment_history WHERE orderId=?').run(id);
+  await db.prepare('DELETE FROM order_fulfillments WHERE orderId=?').run(id);
+  await db.prepare('DELETE FROM schema_migrations WHERE name=?').run('seller-sales-v1');
+  await database.closeDB();await database.initDB();
+  const restored=await database.getDB().prepare('SELECT * FROM order_fulfillments WHERE orderId=?').all(id);
+  assert.equal(restored.length,1);assert.equal(restored[0].sellerId,seller.user.id);assert.equal(restored[0].status,'delivered');
+  assert.equal((await request(`/api/products/${product.body.id}`)).body.stock,2);
+  await database.closeDB();await database.initDB();
+  assert.equal((await database.getDB().prepare('SELECT * FROM order_fulfillments WHERE orderId=?').all(id)).length,1);
+});

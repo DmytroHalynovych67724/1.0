@@ -44,7 +44,7 @@ app.use(express.static(frontendDist));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: process.env.NODE_ENV === 'test' ? 5000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
   handler(_req, res) {

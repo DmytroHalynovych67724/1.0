@@ -8,13 +8,6 @@ async function createReview({ orderId, productId, buyerId, rating, comment }) {
     .prepare('SELECT * FROM orders WHERE id = ? AND userId = ?')
     .get(orderId, buyerId);
   if (!order) throw new AppError(404, 'ORDER_NOT_FOUND', 'Order not found');
-  if (order.status !== 'completed') {
-    throw new AppError(
-      409,
-      'ORDER_NOT_COMPLETED',
-      'A review can be added only after a completed order'
-    );
-  }
   let items = [];
   try {
     items = JSON.parse(order.items || '[]');
@@ -27,6 +20,8 @@ async function createReview({ orderId, productId, buyerId, rating, comment }) {
     item.sellerId ||
     (await db.prepare('SELECT createdBy FROM products WHERE id = ?').get(productId))?.createdBy;
   if (!sellerId) throw new AppError(409, 'SELLER_UNAVAILABLE', 'Seller cannot be reviewed');
+  const fulfillment=await db.prepare('SELECT status FROM order_fulfillments WHERE orderId=? AND sellerId=?').get(orderId,sellerId);
+  if ((fulfillment?.status || order.status) !== 'completed') throw new AppError(409,'ORDER_NOT_COMPLETED','This seller purchase is not completed');
   const id = uuidv4();
   try {
     await db
@@ -77,22 +72,19 @@ async function getReviewEligibility({ productId, buyerId }) {
 
   const orders = await db
     .prepare(
-      `SELECT id, items FROM orders
-       WHERE userId = ? AND status = 'completed'
+      `SELECT id, items, status FROM orders
+       WHERE userId = ? AND (status = 'completed' OR EXISTS (SELECT 1 FROM order_fulfillments f WHERE f.orderId=orders.id AND f.status='completed'))
        ORDER BY updatedAt DESC, createdAt DESC`
     )
     .all(buyerId);
-  const matchingOrder = orders.find((order) => {
-    try {
-      const items = JSON.parse(order.items || '[]');
-      return (
-        Array.isArray(items) &&
-        items.some((item) => item.id === productId || item.productId === productId)
-      );
-    } catch (_error) {
-      return false;
-    }
-  });
+  let matchingOrder;
+  for (const order of orders) {
+    let items;try {items=JSON.parse(order.items || '[]');}catch{continue;}
+    const item=Array.isArray(items)?items.find(item=>item.id===productId || item.productId===productId):null;
+    if(!item) continue;
+    const fulfillment=await db.prepare('SELECT status FROM order_fulfillments WHERE orderId=? AND sellerId=?').get(order.id,item.sellerId || product.createdBy);
+    if((fulfillment?.status || order.status)==='completed') {matchingOrder=order;break;}
+  }
   if (!matchingOrder) return { eligible: false, reason: 'completed_purchase_required' };
 
   const existing = await db

@@ -457,6 +457,35 @@ async function migrateOrders(database) {
   `);
 }
 
+async function migrateSellerSales(database) {
+  await database.exec(`
+    CREATE TABLE IF NOT EXISTS order_fulfillments (
+      orderId TEXT NOT NULL, sellerId TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'created',
+      createdAt INTEGER NOT NULL, updatedAt INTEGER,
+      PRIMARY KEY(orderId, sellerId), FOREIGN KEY(orderId) REFERENCES orders(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_fulfillments_seller ON order_fulfillments(sellerId, createdAt DESC);
+    CREATE TABLE IF NOT EXISTS fulfillment_history (
+      id TEXT PRIMARY KEY, orderId TEXT NOT NULL, sellerId TEXT NOT NULL, status TEXT NOT NULL,
+      changedBy TEXT NOT NULL, createdAt INTEGER NOT NULL,
+      FOREIGN KEY(orderId, sellerId) REFERENCES order_fulfillments(orderId, sellerId) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, appliedAt INTEGER NOT NULL);
+  `);
+  if (await database.prepare('SELECT 1 FROM schema_migrations WHERE name = ?').get('seller-sales-v1')) return;
+  await database.transaction(async () => {
+    const orders = await database.prepare('SELECT id, items, status, createdAt, updatedAt FROM orders').all();
+    for (const order of orders) {
+      let items; try { items = JSON.parse(order.items || '[]'); } catch { continue; }
+      if (!Array.isArray(items)) continue;
+      for (const sellerId of new Set(items.map(item => item?.sellerId).filter(id => typeof id === 'string' && id))) {
+        await database.prepare('INSERT OR IGNORE INTO order_fulfillments (orderId,sellerId,status,createdAt,updatedAt) VALUES (?,?,?,?,?)').run(order.id,sellerId,order.status,order.createdAt,order.updatedAt);
+      }
+    }
+    await database.prepare('INSERT OR IGNORE INTO schema_migrations (name,appliedAt) VALUES (?,?)').run('seller-sales-v1',Date.now());
+  })();
+}
+
 async function migratePromotions(database) {
   await database.exec(`
     CREATE TABLE IF NOT EXISTS promo_codes (
@@ -684,6 +713,7 @@ async function initDB() {
     await migrateUsers(db);
     await migrateProducts(db);
     await migrateOrders(db);
+    await migrateSellerSales(db);
     await migratePromotions(db);
     await migrateChats(db);
     await migrateTrust(db);

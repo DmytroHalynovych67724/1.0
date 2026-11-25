@@ -1,3 +1,4 @@
+import SellerSales, { salesCopy } from '../components/SellerSales';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -664,6 +665,7 @@ export default function Account() {
   const tab = params.get('tab') || 'overview';
   const [listings, setListings] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [receiptBusy,setReceiptBusy]=useState('');
   const [conversations, setConversations] = useState([]);
   const [editing, setEditing] = useState(undefined);
   const activeEditing = editing !== undefined ? editing : listings.find((item) => item.id === params.get('edit'));
@@ -693,7 +695,7 @@ export default function Account() {
   };
   const refresh = useCallback(() => {
     if (!user) return;
-    Promise.all([api('/products/mine'), api('/orders'), api('/chats')]).then(
+    Promise.all([api('/products/mine'), api('/orders?scope=mine'), api('/chats')]).then(
       ([mine, orderList, chatList]) => {
         setListings(mine);
         setOrders(orderList);
@@ -706,6 +708,13 @@ export default function Account() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+  const confirmReceipt=async(orderId,sellerId)=>{
+    if(receiptBusy) return;
+    setReceiptBusy(`${orderId}:${sellerId}`);
+    try{await api(`/orders/${orderId}/receipt/${sellerId}`,{method:'PATCH'});refresh();}
+    catch(error){flash(error.message);}
+    finally{setReceiptBusy('');}
+  };
   if (!user) return <Navigate to="/auth" state={{ from: '/account' }} replace />;
   const remove = async (id) => {
     if (!window.confirm(c.deleteConfirm)) return;
@@ -715,7 +724,8 @@ export default function Account() {
   const nav = [
     ['overview', c.overview],
     ['listings', c.listings],
-    ['orders', c.orders],
+    ['orders', salesCopy[language].purchases],
+    ['sales', salesCopy[language].title],
     ['messages', c.messages],
     ['saved', c.saved],
     ['profile', details.profile],
@@ -796,17 +806,18 @@ export default function Account() {
             >
               {c.listings} →
             </button>
+            <button className="text-button" type="button" onClick={()=>setParams({tab:'sales'})}>{salesCopy[language].salesLink}</button>
           </article>
           <article>
             <span className="metric">{orders.length}</span>
-            <h2>{c.orders}</h2>
+            <h2>{salesCopy[language].purchases}</h2>
             <p>{c.orderInfo}</p>
             <button
               className="text-button"
               type="button"
               onClick={() => setParams({ tab: 'orders' })}
             >
-              {c.orders} →
+              {salesCopy[language].purchases} →
             </button>
           </article>
           <article className="overview-dark">
@@ -866,12 +877,13 @@ export default function Account() {
           )}
         </section>
       )}
+      {tab === 'sales' && <SellerSales />}
       {tab === 'orders' && (
         <section className="account-section">
           <div className="section-title">
             <div>
               <span className="eyebrow">History</span>
-              <h2>{c.orders}</h2>
+              <h2>{salesCopy[language].purchases}</h2>
             </div>
           </div>
           {!orders.length ? (
@@ -885,7 +897,7 @@ export default function Account() {
                 <article key={order.id}>
                   <header>
                     <span>#{order.id.slice(0, 8)}</span>
-                    <b>{order.status}</b>
+                    <b>{salesCopy[language].status[order.status] || order.status}</b>
                   </header>
                   {order.items.map((item) => (
                     <div className="order-item" key={item.id}>
@@ -908,9 +920,10 @@ export default function Account() {
                     {order.shipping > 0 && <div><dt>{language === 'uk' ? 'Доставка' : language === 'en' ? 'Delivery' : 'Dostawa'}</dt><dd>{order.shippingDiscount > 0 ? <><s>{formatPrice(order.shipping, order.currency)}</s> {formatPrice(0, order.currency)}</> : formatPrice(order.shipping, order.currency)}</dd></div>}
                     {order.rewardGift && <div className="is-gift"><dt>{language === 'uk' ? 'Подарунок' : language === 'en' ? 'Gift' : 'Prezent'}</dt><dd>{orderGiftLabels[language]?.[order.rewardGift] || order.rewardGift}</dd></div>}
                   </dl>}
+                  {order.fulfillments?.map(fulfillment=><div className="buyer-fulfillment" key={fulfillment.sellerId}><span>{order.items.find(item=>item.sellerId===fulfillment.sellerId)?.seller || 'NaShary'} · {salesCopy[language].status[fulfillment.status]}</span>{fulfillment.status==='delivered' && <button className="quiet-button" type="button" disabled={!!receiptBusy} onClick={()=>confirmReceipt(order.id,fulfillment.sellerId)}>{salesCopy[language].receipt}</button>}</div>)}
                   <footer>
                     <small>{new Date(order.createdAt).toLocaleDateString()}</small>
-                    <strong>{formatPrice(order.total, order.currency)}</strong>
+                    <div><small>{language==='uk'?'Сума під час оформлення':language==='pl'?'Kwota przy zamówieniu':'Total at checkout'}</small><strong>{formatPrice(order.total, order.currency)}</strong></div>
                   </footer>
                 </article>
               ))}
