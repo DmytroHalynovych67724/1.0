@@ -96,6 +96,17 @@ async function submitQuiz(token, challenge, answers) {
   return { ...response, body: response.body.result };
 }
 
+async function earnShipping(token, region) {
+  const started = await request('/api/rewards/precision/start', { method: 'POST', token, body: { region } });
+  assert.equal(started.response.status, 201);
+  const elapsedMs = started.body.cycleMs * started.body.target / 200;
+  // Deterministic elapsed time in the isolated test database, without sleeping or touching live games.
+  await database.getDB().prepare('UPDATE precision_sessions SET createdAt = ? WHERE id = ?').run(Date.now() - Math.ceil(elapsedMs) - 10, started.body.sessionId);
+  const stopped = await request(`/api/rewards/precision/${started.body.sessionId}/stop`, { method: 'POST', token, body: { elapsedMs } });
+  assert.equal(stopped.response.status, 200, JSON.stringify(stopped.body));
+  return { ...stopped, body: stopped.body.result };
+}
+
 function productPayload(overrides = {}) {
   return {
     title: 'iPhone 15 128GB',
@@ -1146,11 +1157,7 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   const player = await registerAndLogin('reward-player');
   const intruder = await registerAndLogin('reward-intruder');
 
-  const spin = await request('/api/rewards/spin', {
-    method: 'POST',
-    token: player.token,
-    body: { region: 'pl' },
-  });
+  const spin = await earnShipping(player.token, 'pl');
   assert.equal(spin.response.status, 200);
   assert.equal(spin.body.won, true);
   assert.match(spin.body.rewardCode, /^SPIN-[A-F0-9]{8}$/);
@@ -1194,13 +1201,10 @@ test('daily mini-games issue server-side personal promo codes', async () => {
     assert.equal(spin.body.percent <= 10, true);
   }
 
-  const repeatedSpin = await request('/api/rewards/spin', {
-    method: 'POST',
-    token: player.token,
-    body: { region: 'pl' },
-  });
-  assert.equal(repeatedSpin.response.status, 409);
-  assert.equal(repeatedSpin.body.code, 'DAILY_ATTEMPT_USED');
+  const repeatedSpin = await earnShipping(player.token, 'pl');
+  assert.equal(repeatedSpin.response.status, 200);
+  assert.equal(repeatedSpin.body.used, true);
+  assert.equal(repeatedSpin.body.rewardCode, null);
 
   const legacyQuiz = await request('/api/rewards/quiz', { method: 'POST', token: player.token, body: { region: 'pl', answer: 'ssd' } });
   assert.equal(legacyQuiz.response.status, 400);
@@ -1248,7 +1252,7 @@ test('daily mini-games issue server-side personal promo codes', async () => {
   assert.equal(sevenQuiz.body.correct, 7);
   assert.equal(sevenQuiz.body.percent, 5);
   assert.equal(sevenQuiz.body.maxDiscountCents, 15000);
-  const euShipping = await request('/api/rewards/spin', { method: 'POST', token: intruder.token, body: { region: 'eu' } });
+  const euShipping = await earnShipping(intruder.token, 'eu');
   assert.equal(euShipping.body.maxDiscountCents, 800);
   const euProduct = await createProduct({ title: 'EU delivery cap', region: 'eu', currency: 'EUR', condition: 'new', stock: 2 });
   const euOrder = await request('/api/orders', { method: 'POST', token: intruder.token, body: { items: [{ id: euProduct.id, qty: 1 }], promoCode: euShipping.body.rewardCode, checkout: { paymentMethod: 'card', deliveryMethod: 'shipping' } } });
@@ -1356,7 +1360,7 @@ test('full cancellation releases a promo once while partial cancellation keeps i
   assert.equal((await database.getDB().prepare('SELECT expiresAt FROM promo_codes WHERE code = ?').get(code)).expiresAt, expiresAt);
   await database.getDB().prepare('UPDATE promo_codes SET expiresAt = ? WHERE code = ?').run(Date.now() - 1, code);
   assert.equal((await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: code, checkout } })).response.status, 400);
-  const shipping = await request('/api/rewards/spin', { method: 'POST', token: buyer.token, body: { region: 'pl' } });
+  const shipping = await earnShipping(buyer.token, 'pl');
   const shippingOrder = await request('/api/orders', { method: 'POST', token: buyer.token, body: { items: [{ id: first.id, qty: 1 }], promoCode: shipping.body.rewardCode, checkout } });
   assert.equal(shippingOrder.response.status, 201);
   assert.equal((await request(`/api/orders/${shippingOrder.body.id}/status`, { method: 'PATCH', token: adminToken, body: { status: 'cancelled' } })).response.status, 200);
@@ -1446,6 +1450,52 @@ test('catalog pages filter before pagination and facets omit photos and descript
   assert.equal(selected.body.items[0].id, ids[0]);
   assert.equal((await request('/api/products?view=cards&ids=')).body.total, 0);
   for (const invalid of ['view=cards&limit=0', 'view=cards&limit=49', 'view=cards&offset=-1', 'view=cards&limit=1&limit=2', 'view=other', 'limit=5', 'ids=bad%27id']) assert.equal((await request(`/api/products?${invalid}`)).response.status, 400);
+});
+
+test('precision rewards require an owned live challenge and a valid stop time', async () => {
+  const player = await registerAndLogin('precision');
+  const outsider = await registerAndLogin('precision-outsider');
+  const legacy = await request('/api/rewards/spin', { method: 'POST', token: player.token, body: { region: 'pl', won: true } });
+  assert.equal(legacy.response.status, 400);
+  assert.equal(legacy.body.code, 'GAME_SESSION_REQUIRED');
+  const started = await request('/api/rewards/precision/start', { method: 'POST', token: player.token, body: { region: 'pl' } });
+  assert.equal(started.response.status, 201);
+  assert.ok(started.body.target >= 18 && started.body.target <= 82);
+  assert.ok(started.body.cycleMs >= 1050 && started.body.cycleMs <= 1400);
+  const id = started.body.sessionId;
+  const stop = (token, body) => request(`/api/rewards/precision/${id}/stop`, { method: 'POST', token, body });
+  assert.equal((await request(`/api/rewards/precision/${id}`, { token: outsider.token })).response.status, 404);
+  assert.equal((await stop(outsider.token, { elapsedMs: 0 })).response.status, 404);
+  for (const elapsedMs of [-1, '100', null, 30001, 30000]) assert.equal((await stop(player.token, { elapsedMs })).response.status, 400);
+  const missed = await stop(player.token, { elapsedMs: 0, position: started.body.target, won: true });
+  assert.equal(missed.response.status, 200);
+  assert.equal(missed.body.result.won, false);
+  assert.equal(missed.body.result.position, 0);
+  assert.equal(missed.body.result.rewardCode, null);
+  assert.equal((await stop(player.token, { elapsedMs: 0 })).response.status, 409);
+  const winning = await request('/api/rewards/precision/start', { method: 'POST', token: player.token, body: { region: 'ua' } });
+  assert.equal((await request(`/api/rewards/precision/${id}`, { token: player.token })).response.status, 404);
+  const elapsedMs = winning.body.cycleMs * winning.body.target / 200;
+  await database.getDB().prepare('UPDATE precision_sessions SET createdAt = ? WHERE id = ?').run(Date.now() - Math.ceil(elapsedMs) - 10, winning.body.sessionId);
+  const wins = await Promise.all([1, 2].map(() => request(`/api/rewards/precision/${winning.body.sessionId}/stop`, { method: 'POST', token: player.token, body: { elapsedMs, region: 'pl', target: 0 } })));
+  assert.deepEqual(wins.map(({ response }) => response.status).sort(), [200, 409]);
+  const result = wins.find(({ response }) => response.status === 200).body.result;
+  assert.equal(result.won, true);
+  assert.equal(result.region, 'ua');
+  assert.equal(result.maxDiscountCents, 20000);
+  assert.match(result.rewardCode, /^SPIN-[A-F0-9]{8}$/);
+  const restored = await request(`/api/rewards/precision/${winning.body.sessionId}`, { token: player.token });
+  assert.deepEqual(restored.body.result, result);
+  const used = await earnShipping(player.token, 'eu');
+  assert.equal(used.body.used, true);
+  assert.equal(used.body.rewardCode, null);
+  assert.equal((await database.getDB().prepare("SELECT COUNT(*) AS total FROM game_attempts WHERE userId = ? AND game = 'spin'").get(player.user.id)).total, 1);
+  const expired = await request('/api/rewards/precision/start', { method: 'POST', token: outsider.token, body: { region: 'pl' } });
+  await database.getDB().prepare('UPDATE precision_sessions SET expiresAt = ? WHERE id = ?').run(Date.now() - 1, expired.body.sessionId);
+  assert.equal((await request(`/api/rewards/precision/${expired.body.sessionId}/stop`, { method: 'POST', token: outsider.token, body: { elapsedMs: 0 } })).response.status, 410);
+  const stale = await request('/api/rewards/precision/start', { method: 'POST', token: outsider.token, body: { region: 'pl' } });
+  await database.getDB().prepare('UPDATE precision_sessions SET createdAt = ? WHERE id = ?').run(Date.now() - 6000, stale.body.sessionId);
+  assert.equal((await request(`/api/rewards/precision/${stale.body.sessionId}/stop`, { method: 'POST', token: outsider.token, body: { elapsedMs: 0 } })).response.status, 400);
 });
 
 test('technical assistant exposes connection state and refuses unrelated requests', async () => {

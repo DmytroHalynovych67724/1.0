@@ -23,6 +23,7 @@ const text = {
     won: 'Wygrana! Oto Twoja nagroda', lost: 'Bot wygrał. Możesz od razu zagrać ponownie.',
     draw: 'Remis. Spróbuj jeszcze raz.', copied: 'Kod skopiowany',
     used: 'Dzisiejsza nagroda z tej gry została już odebrana.', copyHint: 'kliknij kod, aby skopiować',
+    precisionExpired: 'Sesja wygasła. Uruchom grę ponownie.', timingError: 'Nie udało się potwierdzić czasu. Sprawdź połączenie i spróbuj ponownie.', checking: 'Sprawdzam wynik…',
     review: 'Sprawdź odpowiedzi', yourAnswer: 'Twoja odpowiedź', correctAnswer: 'Poprawna odpowiedź', quizUsed: 'Dzisiejsza próba została już zakończona.', tomorrow: 'Kolejna próba jutro.',
     loading: 'Ładuję pytania…', retry: 'Spróbuj ponownie',
     freeShipping: 'Darmowa dostawa', newDiscount: 'na nowy sprzęt ze sklepu', usedGift: 'prezent do używanego sprzętu',
@@ -39,6 +40,7 @@ const text = {
     won: 'Перемога! Ось твоя нагорода', lost: 'Бот переміг. Можна одразу зіграти ще раз.',
     draw: 'Нічия. Спробуй ще раз.', copied: 'Код скопійовано',
     used: 'Сьогоднішню нагороду з цієї гри вже отримано.', copyHint: 'натисни код, щоб скопіювати',
+    precisionExpired: 'Сесія завершилася. Запусти гру знову.', timingError: 'Не вдалося підтвердити час. Перевір з’єднання й спробуй знову.', checking: 'Перевіряю результат…',
     review: 'Переглянути відповіді', yourAnswer: 'Твоя відповідь', correctAnswer: 'Правильна відповідь', quizUsed: 'Сьогоднішню спробу вже завершено.', tomorrow: 'Наступна спроба завтра.',
     loading: 'Завантажую запитання…', retry: 'Спробувати знову',
     freeShipping: 'Безкоштовна доставка', newDiscount: 'на нову техніку від магазину', usedGift: 'подарунок до вживаної техніки',
@@ -54,6 +56,7 @@ const text = {
     difficulty: 'Level: hard', yourTurn: 'Your turn', botTurn: 'Bot is thinking…', reset: 'New board',
     won: 'You won! Here is your reward', lost: 'The bot won. You can retry now.', draw: 'Draw. Try again.',
     copied: 'Code copied', used: 'Today’s reward from this game has already been claimed.', copyHint: 'click the code to copy',
+    precisionExpired: 'This session expired. Start the game again.', timingError: 'Could not confirm timing. Check your connection and try again.', checking: 'Checking the result…',
     review: 'Review your answers', yourAnswer: 'Your answer', correctAnswer: 'Correct answer', quizUsed: 'Today’s attempt has already been completed.', tomorrow: 'Next attempt tomorrow.',
     loading: 'Loading questions…', retry: 'Try again',
     freeShipping: 'Free delivery', newDiscount: 'on new store items', usedGift: 'gift with a pre-owned item',
@@ -91,7 +94,11 @@ function GamesContent({ game }) {
   const { t, user, language, region, flash } = useStore();
   const c = text[language] || text.pl;
   const [position, setPosition] = useState(0);
-  const positionRef = useRef(0);
+  const precisionElapsedRef = useRef(0);
+  const precisionLifetimeRef = useRef(30000);
+  const precisionGate = useRef(false);
+  const [precisionBusy, setPrecisionBusy] = useState(false);
+  const [precisionSession, setPrecisionSession] = useState('');
   const startRef = useRef(0);
   const precisionCycleRef = useRef(1250);
   const [precisionTarget, setPrecisionTarget] = useState(50);
@@ -151,37 +158,51 @@ function GamesContent({ game }) {
     if (!running) return undefined;
     let frame;
     const animate = (time) => {
-      const phase = ((time - startRef.current) % precisionCycleRef.current) / precisionCycleRef.current;
+      const elapsed = Math.max(0, time - startRef.current);
+      if (elapsed >= precisionLifetimeRef.current) { setRunning(false); setPrecisionMessage(c.precisionExpired); return; }
+      const phase = (elapsed % precisionCycleRef.current) / precisionCycleRef.current;
       const next = phase < 0.5 ? phase * 200 : (1 - phase) * 200;
-      positionRef.current = next;
+      precisionElapsedRef.current = elapsed;
       setPosition(next);
       frame = requestAnimationFrame(animate);
     };
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [running]);
+  }, [running, c.precisionExpired]);
 
   const gameState = useMemo(() => resultFor(board), [board]);
   const botTurn = tttBusy || tttLoading;
 
-  const startPrecision = () => {
-    const nextTarget = 18 + Math.random() * 64;
-    precisionCycleRef.current = 1050 + Math.random() * 350;
-    setPrecisionTarget(nextTarget);
-    startRef.current = performance.now(); positionRef.current = 0; setPosition(0);
-    setPrecisionMessage(''); setSpinReward(null); setRunning(true);
+  const precisionError = (error) => error.code === 'GAME_EXPIRED' ? c.precisionExpired : error.code === 'INVALID_GAME_TIME' ? c.timingError : error.message;
+  const acceptPrecision = (data) => {
+    const result = data.result;
+    setSpinReward(result); setPosition(result.position);
+    setPrecisionMessage(result.used ? c.used : result.won ? c.won : c.miss);
+  };
+  const startPrecision = async () => {
+    if (precisionGate.current) return;
+    precisionGate.current = true; setPrecisionBusy(true); setPrecisionMessage(''); setSpinReward(null);
+    try {
+      const data = await api('/rewards/precision/start', { method: 'POST', body: JSON.stringify({ region }) });
+      setPrecisionSession(data.sessionId); setPrecisionTarget(data.target); precisionCycleRef.current = data.cycleMs;
+      precisionLifetimeRef.current = Math.max(0, data.expiresAt - data.serverTime);
+      startRef.current = performance.now(); precisionElapsedRef.current = 0; setPosition(0); setRunning(true);
+    } catch (error) { setPrecisionMessage(precisionError(error)); }
+    finally { precisionGate.current = false; setPrecisionBusy(false); }
   };
   const stopPrecision = async () => {
-    const stoppedAt = positionRef.current;
-    setRunning(false);
-    if (Math.abs(stoppedAt - precisionTarget) > 1.75) { setPrecisionMessage(c.miss); return; }
-    setPrecisionMessage(c.hit);
+    if (precisionGate.current || !precisionSession || !running) return;
+    precisionGate.current = true; setPrecisionBusy(true); setRunning(false); setPrecisionMessage(c.checking);
+    const elapsedMs = precisionElapsedRef.current;
     try {
-      setSpinReward(await api('/rewards/spin', { method: 'POST', body: JSON.stringify({ region }) }));
-      setPrecisionMessage('');
+      acceptPrecision(await api(`/rewards/precision/${precisionSession}/stop`, { method: 'POST', body: JSON.stringify({ elapsedMs }) }));
     } catch (error) {
-      setPrecisionMessage(error.code === 'DAILY_ATTEMPT_USED' ? c.used : error.message);
-    }
+      try {
+        const restored = await api(`/rewards/precision/${precisionSession}`);
+        if (restored.result) { acceptPrecision(restored); return; }
+      } catch { /* The original error explains why the result could not be confirmed. */ }
+      setPrecisionMessage(precisionError(error));
+    } finally { precisionGate.current = false; setPrecisionBusy(false); }
   };
   const answerQuiz = async (answer) => {
     if (quizBusy || quizResult || quizAnswerGate.current || !challenge?.questions?.[quizIndex]) return;
@@ -237,7 +258,7 @@ function GamesContent({ game }) {
         {game === 'precision' && <section className="game-panel game-panel--precision">
           <div className="game-number">01</div><h2>{c.precision}</h2><p>{c.precisionText}</p>
           <div className="precision-track"><span className="precision-zone" style={{ left: `${precisionTarget - 1.75}%` }} /><i style={{ left: `${position}%` }} /></div>
-          <button className="primary-button" type="button" onClick={running ? stopPrecision : startPrecision}>{running ? c.stop : c.start}</button>
+          <button className="primary-button" type="button" disabled={precisionBusy} aria-busy={precisionBusy} onClick={running ? stopPrecision : startPrecision}>{precisionBusy ? c.checking : running ? c.stop : c.start}</button>
           {precisionMessage && <p className="game-status">{precisionMessage}</p>}
           <Reward result={spinReward} copy={() => flash(c.copied)} hint={c.copyHint} c={c} />
         </section>}

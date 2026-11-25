@@ -1,8 +1,8 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
-const { spin } = require('../models/rewards');
 const { quizChallenge, answerQuestion } = require('../models/quiz');
 const { currentGame, startGame, move } = require('../models/tictactoe');
+const precision = require('../models/precision');
 const { asyncHandler, AppError } = require('../utils/errors');
 
 const router = express.Router();
@@ -10,10 +10,11 @@ router.use(requireAuth);
 
 router.post(
   '/spin',
-  asyncHandler(async (req, res) => {
-    res.json(await spin({ userId: req.user.id, region: req.body?.region }));
-  })
+  (_req, _res, next) => next(new AppError(400, 'GAME_SESSION_REQUIRED', 'Start a precision game before requesting its result'))
 );
+router.post('/precision/start', asyncHandler(async (req, res) => { res.status(201).json(await precision.startGame({ userId: req.user.id, region: req.body?.region })); }));
+router.get('/precision/:id', asyncHandler(async (req, res) => { res.json(await precision.currentGame({ userId: req.user.id, id: req.params.id })); }));
+router.post('/precision/:id/stop', asyncHandler(async (req, res) => { res.json(await precision.stopGame({ userId: req.user.id, id: req.params.id, elapsedMs: req.body?.elapsedMs })); }));
 
 router.get(
   '/quiz',

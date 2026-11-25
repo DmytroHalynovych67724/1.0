@@ -398,9 +398,4 @@ async function play({ userId, region, game, won, reward, result = {}, commitResu
   return output;
 }
 
-async function spin({ userId, region }) {
-  const reward = rewardFor('spin');
-  return play({ userId, region, game: 'spin', won: true, reward });
-}
-
-module.exports = { spin, play, rewardFor, dailyQuestions, localizedQuestion, today };
+module.exports = { play, rewardFor, dailyQuestions, localizedQuestion, today };

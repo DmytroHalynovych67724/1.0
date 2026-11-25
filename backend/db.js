@@ -654,6 +654,17 @@ async function migrateTrust(database) {
 
 async function migrateRewards(database) {
   await database.exec(`
+    CREATE TABLE IF NOT EXISTS precision_sessions (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      region TEXT NOT NULL,
+      target REAL NOT NULL,
+      cycleMs INTEGER NOT NULL,
+      createdAt INTEGER NOT NULL,
+      expiresAt INTEGER NOT NULL,
+      result TEXT,
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS quiz_sessions (
       id TEXT PRIMARY KEY,
       userId TEXT NOT NULL UNIQUE,
