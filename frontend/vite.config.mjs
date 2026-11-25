@@ -12,6 +12,13 @@ export default defineConfig({
   build: {
     outDir: path.join(root, 'dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.replace(/\\/g, '/').includes('/node_modules/')) return 'vendor';
+        },
+      },
+    },
   },
   server: {
     port: 5173,
