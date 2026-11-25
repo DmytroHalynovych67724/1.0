@@ -18,6 +18,7 @@ import Guides from './pages/Guides';
 import Model from './pages/Model';
 import BrandMark from './components/BrandMark';
 import { useStore } from './store';
+import RouteError from './components/RouteError';
 
 const Account = lazy(() => import('./pages/Account'));
 const Sell = lazy(() => import('./pages/Sell'));
@@ -33,6 +34,7 @@ const routes = [
   {
     path: '/',
     element: <Layout />,
+    errorElement: <RouteError />,
     children: [
       { index: true, element: <Home /> },
       { path: 'catalog', element: <Catalog /> },

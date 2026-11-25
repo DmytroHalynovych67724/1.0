@@ -221,3 +221,8 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
 .listing-photo-grid .make-cover { top: auto; bottom: 6px; left: 6px; right: 6px; width: auto; height: auto; min-height: 30px; padding: .5rem; font-size: .8rem; line-height: 1.3; }
 .listing-photo-grid button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .listing-photo-grid button:disabled { opacity: .5; cursor: wait; }
+.route-error { min-height: 75dvh; padding-block: clamp(3rem, 10vh, 8rem); max-width: 55rem; }
+.route-error > .brand-mark { margin-bottom: 2rem; }
+.route-error h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.15; }
+.route-error p { color: var(--muted); line-height: 1.7; max-width: 60ch; }
+.route-error > div { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
