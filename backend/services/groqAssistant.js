@@ -1,6 +1,8 @@
 const { searchCatalogWithAssistant } = require('./catalogAssistant');
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_MODEL = 'openai/gpt-oss-20b';
+const LEGACY_MODEL = 'llama-3.3-70b-versatile';
+const unavailableLegacyModels = new Set();
 const DEFAULT_TIMEOUT_MS = 15000;
 const LANGUAGE_NAMES = { pl: 'Polish', uk: 'Ukrainian', en: 'English' };
 const copy = {
@@ -53,20 +55,27 @@ function parseDecision(content) {
 }
 async function requestGroqReply({ query, language = 'pl', region = 'pl', assistantResult = {results:[]}, history = [], apiKey = process.env.GROQ_API_KEY, model = process.env.GROQ_MODEL || DEFAULT_MODEL, fetchImpl = global.fetch, timeoutMs = DEFAULT_TIMEOUT_MS, onFailure = () => {} } = {}) {
   if (!safeText(apiKey) || typeof fetchImpl !== 'function') { onFailure('not_configured'); return null; }
+  const startedAt = Date.now();
+  const requestedModel = model.trim();
+  const selectedModel = unavailableLegacyModels.has(requestedModel) ? DEFAULT_MODEL : requestedModel;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(),timeoutMs);
   try {
     const response = await fetchImpl(GROQ_CHAT_URL, {
       method: 'POST', headers: { authorization: `Bearer ${apiKey.trim()}`, 'content-type': 'application/json' }, signal: controller.signal,
-      body: JSON.stringify({ model: model.trim(), messages: [
+      body: JSON.stringify({ model: selectedModel, ...(selectedModel.startsWith('openai/gpt-oss-') ? { reasoning_effort: 'low', include_reasoning: false } : {}), messages: [
         { role: 'system', content: systemPrompt(language,region) }, ...compactHistory(history),
         { role: 'user', content: JSON.stringify({ request: safeText(query,600), catalogReference: (assistantResult.results || []).slice(0,4).map(compactProduct) }) },
-      ], temperature: 0.2, max_completion_tokens: 700, response_format: { type: 'json_object' } }),
+      ], temperature: 0.2, max_completion_tokens: 2000, response_format: { type: 'json_object' } }),
     });
     if (!response.ok) {
       const errorPayload = await response.json().catch(() => null);
       const knownCodes = ['model_decommissioned', 'model_not_found', 'model_permission_blocked', 'json_validate_failed'];
       const code = errorPayload?.error?.code;
+      if (selectedModel === LEGACY_MODEL && ['model_not_found','model_decommissioned'].includes(code)) {
+        unavailableLegacyModels.add(selectedModel);
+        return await requestGroqReply({ query, language, region, assistantResult, history, apiKey, model: DEFAULT_MODEL, fetchImpl, timeoutMs: Math.max(1, timeoutMs - (Date.now() - startedAt)), onFailure });
+      }
       onFailure(knownCodes.includes(code) ? code : response.status === 401 || response.status === 403 ? 'authentication' : response.status === 429 ? 'rate_limit' : response.status === 400 || response.status === 404 ? 'model_or_request' : 'provider');
       return null;
     }

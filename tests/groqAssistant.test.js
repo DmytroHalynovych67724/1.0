@@ -71,3 +71,19 @@ test('provider diagnostics return only known public error categories', async () 
   assert.equal(result.failureReason,'model_decommissioned');
   assert.doesNotMatch(JSON.stringify(result),/do not expose/);
 });
+
+test('unavailable legacy model falls back once to the current model and caches that choice', async () => {
+  const models = [];
+  const fetchImpl = async (_url, options) => {
+    const body = JSON.parse(options.body);
+    models.push(body.model);
+    if (body.model === 'llama-3.3-70b-versatile') return {ok:false,status:404,json:async()=>({error:{code:'model_not_found'}})};
+    assert.equal(body.include_reasoning,false);
+    assert.equal(body.reasoning_effort,'low');
+    return jsonReply({inScope:true,intent:'advice',reply:'A technical answer.',searchQuery:null})();
+  };
+  const options = {query:'What is RAM?',apiKey:'test-key',model:'llama-3.3-70b-versatile',fetchImpl};
+  assert.equal((await requestGroqReply(options)).inScope,true);
+  assert.equal((await requestGroqReply(options)).inScope,true);
+  assert.deepEqual(models,['llama-3.3-70b-versatile','openai/gpt-oss-20b','openai/gpt-oss-20b']);
+});
