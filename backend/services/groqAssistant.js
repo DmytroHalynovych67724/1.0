@@ -18,7 +18,8 @@ const offTopicPattern = /рецепт|борщ|пиріг|гороскоп|по�
 function technicalIntent(query, history = []) {
   if (offTopicPattern.test(query)) return 'off_topic';
   const technical = techPattern.test(query) || compactHistory(history).some(message => message.role === 'user' && techPattern.test(message.content));
-  if (!technical) return 'off_topic';
+  // Unknown technical terms must reach the model's semantic scope check too.
+  if (!technical) return 'advice';
   if (/куп|шука|знай|підбер|покаж|бюджет|до\s*\d|szuk|kup|znajd|poka[zż]|do\s*\d|find|buy|looking|under\s*\d|budget/i.test(query)) return 'search';
   if (/порівн|чим|різниц|суміс|підій|чому|як|що так|пояс|versus|\bvs\b|differ|compatib|explain|what|why|how|por[óo]wn|r[óo][żz]ni|czy|jak|czym/i.test(query)) return 'advice';
   return 'search';
@@ -62,7 +63,13 @@ async function requestGroqReply({ query, language = 'pl', region = 'pl', assista
         { role: 'user', content: JSON.stringify({ request: safeText(query,600), catalogReference: (assistantResult.results || []).slice(0,4).map(compactProduct) }) },
       ], temperature: 0.2, max_completion_tokens: 700, response_format: { type: 'json_object' } }),
     });
-    if (!response.ok) { onFailure(response.status === 401 || response.status === 403 ? 'authentication' : response.status === 429 ? 'rate_limit' : response.status === 400 || response.status === 404 ? 'model_or_request' : 'provider'); return null; }
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      const knownCodes = ['model_decommissioned', 'model_not_found', 'model_permission_blocked', 'json_validate_failed'];
+      const code = errorPayload?.error?.code;
+      onFailure(knownCodes.includes(code) ? code : response.status === 401 || response.status === 403 ? 'authentication' : response.status === 429 ? 'rate_limit' : response.status === 400 || response.status === 404 ? 'model_or_request' : 'provider');
+      return null;
+    }
     const payload = await response.json();
     const decision = parseDecision(payload?.choices?.[0]?.message?.content);
     if (!decision) onFailure('invalid_response');

@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { GROQ_CHAT_URL, compactHistory, enhanceAssistantResult, requestGroqReply, parseDecision } = require('../backend/services/groqAssistant');
+const { GROQ_CHAT_URL, compactHistory, enhanceAssistantResult, requestGroqReply, parseDecision, technicalIntent } = require('../backend/services/groqAssistant');
 const catalogResult = { reply: 'Catalog reply', total: 1, filters: { category: 'Smartfony', condition: 'used' }, catalogQuery: 'brand=Apple&condition=used', results: [{ id: 'phone-1', title: 'Apple iPhone 15', price: 2399, currency: 'PLN', condition: 'used', category: 'Smartfony', brand: 'Apple', model: 'iPhone 15', specs: { screen: '6.1 inch' }, createdBy: 'private-id', images: ['data:large-image'] }] };
 const jsonReply = value => async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify(value) } }] }) });
 test('AI receives bounded public context and JSON instructions without credentials or private product fields', async () => {
@@ -8,6 +8,7 @@ test('AI receives bounded public context and JSON instructions without credentia
   const decision = { inScope: true, intent: 'advice', reply: 'OLED differs from IPS.', searchQuery: null };
   const result = await requestGroqReply({ query: 'How does OLED differ from IPS?', language: 'en', assistantResult: catalogResult, apiKey: 'test-key', fetchImpl: async (url,options) => { captured = { url, ...options, body: JSON.parse(options.body) }; return (await jsonReply(decision)()); } });
   assert.deepEqual(result,decision);
+  assert.equal(technicalIntent('Що таке Thunderbolt?'),'advice');
   assert.equal(captured.url,GROQ_CHAT_URL);
   assert.equal(captured.headers.authorization,'Bearer test-key');
   assert.equal(captured.body.response_format.type,'json_object');
@@ -42,7 +43,7 @@ test('model scope refusal discards its answer and every product card', async () 
   assert.deepEqual(result.results,[]);
 });
 test('provider errors and missing keys produce honest fallback modes without exposing provider errors', async () => {
-  const result = await enhanceAssistantResult('iPhone',catalogResult,{apiKey:'test-key',fetchImpl:async()=>({ok:false,status:401})});
+  const result = await enhanceAssistantResult('iPhone',catalogResult,{apiKey:'test-key',fetchImpl:async()=>({ok:false,status:401,json:async()=>({error:{message:'private provider detail'}})})});
   assert.equal(result.assistantMode,'local');
   assert.equal(result.failureReason,'authentication');
   assert.deepEqual(result.results,catalogResult.results);
@@ -63,4 +64,10 @@ test('slow provider requests abort within the configured timeout', async () => {
   const reply = await requestGroqReply({query:'iPhone',apiKey:'test-key',timeoutMs:5,onFailure:value=>{reason=value;},fetchImpl:(_url,options)=>new Promise((_resolve,reject)=>options.signal.addEventListener('abort',()=>reject(Error('aborted'))))});
   assert.equal(reply,null);
   assert.equal(reason,'timeout');
+});
+
+test('provider diagnostics return only known public error categories', async () => {
+  const result = await enhanceAssistantResult('iPhone',catalogResult,{apiKey:'test-key',fetchImpl:async()=>({ok:false,status:400,json:async()=>({error:{code:'model_decommissioned',message:'do not expose this detail'}})})});
+  assert.equal(result.failureReason,'model_decommissioned');
+  assert.doesNotMatch(JSON.stringify(result),/do not expose/);
 });

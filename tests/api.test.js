@@ -1217,7 +1217,8 @@ test('daily mini-games issue server-side personal promo codes', async () => {
 
 test('technical assistant exposes connection state and refuses unrelated requests', async () => {
   const status = await request('/api/marketplace/assistant/status');
-  assert.deepEqual(status.body,{configured:false});
+  assert.equal(status.body.configured,false);
+  assert.equal(typeof status.body.model,'string');
   const offTopic = await request('/api/marketplace/assistant',{method:'POST',body:{q:'Напиши рецепт борщу',language:'uk',region:'pl'}});
   assert.equal(offTopic.response.status,200);
   assert.equal(offTopic.body.assistantMode,'restricted');
