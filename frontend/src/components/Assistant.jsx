@@ -8,7 +8,7 @@ import { sectionPath } from '../catalogSections.mjs';
 const copy = {
   pl: {
     title: 'Doradca NaShary', beta: 'elektronika · dobór ofert', ai: 'AI · Groq', local: 'Wyszukiwanie', restricted: 'Tylko elektronika', setup: 'AI nie jest jeszcze podłączone. Wyszukiwanie ofert działa.',
-    lead: 'Porady o elektronice przez Groq. Sprawdzaj dokładny wariant; ceny i dostępność są w kartach ofert.',
+    lead: 'AI przez Groq może się mylić. Sprawdzaj dokładny wariant; ceny i dostępność są w kartach ofert.',
     welcome: 'Cześć! Zapytaj o parametry, porównanie lub zgodność sprzętu. Podaj model i budżet, a znajdę rzeczywiste oferty NaShary w Twoim regionie.',
     placeholder: 'Czego szukasz?', send: 'Wyślij', clear: 'Wyczyść rozmowę', close: 'Zamknij',
     showAll: 'Pokaż wszystkie wyniki', error: 'Nie udało się teraz przeszukać katalogu. Spróbuj ponownie.',
@@ -17,7 +17,7 @@ const copy = {
   },
   uk: {
     title: 'Техноконсультант NaShary', beta: 'техніка · підбір товарів', ai: 'AI · Groq', local: 'Пошук каталогу', restricted: 'Лише про техніку', setup: 'AI-консультації ще не підключені. Пошук товарів працює.',
-    lead: 'Консультації про електроніку через Groq. Перевіряй точну версію пристрою; ціни й наявність — у картках товарів.',
+    lead: 'AI через Groq може помилятися. Перевіряй точну версію пристрою; ціни й наявність — у картках товарів.',
     welcome: 'Привіт! Запитай про характеристики, порівняння чи сумісність техніки. Або напиши модель і бюджет — підберу реальні оголошення NaShary у твоєму регіоні.',
     placeholder: 'Що шукаєш?', send: 'Надіслати', clear: 'Очистити розмову', close: 'Закрити',
     showAll: 'Показати всі результати', error: 'Зараз не вдалося перевірити каталог. Спробуй ще раз.',
@@ -26,7 +26,7 @@ const copy = {
   },
   en: {
     title: 'NaShary tech adviser', beta: 'electronics · product finder', ai: 'AI · Groq', local: 'Catalog search', restricted: 'Electronics only', setup: 'AI is not connected yet. Product search still works.',
-    lead: 'Electronics advice via Groq. Verify the exact device version; prices and availability appear in product cards.',
+    lead: 'AI via Groq can make mistakes. Verify the exact device version; prices and availability appear in product cards.',
     welcome: 'Hi! Ask about device specifications, comparisons or compatibility. Give me a model and budget to find real NaShary offers in your region.',
     placeholder: 'What are you looking for?', send: 'Send', clear: 'Clear conversation', close: 'Close',
     showAll: 'Show all results', error: 'I could not search the catalog right now. Please try again.',

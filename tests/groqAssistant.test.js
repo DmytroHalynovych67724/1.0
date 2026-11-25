@@ -85,5 +85,5 @@ test('unavailable legacy model falls back once to the current model and caches t
   const options = {query:'What is RAM?',apiKey:'test-key',model:'llama-3.3-70b-versatile',fetchImpl};
   assert.equal((await requestGroqReply(options)).inScope,true);
   assert.equal((await requestGroqReply(options)).inScope,true);
-  assert.deepEqual(models,['llama-3.3-70b-versatile','openai/gpt-oss-20b','openai/gpt-oss-20b']);
+  assert.deepEqual(models,['llama-3.3-70b-versatile','openai/gpt-oss-120b','openai/gpt-oss-120b']);
 });
