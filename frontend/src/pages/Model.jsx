@@ -1,3 +1,4 @@
+import { listingCount } from '../listingCount.mjs';
 import { specLabels } from '../specLabels.mjs';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -70,11 +71,11 @@ function ModelContent() {
   return <main className="model-page">
     <div className="shell breadcrumbs"><Link to="/catalog">{t('catalog')}</Link><span>/</span><span>{categoryLabel(data.category, language)}</span><span>/</span><b>{data.model}</b></div>
     <section className="shell model-hero">
-      <div className="model-hero__image"><img src={imageUrl(data.image)} alt={`${data.brand} ${data.model}`} /><span>{data.offers.length} {c.found}</span></div>
+      <div className="model-hero__image"><img src={imageUrl(data.image)} alt={`${data.brand} ${data.model}`} /><span>{listingCount(data.offers.length, language)}</span></div>
       <div className="model-hero__info"><span className="eyebrow">{data.brand} · {categoryLabel(data.category, language)}</span><h1>{data.brand} {data.model}</h1><p>{language === 'uk' ? 'Порівняйте конкретні пропозиції: комплектація, стан і характеристики можуть відрізнятися.' : language === 'en' ? 'Compare individual offers: configurations, condition and specifications may differ.' : 'Porównaj konkretne oferty: konfiguracja, stan i parametry mogą się różnić.'}</p><div className="model-price-from"><small>{c.from}</small><strong>{formatPrice(data.price.min, data.price.currency)}</strong></div><div className="model-hero__actions"><button className="primary-button" type="button" onClick={() => jump('model-offers')}>{c.offers}</button><button className="quiet-button" type="button" onClick={share}>↗ {c.share}</button></div></div>
     </section>
     <nav className="model-tabs"><div className="shell">{[['model-offers', c.offers, data.offers.length], ['model-specs', c.specs, ''], ['model-reviews', c.reviews, data.reviews.length], ['model-questions', c.questions, questions.length], ['model-accessories', c.accessories, data.accessories.length]].map(([id, label, count]) => <button type="button" key={id} onClick={() => jump(id)}>{label}{count !== '' && <span>{count}</span>}</button>)}</div></nav>
-    <section className="shell model-offers-section" id="model-offers"><header><div><span className="section-label">NaShary Market</span><h2>{c.compare}</h2></div><p>{offers.length} {c.found}</p></header><div className="model-variant-filter"><b>{c.choose}</b>
+    <section className="shell model-offers-section" id="model-offers"><header><div><span className="section-label">NaShary Market</span><h2>{c.compare}</h2></div><p>{listingCount(offers.length, language)}</p></header><div className="model-variant-filter"><b>{c.choose}</b>
         <div><span>{c.condition}</span>{['', 'new', 'used'].map((value) => <button type="button" aria-pressed={filters.condition === value} className={filters.condition === value ? 'is-active' : ''} key={value} onClick={() => setFilters({ condition: value, color: '', storage: '' })}>{value ? t(value) : c.all}</button>)}</div>
         {['color', 'storage'].map((key) => { const options = variantOptions(data.offers, filters, key); return options.length > 0 && <div key={key} role="group" aria-label={c[key]}><span>{c[key]}</span><button type="button" aria-pressed={!filters[key]} className={!filters[key] ? 'is-active' : ''} onClick={() => setFilters({ ...filters, [key]: '' })}>{c.all}</button>{options.map(({ value, count }) => <button type="button" disabled={!count} aria-pressed={filters[key] === value} className={filters[key] === value ? 'is-active' : ''} key={value} onClick={() => setFilters({ ...filters, [key]: value })}>{value} ({count})</button>)}</div>; })}
       </div>

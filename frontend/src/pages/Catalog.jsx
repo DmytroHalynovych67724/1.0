@@ -1,3 +1,4 @@
+import { listingCount } from '../listingCount.mjs';
 import { CATALOG_PAGE_SIZE, catalogPage, mergeCatalogItems } from '../catalogPaging.mjs';
 import { specLabels as labels } from '../specLabels.mjs';
 import { safeStorage, safeSessionStorage } from '../browserStorage.mjs';
@@ -379,10 +380,6 @@ function CatalogContent({ favoritesOnly, section }) {
     () => countsFor(sourceProducts, (product) => product.brand),
     [sourceProducts]
   );
-  const conditionCounts = useMemo(
-    () => countsFor(sourceProducts, (product) => product.condition),
-    [sourceProducts]
-  );
   const gradeCounts = useMemo(
     () => countsFor(sourceProducts, (product) => product.deviceDetails?.grade),
     [sourceProducts]
@@ -433,7 +430,7 @@ function CatalogContent({ favoritesOnly, section }) {
         <span className="section-label">NaShary · {favoritesOnly ? c.favorites : sc[section]}</span>
         <h1>{title}</h1>
         {!favoritesOnly && <p className="catalog-section-lead">{section === 'used' ? sc.usedLead : sc.newLead}</p>}
-        <p>{loading ? '…' : `${resultCount} ${t('results')}`}</p>
+        <p>{loading ? '…' : listingCount(resultCount, language)}</p>
         <div className="region-chip">
           <span>{region.toUpperCase()}</span>
           {c.only} {regions[region].label[language]}
@@ -521,7 +518,7 @@ function CatalogContent({ favoritesOnly, section }) {
             </label>
           </FilterSection>
 
-          <div className="catalog-condition-note"><b>{sc[section]}</b><span>{conditionCounts[condition] || 0} {t('results')}</span></div>
+          <div className="catalog-condition-note"><b>{sc[section]}</b><span>{loading ? '…' : listingCount(resultCount, language)}</span></div>
 
           {condition === 'used' && category === 'Smartfony' && <FilterSection title={c.grade}>
             <div className="filter-option-list">

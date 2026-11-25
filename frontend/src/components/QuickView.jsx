@@ -1,11 +1,12 @@
 import { specLabels } from '../specLabels.mjs';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
 import { ownsListing, canBuyListing, ownerCopy } from '../listingPolicy.mjs';
 import SupplySummary from './SupplySummary';
+import { categoryLabel } from '../catalogTaxonomy';
 
 const words = {
   pl: { title: 'Szybki podgląd', details: 'Pełne ogłoszenie', chat: 'Napisz', alert: 'Obserwuj cenę', saved: 'Obserwowanie ceny włączone', condition: 'Stan', delivery: 'Dostawa', trade: 'Możliwa negocjacja', both: 'Dostawa lub odbiór', shipping: 'Dostawa', pickup: 'Odbiór osobisty' },
@@ -16,6 +17,7 @@ const words = {
 
 
 export default function QuickView({ product: preview, onClose }) {
+  const dialogRef = useRef(null);
   const [product, setProduct] = useState(preview);
   useEffect(() => {
     let active = true;
@@ -30,14 +32,24 @@ export default function QuickView({ product: preview, onClose }) {
   const [image, setImage] = useState(0);
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement;
     document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+      if (event.key === 'Tab') {
+        const controls = [...(dialogRef.current?.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled)') || [])].filter((element) => element.getClientRects().length);
+        const first = controls[0]; const last = controls[controls.length - 1];
+        if (!first) { event.preventDefault(); dialogRef.current?.focus(); }
+        else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', closeOnEscape);
+      if (previousFocus?.isConnected) previousFocus.focus?.();
     };
   }, [onClose]);
   const watch = async () => {
@@ -59,15 +71,15 @@ export default function QuickView({ product: preview, onClose }) {
   const images = product.images?.length ? product.images : [''];
   return createPortal(
     <div className="modal-backdrop quick-view-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <article className="quick-view-modal" role="dialog" aria-modal="true" aria-label={c.title}>
-        <header><span>{c.title}</span><button type="button" onClick={onClose}>×</button></header>
+      <article className="quick-view-modal" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={c.title}>
+        <header><span>{c.title}</span><button type="button" aria-label={language === 'uk' ? 'Закрити перегляд' : language === 'en' ? 'Close preview' : 'Zamknij podgląd'} onClick={onClose}>×</button></header>
         <div className="quick-view-grid">
           <div className="quick-view-gallery">
             <img src={imageUrl(images[image])} alt={product.title} />
-            {images.length > 1 && <div>{images.map((item, index) => <button className={image === index ? 'is-active' : ''} type="button" key={`${item}-${index}`} onClick={() => setImage(index)}><img src={imageUrl(item)} alt="" /></button>)}</div>}
+            {images.length > 1 && <div>{images.map((item, index) => <button className={image === index ? 'is-active' : ''} type="button" aria-label={`${language === 'uk' ? 'Фото' : language === 'en' ? 'Photo' : 'Zdjęcie'} ${index + 1}`} aria-pressed={image === index} key={`${item}-${index}`} onClick={() => setImage(index)}><img src={imageUrl(item)} alt="" /></button>)}</div>}
           </div>
           <div className="quick-view-info">
-            <small>{product.category} · {product.location}</small>
+            <small>{categoryLabel(product.category, language)} · {product.location}</small>
             <h2>{product.title}</h2>
             <strong>{formatPrice(product.price, product.currency)}</strong>
             <SupplySummary product={product} language={language} />

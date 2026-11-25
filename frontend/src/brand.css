@@ -226,3 +226,4 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
 .route-error h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.15; }
 .route-error p { color: var(--muted); line-height: 1.7; max-width: 60ch; }
 .route-error > div { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
+.quick-view-modal :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
