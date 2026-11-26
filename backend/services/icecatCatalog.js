@@ -22,6 +22,7 @@ const VARIANT_WORDS = new Set([
   'plus',
   'pro',
   'se',
+  'slim',
   'ultra',
   'xl',
 ]);

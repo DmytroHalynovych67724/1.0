@@ -302,6 +302,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       ...current,
       brand: match.brand || current.brand,
       model: match.model || current.model,
+      category: listingCategories.includes(match.category) ? match.category : current.category,
       specs: specsAfterLookup(current.specs || {}, match, query, [...manualSpecKeys.current]),
       deviceDetails: hasFacts ? {
         ...current.deviceDetails,
@@ -312,7 +313,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
   }, []);
   useEffect(() => {
     const query = (lookupQuery || form.title).trim();
-    const lookupKey = `${form.category}:${query}:${lookupAttempt}:${language}:${lookupMode}`;
+    const lookupKey = `${lookupMode === 'ai' ? 'auto' : form.category}:${query}:${lookupAttempt}:${language}:${lookupMode}`;
     if ((initial && !lookupAttempt) || query.length < 3 || lookupKey === lastLookup.current) return undefined;
     const timer = window.setTimeout(async () => {
       const requestId = lookupSequence.current + 1;
@@ -330,7 +331,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
         if (!matches.length) {
           setSpecMatches([]);
           setSelectedSpecKey('');
-          setSpecNotice(data.ai?.status === 'unrecognized' ? ac.unrecognized : data.ai && data.ai.status !== 'ready' ? ac.unavailable : c.noSpecs);
+          setSpecNotice(data.ai?.status === 'unrecognized' ? ac.unrecognized : data.ai && data.ai.status !== 'ready' ? ac.unavailable : fc.tryAi);
           return;
         }
         setSpecMatches(matches);
@@ -357,7 +358,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       window.clearTimeout(timer);
       lookupSequence.current += 1;
     };
-  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language, lookupAttempt, lookupQuery, lookupMode, ac, fc.noFacts]);
+  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language, lookupAttempt, lookupQuery, lookupMode, ac, fc.noFacts, fc.tryAi]);
   const submit = async (event) => {
     event.preventDefault();
     if (busy || photosBusy || photosGate.current) return;

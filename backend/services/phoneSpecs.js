@@ -22,6 +22,7 @@ function normalizeDeviceQuery(value) {
     .replace(/ультра/giu, 'Ultra').replace(/піксель|пиксель/giu, 'Pixel')
     .replace(/iphone\s*(\d)/gi, 'iPhone $1')
     .replace(/redmi\s*(\d)/gi, 'Redmi $1')
+    .replace(/\b(?:ps\s*5|play\s*station\s*5)\b/gi, 'PlayStation 5')
     .replace(/\s+/g, ' ').trim();
 }
 
@@ -76,7 +77,7 @@ function normalizePhoneMatch(match, query = '') {
   }
   if (raw.os && /\biOS\b/i.test(raw.os)) specs.os = 'iOS';
   const connectivity = [raw.connectivity, raw.wifi, raw.bluetooth && 'Bluetooth ' + raw.bluetooth].filter(Boolean).join(', ');
-  if (!specs.wifi) specs.wifi = connectivity.match(/(?:Wi[‑-]?Fi\s*[\dE]+(?:\s*\([^)]+\))?|802\.11[a-z]+)/i)?.[0] || '';
+  if (!specs.wifi) specs.wifi = connectivity.match(/Wi[‑-]?Fi\s*\d+E?\b(?![.,]\d|\s*(?:GHz|MHz))(?:\s*\([^)]+\))?/i)?.[0] || connectivity.match(/802\.11[a-z]+/i)?.[0] || '';
   if (!specs.bluetooth) specs.bluetooth = connectivity.match(/Bluetooth\s*([\d.]+)/i)?.[1] || '';
   if (!specs.features && /\bNFC\b/i.test(connectivity)) specs.features = 'NFC';
   for (const key of Object.keys(specs)) {

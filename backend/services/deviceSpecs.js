@@ -1,5 +1,7 @@
 const { fetchIcecatProduct } = require('./icecat');
 const phoneProfiles = require('./phoneProfiles');
+const verifiedProfiles = require('./verifiedDeviceProfiles');
+const { spacedIdentity, inferDeviceCategory } = require('./deviceIdentity');
 const { normalizeDeviceQuery, normalizePhoneMatch } = require('./phoneSpecs');
 const {
   identityTokens,
@@ -9,6 +11,7 @@ const {
 } = require('./icecatCatalog');
 
 const CURATED_PHONES = [
+  ...verifiedProfiles.filter(profile => profile.category === 'Smartfony'),
   ...phoneProfiles,
   // Manufacturer reference pages; memory/battery values not published by Apple are omitted.
   { brand: 'Apple', model: 'iPhone 15 Pro Max', sourceUrl: 'https://support.apple.com/en-us/111828', specs: { screen: '6.7″ OLED', resolution: '2796 × 1290', refreshRate: '120 Hz', processor: 'Apple A17 Pro', storage: '256 GB / 512 GB / 1 TB', mainCamera: '48 MP + 12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', displayType: 'OLED', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C 3', weight: '221 g' } },
@@ -25,6 +28,7 @@ const CURATED_PHONES = [
   { brand: 'OnePlus', model: '12', specs: { screen: '6.82″ LTPO AMOLED', resolution: '3168 × 1440', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3', ram: '12 GB / 16 GB / 24 GB', storage: '256 GB / 512 GB / 1 TB', battery: '5400 mAh', mainCamera: '50 MP + 64 MP + 48 MP', frontCamera: '32 MP', os: 'Android', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.4, NFC, USB‑C', displayType: 'LTPO AMOLED', charging: '100 W', weight: '220 g' } },
 ];
 const CURATED_DEVICES = [
+  ...verifiedProfiles.filter(profile => profile.category !== 'Smartfony'),
   { category: 'Laptopy', brand: 'Apple', model: 'MacBook Air M2', specs: { screen: '13.6″ Liquid Retina IPS', resolution: '2560 × 1664', refreshRate: '60 Hz', processor: 'Apple M2', ram: '8 GB / 16 GB / 24 GB', storage: '256 GB / 512 GB / 1 TB / 2 TB', gpu: 'Apple M2 8-core / 10-core GPU', battery: '52.6 Wh', os: 'macOS', connectivity: 'MagSafe 3, 2× Thunderbolt / USB 4, 3.5 mm', wifi: 'Wi‑Fi 6', bluetooth: '5.3', weight: '1.24 kg' } },
   { category: 'Laptopy', brand: 'Lenovo', model: 'Legion 5', specs: { screen: '15.6″ / 16″ IPS', resolution: 'Full HD / WQXGA', refreshRate: '144 Hz / 165 Hz', processor: 'AMD Ryzen 5 / Ryzen 7 or Intel Core i5 / i7', ram: '16 GB / 32 GB', storage: '512 GB / 1 TB SSD', gpu: 'NVIDIA GeForce RTX series', os: 'Windows', connectivity: 'USB‑C, USB‑A, HDMI, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.x' } },
   { category: 'Laptopy', brand: 'ASUS', model: 'TUF Gaming A15', specs: { screen: '15.6″ IPS', resolution: '1920 × 1080', refreshRate: '144 Hz', processor: 'AMD Ryzen series', ram: '16 GB / 32 GB', storage: '512 GB / 1 TB SSD', gpu: 'NVIDIA GeForce RTX series', os: 'Windows', connectivity: 'USB‑C, USB‑A, HDMI, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.x' } },
@@ -80,8 +84,8 @@ function cleanWiki(value = '') {
 }
 
 function modelCompatible(query, brand, model) {
-  const candidate = new Set(identityTokens(`${brand} ${model}`, brand));
-  const required = identityTokens(query, brand);
+  const candidate = new Set(identityTokens(spacedIdentity(`${brand} ${model}`), brand));
+  const required = identityTokens(spacedIdentity(query), brand);
   if (!required.length || required.some((token) => !candidate.has(token))) return false;
   const requestedVariants = variantTokens(query);
   const candidateVariants = variantTokens(model);
@@ -91,11 +95,13 @@ function modelCompatible(query, brand, model) {
 }
 
 function wikipediaTitleCompatible(query, title, pageModels = '') {
-  const titleValue = normalize(`${title} ${pageModels}`);
-  const important = identityTokens(query).filter(
-    (token) => /\d/.test(token) || variantTokens(token).size > 0
-  );
-  return important.length > 0 && important.every((token) => titleValue.includes(token));
+  if (/disambiguation|list of|comparison|history|timeline/i.test(title)) return false;
+  const brand = ['Apple','Samsung','Xiaomi','Google','realme','Sony','OnePlus','Lenovo','ASUS','Nintendo'].find(name => normalize(query).includes(normalize(name))) || '';
+  const combined = normalize(`${title} ${pageModels}`);
+  if (brand && !combined.includes(normalize(brand)) && !(brand === 'Apple' && /iphone|ipad|macbook/.test(combined)) && !(brand === 'Sony' && /playstation/.test(combined))) return false;
+  const titleTokens = new Set(identityTokens(spacedIdentity(`${title} ${pageModels}`), brand));
+  const important = identityTokens(spacedIdentity(query), brand);
+  return important.length > 0 && important.every(token => titleTokens.has(token));
 }
 
 function field(wikitext, names) {
@@ -295,20 +301,20 @@ function mergeTitleSpecs(match, query, category) {
   return { ...match, specs };
 }
 
-async function wikipediaSpecs(query, category = '', { includeSourceText = false } = {}) {
+async function wikipediaSpecs(query, category = '', { includeSourceText = false, fetchImpl = global.fetch } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6500);
   try {
     const searchQuery = modelSearchQuery(query, category) || query;
     const searchUrl = new URL('https://en.wikipedia.org/w/api.php');
     searchUrl.search = new URLSearchParams({ action: 'query', list: 'search', srsearch: `"${searchQuery}" ${wikipediaKeyword(category)}`, srlimit: '6', format: 'json', origin: '*' });
-    const search = await fetch(searchUrl, { signal: controller.signal, headers: { 'user-agent': 'NaShary diploma marketplace/1.0' } }).then((response) => response.json());
-    const candidates = (search?.query?.search || []).filter((item) => !/list of|comparison|history|timeline/i.test(item.title));
+    const search = await fetchImpl(searchUrl, { signal: controller.signal, headers: { 'user-agent': 'NaShary diploma marketplace/1.0' } }).then((response) => response.json());
+    const candidates = (search?.query?.search || []).filter((item) => !/disambiguation|list of|comparison|history|timeline/i.test(item.title));
     if (!candidates.length) return null;
 
     const pageUrl = new URL('https://en.wikipedia.org/w/api.php');
     pageUrl.search = new URLSearchParams({ action: 'query', prop: 'revisions', rvprop: 'content', rvslots: 'main', titles: candidates.map((item) => item.title).join('|'), format: 'json', formatversion: '2', origin: '*' });
-    const page = await fetch(pageUrl, { signal: controller.signal, headers: { 'user-agent': 'NaShary diploma marketplace/1.0' } }).then((response) => response.json());
+    const page = await fetchImpl(pageUrl, { signal: controller.signal, headers: { 'user-agent': 'NaShary diploma marketplace/1.0' } }).then((response) => response.json());
     const selected = (page?.query?.pages || []).map((item) => {
       const wikitext = item?.revisions?.[0]?.slots?.main?.content || '';
       const title = String(item.title || '').replace(/\s*\([^)]*\)\s*$/, '');
@@ -385,7 +391,7 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
         ...(bluetooth ? { bluetooth: bluetooth.replace(/Bluetooth\s*/i, '') } : {}),
         ...(connectivity.includes('NFC') && !phone.specs.features ? { features: 'NFC' } : {}),
       },
-      source: 'NaShary Open Cache',
+      source: phone.source || 'NaShary Open Cache',
     };
   });
   if (local.length) {
@@ -409,8 +415,8 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
     .map((device) => mergeTitleSpecs({
       ...device,
       title: `${device.brand} ${device.model}`,
-      source: 'NaShary Open Cache',
-      matchConfidence: device.model === 'Legion 5' || device.model === 'TUF Gaming A15' ? 'fallback' : 'exact',
+      source: device.source || 'NaShary Open Cache',
+      matchConfidence: device.matchConfidence || (device.model === 'Legion 5' || device.model === 'TUF Gaming A15' ? 'fallback' : 'exact'),
     }, query, category));
   if (curatedDevices.length) return curatedDevices;
   try {
@@ -466,6 +472,7 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
 
 async function findDeviceSpecs(query, options = {}) {
   query = normalizeDeviceQuery(query);
+  options = { ...options, category: inferDeviceCategory(query, options.category || '') };
   const key = `${normalize(options.category || '')}:${normalize(query)}`;
   const cached = lookupCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;

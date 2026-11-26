@@ -124,6 +124,9 @@ test('unavailable AI falls back honestly and provider responses are validated wi
   });
   assert.equal(result.ai.status, 'unavailable');
   assert.equal(result.results[0].model, 'iPhone 11');
+  const sourceOnly = await findAiDeviceSpecs('iPhone 11', { requestJson: async () => ({ candidates: [] }), findSpecs: async () => [{ model: 'iPhone 11', specs: { processor: 'A13 Bionic' } }] });
+  assert.equal(sourceOnly.ai.status, 'source_only');
+  assert.equal(sourceOnly.results[0].specs.processor, 'A13 Bionic');
   let attempts = 0;
   const response = await requestSpecJson(
     'Return JSON',
