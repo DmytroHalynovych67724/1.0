@@ -3475,13 +3475,15 @@ textarea:focus {
   max-height: none;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+  overscroll-behavior: auto;
   border: 1px solid var(--line);
   border-radius: 28px;
   box-shadow: none;
 }
 .listing-page-form .modal-title {
   position: static;
+  border-radius: 28px 28px 0 0;
   margin: 0;
   padding: 30px 40px 22px;
 }

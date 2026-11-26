@@ -217,11 +217,11 @@ async function lookupAiSpecs(
       result.ai.evidence = Object.fromEntries(
         result.ai.fields.map((key) => [key, result.ai.evidence[key]])
       );
-      // AI-assisted identity and extraction always require explicit model selection.
+    // The form can apply a single sourced result; alternatives still require selection.
       return { ...result, matchConfidence: 'fallback' };
     })
   );
-  return { results, ai: { status: 'ready', reviewRequired: true } };
+  return { results, ai: { status: 'ready', reviewRequired: results.length !== 1 || Object.keys(results[0]?.specs || {}).length < 2 } };
 }
 
 async function findAiDeviceSpecs(query, options = {}) {

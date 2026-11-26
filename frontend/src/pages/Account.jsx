@@ -18,6 +18,7 @@ import { mergeDetectedSpecs } from '../specAutofill.mjs';
 import { categoryLabel } from '../catalogTaxonomy';
 import { specCopy } from '../specCopy';
 import { aiSpecCopy } from '../aiSpecCopy';
+import { selectSpecLookupResult } from '../specLookupSelection.mjs';
 import AccountAccess, { accessLabel } from '../components/AccountAccess';
 import SupplyFields from '../components/SupplyFields';
 import UsedConditionFields from '../components/UsedConditionFields';
@@ -332,13 +333,13 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
         }
         setSpecMatches(matches);
         const requestedStorage = query.match(/\b(32|64|128|256|512|1024)\s*(?:GB|ГБ|TB|ТБ)\b/i)?.[1];
-        const match = matches.find((item) => requestedStorage && String(item.specs?.storage || '').includes(requestedStorage)) || matches[0];
-        if (lookupMode === 'ai' || match.matchConfidence === 'fallback' || matches.length > 1) {
+        const { match, autoApply } = selectSpecLookupResult(matches, { ai: lookupMode === 'ai', requestedStorage });
+        if (!autoApply) {
           setSelectedSpecKey('');
           setSpecNotice(lookupMode === 'ai' ? (data.ai?.status === 'ready' ? ac.choose : ac.unavailable) : c.chooseModel);
         } else {
-          applySpecMatch(match, query);
-          setSpecNotice(c.specsApplied);
+          applySpecMatch(match, query, lookupMode === 'ai');
+          setSpecNotice(lookupMode === 'ai' ? ac.applied : c.specsApplied);
         }
       } catch (error) {
         if (requestId !== lookupSequence.current) return;
@@ -410,6 +411,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
                 lastLookup.current = '';
                 setLookupQuery('');
                 setLookupMode('sources');
+                setSpecMetadata(null);
                 change('title', event.target.value);
               }}
               placeholder={language === 'pl' ? 'np. Apple iPhone 15 Pro 256 GB' : language === 'uk' ? 'наприклад Apple iPhone 15 Pro 256 GB' : 'e.g. Apple iPhone 15 Pro 256 GB'}
@@ -474,7 +476,6 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
                 manualSpecKeys.current.clear();
                 setLookupMode('sources');
                 setLookupQuery('');
-                setSpecMetadata(null);
                 setForm((current) => ({ ...current, category: event.target.value, specs: {}, deviceDetails: { ...current.deviceDetails, specSource: '', specSourceId: '' } }));
               }}
             >
@@ -519,7 +520,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
           <label className="check-filter"><input type="checkbox" checked={form.urgent} onChange={(event) => change('urgent', event.target.checked)} /><span>{c.urgent}</span></label>
           {form.condition === 'used' && <UsedConditionFields value={form.deviceDetails} inspection={form.inspection} onChange={(value) => change('deviceDetails', value)} onInspectionChange={(value) => change('inspection', value)} language={language}/>}
 
-          {(listingSpecs[form.category] || []).length > 0 && <details className="span-2 auto-spec-review" open={!specMatches.length}>
+          {(listingSpecs[form.category] || []).length > 0 && <details className="span-2 auto-spec-review" open={Boolean(selectedSpecKey) || !specMatches.length}>
             <summary><span>{language === 'pl' ? 'Dane techniczne' : language === 'uk' ? 'Технічні характеристики' : 'Technical specifications'}</span><small>{(listingSpecs[form.category] || []).filter((key) => form.specs?.[key]).length} / {(listingSpecs[form.category] || []).length}</small></summary>
             <div className="form-grid-react">{(listingSpecs[form.category] || []).map((key) => (
               <label key={key}>

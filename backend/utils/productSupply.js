@@ -12,9 +12,10 @@ function validateSupplyDetails(input) {
   const result = {};
   for (const [key, raw] of Object.entries(input)) {
     const field = `supplyDetails.${key}`;
-    if (key === 'availability' || key === 'marketVersion') {
-      if (typeof raw !== 'string' || !(key === 'availability' ? AVAILABILITY : MARKET_VERSIONS).includes(raw)) issues.push({ field, message: 'Unsupported value' });
-      else if (raw) result[key] = raw;
+    if (key === 'availability' || key === 'marketVersion' || key === 'origin') {
+      const allowed = key === 'availability' ? AVAILABILITY : key === 'origin' ? ['', 'local', 'china', 'other'] : MARKET_VERSIONS;
+      if (typeof raw !== 'string' || !allowed.includes(raw)) issues.push({ field, message: 'Unsupported value' });
+      else if (raw || key === 'origin') result[key] = raw;
     } else if (Object.hasOwn(TEXT_LIMITS, key)) {
       if (typeof raw !== 'string' || raw.trim().length > TEXT_LIMITS[key]) issues.push({ field, message: `Text up to ${TEXT_LIMITS[key]} characters required` });
       else if (raw.trim()) result[key] = raw.trim();
