@@ -221,7 +221,7 @@ async function lookupAiSpecs(
       return { ...result, matchConfidence: 'fallback' };
     })
   );
-  return { results, ai: { status: 'ready', reviewRequired: results.length !== 1 || Object.keys(results[0]?.specs || {}).length < 2 } };
+  return { results, ai: { status: 'ready', reviewRequired: results.length !== 1 || Object.keys(results[0]?.specs || {}).length < 1 } };
 }
 
 async function findAiDeviceSpecs(query, options = {}) {
