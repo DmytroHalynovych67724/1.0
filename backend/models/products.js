@@ -3,6 +3,7 @@ const { getDB } = require('../db');
 const { currencyForRegion, normalizeRegion } = require('../utils/regions');
 const { demoCatalogEnabled, SHOWCASE_IDS } = require('../utils/catalog');
 const { normalizeInspection, normalizeDeviceDetails } = require('../utils/deviceCondition');
+const { inventoryParameters, inventoryWriteGuard, inventoryConflict } = require('../utils/inventoryCodes');
 
 function parseImages(value) {
   if (!value) return [];
@@ -250,20 +251,21 @@ async function createProduct(payload, options = {}) {
     createdAt,
   };
 
-  await db
+  const inserted = await db
     .prepare(
       `
     INSERT INTO products (
       id, title, description, price, priceCents, images, specs, category, location,
       condition, brand, model, stock, seller, sellerType, delivery, warranty, negotiable, status, urgent, inspection, deviceDetails, supplyDetails, region, currency, createdBy, createdAt
-    ) VALUES (
+    ) SELECT
       @id, @title, @description, @price, @priceCents, @images, @specs, @category, @location,
       @condition, @brand, @model, @stock, @seller, @sellerType, @delivery, @warranty, @negotiable, @status, @urgent, @inspection, @deviceDetails, @supplyDetails, @region, @currency, @createdBy, @createdAt
-    )
+    WHERE ${inventoryWriteGuard}
   `
     )
     .run({
       ...product,
+      ...inventoryParameters(product),
       images: JSON.stringify(product.images),
       specs: JSON.stringify(product.specs),
       inspection: JSON.stringify(product.inspection),
@@ -272,6 +274,8 @@ async function createProduct(payload, options = {}) {
       negotiable: product.negotiable ? 1 : 0,
       urgent: product.urgent ? 1 : 0,
     });
+
+  if (!inserted.changes) throw inventoryConflict();
 
   return getProduct(id);
 }
@@ -316,11 +320,12 @@ async function updateProduct(id, payload) {
       region = @region,
       currency = @currency,
       updatedAt = @updatedAt
-    WHERE id = @id
+    WHERE id = @id AND ${inventoryWriteGuard}
   `
     )
     .run({
       id,
+      ...inventoryParameters(merged, existing),
       title: merged.title,
       description: merged.description,
       price: merged.price,
@@ -353,6 +358,7 @@ async function updateProduct(id, payload) {
       updatedAt,
     });
 
+  if (!result.changes && await getProduct(id)) throw inventoryConflict();
   return result.changes ? getProduct(id) : null;
 }
 

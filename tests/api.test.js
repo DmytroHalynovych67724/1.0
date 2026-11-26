@@ -142,6 +142,48 @@ async function createProduct(overrides = {}) {
   return created.body;
 }
 
+test('inventory codes prevent duplicate current SKU batches atomically and preserve partial supply updates', async () => {
+  const payload = productPayload({ condition: 'new', region: 'pl', supplyDetails: { sku: 'INV-128', batch: 'LOT-A', marketVersion: 'Global', warrantyTerms: 'One year' } });
+  const results = await Promise.all([1, 2].map(() => request('/api/products', { method: 'POST', token: adminToken, body: payload })));
+  assert.deepEqual(results.map(result => result.response.status).sort(), [201, 409]);
+  const first = results.find(result => result.response.status === 201).body;
+  assert.equal(results.find(result => result.response.status === 409).body.code, 'INVENTORY_CODE_CONFLICT');
+  const duplicate = await request('/api/products', { method: 'POST', token: adminToken, body: { ...payload, supplyDetails: { sku: ' inv-128 ', batch: ' lot-a ' } } });
+  assert.equal(duplicate.response.status, 409);
+  const partial = await request(`/api/products/${first.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: { availability: 'on_order' } } });
+  assert.equal(partial.response.status, 200);
+  assert.deepEqual(partial.body.supplyDetails, { ...payload.supplyDetails, availability: 'on_order' });
+  const stock = await request(`/api/products/${first.id}`, { method: 'PATCH', token: adminToken, body: { stock: 7 } });
+  assert.equal(stock.body.stock, 7);
+  const nextBatch = await createProduct({ ...payload, supplyDetails: { ...payload.supplyDetails, batch: 'LOT-B' } });
+  const conflict = await request(`/api/products/${nextBatch.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: { batch: 'LOT-A' } } });
+  assert.equal(conflict.response.status, 409);
+  assert.equal((await request(`/api/products/${nextBatch.id}`)).body.supplyDetails.batch, 'LOT-B');
+  const otherMarket = await createProduct({ ...payload, region: 'ua' });
+  assert.equal((await request(`/api/products/${otherMarket.id}`, { method: 'PATCH', token: adminToken, body: { region: 'pl' } })).response.status, 409);
+  const sold = await createProduct({ ...payload, status: 'sold' });
+  assert.equal((await request(`/api/products/${sold.id}`, { method: 'PATCH', token: adminToken, body: { status: 'active' } })).response.status, 409);
+  for (const condition of ['used', 'used']) await createProduct({ ...payload, condition });
+  for (let i = 0; i < 2; i++) await createProduct({ condition: 'new', supplyDetails: {} });
+  await createProduct({ condition: 'new', supplyDetails: { sku: 'INV-BLANK' } });
+  assert.equal((await request('/api/products', { method: 'POST', token: adminToken, body: productPayload({ condition: 'new', status: 'draft', supplyDetails: { sku: 'inv-blank', batch: '' } }) })).response.status, 409);
+  const cleared = await request(`/api/products/${nextBatch.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: { sku: '' } } });
+  assert.equal(cleared.response.status, 200);
+  assert.equal(cleared.body.supplyDetails.sku, undefined);
+  assert.equal(cleared.body.supplyDetails.batch, 'LOT-B');
+  const seller = await registerAndLogin('inventory-seller');
+  assert.equal((await request(`/api/staff/users/${seller.user.id}`, { method: 'PATCH', token: adminToken, body: { canSellNew: true, reason: 'Test inventory permission' } })).response.status, 200);
+  const login = await request('/api/auth/login', { method: 'POST', body: { username: seller.username, password: seller.password } });
+  assert.equal((await request('/api/products', { method: 'POST', token: login.body.token, body: payload })).response.status, 201);
+  const editing = await Promise.all(['ONE', 'TWO'].map(code => createProduct({ condition: 'new', supplyDetails: { sku: `INV-EDIT-${code}` } })));
+  const edits = await Promise.all(editing.map(item => request(`/api/products/${item.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: { sku: 'INV-EDIT-TARGET' } } })));
+  assert.deepEqual(edits.map(result => result.response.status).sort(), [200, 409]);
+  // A pre-existing duplicate must remain editable without rewriting old inventory.
+  await database.getDB().prepare('UPDATE products SET supplyDetails = ? WHERE id = ?').run(JSON.stringify(payload.supplyDetails), nextBatch.id);
+  assert.equal((await request(`/api/products/${nextBatch.id}`, { method: 'PATCH', token: adminToken, body: { stock: 3 } })).response.status, 200);
+  assert.equal((await request(`/api/products/${nextBatch.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: { batch: 'LOT-C' } } })).response.status, 200);
+});
+
 test.before(async () => {
   await setup();
   await seed();

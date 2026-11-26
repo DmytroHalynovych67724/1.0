@@ -7,6 +7,7 @@ export function availabilityFor(product) {
 
 export const supplyCopy = {
   uk: {
+    inventoryHint: 'SKU позначає конкретну конфігурацію. Для іншого надходження цього SKU вкажи окрему партію. На одному ринку одна партія й SKU мають одну поточну позицію продавця; кількість змінюй у залишку. Регістр літер A–Z у кодах не враховується.',
     other: 'Інша', warrantyNone: 'Не вказано', warrantySeller: 'Від продавця', warrantyManufacturer: 'Від виробника',
     title: 'Версія та постачання', hint: 'Вкажіть дані саме цієї комплектації. Автозаповнення моделі їх не змінює.', unknown: 'Не вказано',
     availability: 'Доступність', in_stock: 'У наявності', on_order: 'Під замовлення', expected: 'Очікується', unavailable: 'Немає в наявності',
@@ -14,6 +15,7 @@ export const supplyCopy = {
     termsUnknown: 'Термін уточнюйте у продавця.', inquiry: 'Уточнити постачання', checkoutHint: 'Купівля через кошик доступна після появи товару в наявності.', changed: 'Деякі товари вже недоступні для покупки. Перевірте їхню наявність.',
   },
   pl: {
+    inventoryHint: 'SKU oznacza konkretną konfigurację. Dla kolejnej dostawy użyj innej partii. Jeden sprzedawca ma jedną bieżącą pozycję SKU i partii na danym rynku; ilość zmieniaj w stanie magazynowym. Wielkość liter A–Z w kodach nie ma znaczenia.',
     other: 'Inna', warrantyNone: 'Nie podano', warrantySeller: 'Sprzedawcy', warrantyManufacturer: 'Producenta',
     title: 'Wersja i dostawa', hint: 'Podaj dane tej konfiguracji. Automatyczne parametry modelu ich nie zmieniają.', unknown: 'Nie podano',
     availability: 'Dostępność', in_stock: 'W magazynie', on_order: 'Na zamówienie', expected: 'Oczekiwana dostawa', unavailable: 'Niedostępny',
@@ -21,6 +23,7 @@ export const supplyCopy = {
     termsUnknown: 'Zapytaj sprzedawcę o termin.', inquiry: 'Zapytaj o dostawę', checkoutHint: 'Zakup w koszyku będzie dostępny po pojawieniu się produktu w magazynie.', changed: 'Niektóre produkty nie są już dostępne do zakupu. Sprawdź dostępność.',
   },
   en: {
+    inventoryHint: 'SKU identifies a specific configuration. Use a different batch for a separate delivery. Each seller has one current listing per market, SKU and batch; update its stock quantity. Letter case A–Z is ignored in codes.',
     other: 'Other', warrantyNone: 'Not specified', warrantySeller: 'Seller warranty', warrantyManufacturer: 'Manufacturer warranty',
     title: 'Version and supply', hint: 'Enter details for this configuration. Model autofill does not change these fields.', unknown: 'Not specified',
     availability: 'Availability', in_stock: 'In stock', on_order: 'On order', expected: 'Expected', unavailable: 'Out of stock',

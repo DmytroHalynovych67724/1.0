@@ -292,6 +292,9 @@ async function handleUpdate(req, res) {
   if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) validateProduct(req.body, { partial: true });
   // A technical-data refresh or one-field edit must not erase the owner's condition notes.
   const body = { ...req.body };
+  if (body.supplyDetails && typeof body.supplyDetails === 'object' && !Array.isArray(body.supplyDetails)) {
+    body.supplyDetails = { ...existing.supplyDetails, ...body.supplyDetails };
+  }
   if (body.deviceDetails && typeof body.deviceDetails === 'object' && !Array.isArray(body.deviceDetails)) {
     const changes = body.deviceDetails;
     body.deviceDetails = { ...existing.deviceDetails, ...body.deviceDetails };

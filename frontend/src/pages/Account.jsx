@@ -233,6 +233,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       : { ...blankListing, condition: initialListingCondition(user, initialCondition) }
   );
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [photosBusy, setPhotosBusy] = useState(false);
   const [photoNotice, setPhotoNotice] = useState('');
   const photosGate = useRef(false);
@@ -348,13 +349,14 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
   const submit = async (event) => {
     event.preventDefault();
     if (busy || photosBusy || photosGate.current) return;
+    setSaveError('');
     setBusy(true);
     const payload = {
       ...form,
       price: Number(form.price),
       stock: Number(form.stock),
       images: form.images || [],
-      region,
+      region: initial?.region || region,
     };
     delete payload.id;
     delete payload.currency;
@@ -370,7 +372,9 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       onSaved(saved);
       if (!page) onClose();
     } catch (error) {
-      window.alert(error.message);
+      setSaveError(error.code === 'INVENTORY_CODE_CONFLICT'
+        ? (language === 'uk' ? 'Цей SKU і партія вже є у твоєму списку на цьому ринку. Зміни залишок наявної позиції або вкажи іншу партію.' : language === 'pl' ? 'Ten SKU i partia już istnieją na Twoim rynku. Zmień stan istniejącej pozycji lub podaj inną partię.' : 'This SKU and batch already exist in your market. Update the existing stock or use a different batch.')
+        : error.message);
     } finally {
       setBusy(false);
     }
@@ -524,6 +528,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
             />
           </label>
         </div>
+        {saveError && <p className="form-error" role="alert">{saveError}</p>}
         <div className="modal-actions">
           <button className="quiet-button" type="button" onClick={onClose}>
             {c.cancel}
