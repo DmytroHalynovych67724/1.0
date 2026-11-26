@@ -5897,3 +5897,52 @@ html[data-theme='dark'] .game-choice--tictactoe .game-choice__art > * {
 .modal-backdrop.quick-view-backdrop .quick-view-modal {
   margin: 0;
 }
+
+.inventory-directions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.inventory-directions button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--canvas);
+  color: var(--ink);
+  cursor: pointer;
+}
+.inventory-directions button.is-active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+}
+.inventory-directions b { font-variant-numeric: tabular-nums; }
+.inventory-intro { margin: 20px 0; }
+.inventory-intro p, .inventory-hint { color: var(--muted); }
+.inventory-create { display: flex; flex-wrap: wrap; gap: 12px; }
+.inventory-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0 10px;
+}
+.inventory-metrics > div { padding: 18px; border-radius: 14px; background: var(--canvas); }
+.inventory-metrics dt { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.inventory-metrics dd { margin: 8px 0 0; font-size: 28px; font-weight: 800; }
+.inventory-hint { font-size: 12px; line-height: 1.6; }
+.inventory-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin: 24px 0 16px; }
+.inventory-filters label { display: grid; gap: 8px; font-size: 13px; }
+.inventory-filters label:first-child { flex: 1 1 250px; }
+.inventory-filters input, .inventory-filters select { width: 100%; min-width: 0; }
+.seller-inventory .listing-table article > div { min-width: 0; overflow-wrap: anywhere; }
+.inventory-directions button:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .inventory-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .inventory-directions button { flex: 1 1 auto; justify-content: space-between; padding: 12px; }
+  .inventory-filters label { flex: 1 1 100%; }
+  .seller-inventory .listing-table article { grid-template-columns: 50px minmax(0, 1fr) auto; gap: 8px; }
+  .seller-inventory .listing-table img { width: 50px; height: 50px; }
+}

@@ -2,6 +2,8 @@ import { preparePhoto } from '../preparePhoto';
 import { photoCopy } from '../photoPolicy.mjs';
 import { specLabels as listingSpecLabels } from '../specLabels.mjs';
 import SellerSales, { salesCopy } from '../components/SellerSales';
+import SellerInventory from '../components/SellerInventory';
+import { canListNew, initialListingCondition } from '../sellerInventory.mjs';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -218,9 +220,9 @@ const paymentStatusLabels = {
 
 
 
-export function ListingForm({ initial, onClose, onSaved, region, language, c, page = false }) {
+export function ListingForm({ initial, initialCondition, onClose, onSaved, region, language, c, page = false }) {
   const { user } = useStore();
-  const canSellNew = user?.role === 'admin' || Boolean(user?.canSellNew);
+  const canSellNew = canListNew(user);
   const sellerCopy = newSellerCopy[language] || newSellerCopy.pl;
   const supply = supplyCopy[language] || supplyCopy.pl;
   const sc = specCopy[language] || specCopy.pl;
@@ -228,7 +230,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const [form, setForm] = useState(
     initial
       ? { ...blankListing, ...initial, specs: initial.specs || {}, images: initial.images || [], inspection: { ...blankListing.inspection, ...(initial.inspection || {}) }, deviceDetails: { ...blankListing.deviceDetails, ...(initial.deviceDetails || {}) } }
-      : { ...blankListing, condition: canSellNew ? 'new' : 'used' }
+      : { ...blankListing, condition: initialListingCondition(user, initialCondition) }
   );
   const [busy, setBusy] = useState(false);
   const [photosBusy, setPhotosBusy] = useState(false);
@@ -835,49 +837,7 @@ export default function Account() {
           </article>
         </section>
       )}
-      {tab === 'listings' && (
-        <section className="account-section">
-          <div className="section-title">
-            <div>
-              <span className="eyebrow">Seller</span>
-              <h2>{c.listings}</h2>
-            </div>
-            <Link className="primary-button" to="/sell">
-              ＋ {c.add}
-            </Link>
-          </div>
-          {!listings.length ? (
-            <div className="account-empty">
-              <span>＋</span>
-              <p>{c.emptyListings}</p>
-            </div>
-          ) : (
-            <div className="listing-table">
-              {listings.map((item) => (
-                <article key={item.id}>
-                  <img src={imageUrl(item.images?.[0])} alt="" />
-                  <div>
-                    <Link to={`/product/${item.id}`}>{item.title}</Link>
-                    <small>
-                      {item.condition === 'new' ? c.new : c.used} · {item.stock} {c.pieces}
-                    </small>
-                    {item.moderationStatus === 'hidden' && <small className="moderation-warning">{details.hidden}: {item.moderationReason}</small>}
-                  </div>
-                  <strong>{formatPrice(item.price, item.currency)}</strong>
-                  <div className="row-actions">
-                    <button title={c.edit} type="button" onClick={() => setEditing(item)}>
-                      ✎
-                    </button>
-                    <button title={c.remove} type="button" onClick={() => remove(item.id)}>
-                      ×
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+      {tab === 'listings' && <SellerInventory listings={listings} user={user} language={language} c={c} formatPrice={formatPrice} onEdit={setEditing} onRemove={remove} loading={loading} />}
       {tab === 'sales' && <SellerSales />}
       {tab === 'orders' && (
         <section className="account-section">
