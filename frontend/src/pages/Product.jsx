@@ -260,6 +260,7 @@ function ProductDetails({ id }) {
               {t('negotiate')}
               <div>
                 <input
+                  aria-label={t('negotiate')}
                   inputMode="decimal"
                   value={offer}
                   onChange={(event) => setOffer(event.target.value)}

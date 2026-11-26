@@ -18,7 +18,7 @@ import { specCopy } from '../specCopy';
 import AccountAccess, { accessLabel } from '../components/AccountAccess';
 import SupplyFields from '../components/SupplyFields';
 import UsedConditionFields from '../components/UsedConditionFields';
-import { newSellerCopy } from '../supplyDetails.mjs';
+import { newSellerCopy, supplyCopy } from '../supplyDetails.mjs';
 
 const blankListing = {
   title: '',
@@ -222,6 +222,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const { user } = useStore();
   const canSellNew = user?.role === 'admin' || Boolean(user?.canSellNew);
   const sellerCopy = newSellerCopy[language] || newSellerCopy.pl;
+  const supply = supplyCopy[language] || supplyCopy.pl;
   const sc = specCopy[language] || specCopy.pl;
   const specInputPrefix = useId();
   const [form, setForm] = useState(
@@ -375,12 +376,12 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
   const formContent = (
       <form className={`listing-modal${page ? ' listing-page-form' : ''}`} onSubmit={submit}>
         <div className="modal-title">
-          <div>
+          {!page && <div>
             <span className="eyebrow">NaShary Seller</span>
             <h2>{initial ? c.edit : c.add}</h2>
-          </div>
+          </div>}
           <button type="button" onClick={onClose} aria-label={c.cancel}>
-            {page ? '←' : '×'}
+            {page ? `← ${c.cancel}` : '×'}
           </button>
         </div>
         <div className="form-grid-react">
@@ -493,7 +494,7 @@ export function ListingForm({ initial, onClose, onSaved, region, language, c, pa
             </figure>)}</div>}
           </div>
           {form.condition === 'new' && <SupplyFields value={form.supplyDetails} onChange={(value) => change('supplyDetails', value)} language={language} />}
-          <label>{c.warranty}<select value={form.warranty} onChange={(event) => change('warranty', event.target.value)}><option value="none">—</option><option value="seller">Seller</option><option value="manufacturer">Manufacturer</option></select></label>
+          <label>{c.warranty}<select value={form.warranty} onChange={(event) => change('warranty', event.target.value)}><option value="none">{supply.warrantyNone}</option><option value="seller">{supply.warrantySeller}</option><option value="manufacturer">{supply.warrantyManufacturer}</option></select></label>
           <label>{c.status}<select value={form.status} onChange={(event) => change('status', event.target.value)}>{['active','reserved','sold','draft'].map((value) => <option key={value} value={value}>{c[value]}</option>)}</select></label>
           <label className="check-filter"><input type="checkbox" checked={form.negotiable} onChange={(event) => change('negotiable', event.target.checked)} /><span>{c.negotiable}</span></label>
           <label className="check-filter"><input type="checkbox" checked={form.urgent} onChange={(event) => change('urgent', event.target.checked)} /><span>{c.urgent}</span></label>

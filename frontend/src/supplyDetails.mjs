@@ -7,18 +7,21 @@ export function availabilityFor(product) {
 
 export const supplyCopy = {
   uk: {
+    other: 'Інша', warrantyNone: 'Не вказано', warrantySeller: 'Від продавця', warrantyManufacturer: 'Від виробника',
     title: 'Версія та постачання', hint: 'Вкажіть дані саме цієї комплектації. Автозаповнення моделі їх не змінює.', unknown: 'Не вказано',
     availability: 'Доступність', in_stock: 'У наявності', on_order: 'Під замовлення', expected: 'Очікується', unavailable: 'Немає в наявності',
     marketVersion: 'Версія ринку', firmware: 'Прошивка', languages: 'Підтримувані мови', networkBands: 'Мережі та частоти', packageContents: 'Комплектація', warrantyTerms: 'Умови гарантії', leadTime: 'Термін постачання', sku: 'Артикул (SKU)', batch: 'Код партії',
     termsUnknown: 'Термін уточнюйте у продавця.', inquiry: 'Уточнити постачання', checkoutHint: 'Купівля через кошик доступна після появи товару в наявності.', changed: 'Деякі товари вже недоступні для покупки. Перевірте їхню наявність.',
   },
   pl: {
+    other: 'Inna', warrantyNone: 'Nie podano', warrantySeller: 'Sprzedawcy', warrantyManufacturer: 'Producenta',
     title: 'Wersja i dostawa', hint: 'Podaj dane tej konfiguracji. Automatyczne parametry modelu ich nie zmieniają.', unknown: 'Nie podano',
     availability: 'Dostępność', in_stock: 'W magazynie', on_order: 'Na zamówienie', expected: 'Oczekiwana dostawa', unavailable: 'Niedostępny',
     marketVersion: 'Wersja rynkowa', firmware: 'Oprogramowanie', languages: 'Obsługiwane języki', networkBands: 'Sieci i pasma', packageContents: 'Zawartość zestawu', warrantyTerms: 'Warunki gwarancji', leadTime: 'Termin dostawy', sku: 'Kod produktu (SKU)', batch: 'Kod partii',
     termsUnknown: 'Zapytaj sprzedawcę o termin.', inquiry: 'Zapytaj o dostawę', checkoutHint: 'Zakup w koszyku będzie dostępny po pojawieniu się produktu w magazynie.', changed: 'Niektóre produkty nie są już dostępne do zakupu. Sprawdź dostępność.',
   },
   en: {
+    other: 'Other', warrantyNone: 'Not specified', warrantySeller: 'Seller warranty', warrantyManufacturer: 'Manufacturer warranty',
     title: 'Version and supply', hint: 'Enter details for this configuration. Model autofill does not change these fields.', unknown: 'Not specified',
     availability: 'Availability', in_stock: 'In stock', on_order: 'On order', expected: 'Expected', unavailable: 'Out of stock',
     marketVersion: 'Market version', firmware: 'Firmware', languages: 'Supported languages', networkBands: 'Networks and bands', packageContents: 'Included accessories', warrantyTerms: 'Warranty terms', leadTime: 'Supply lead time', sku: 'Product code (SKU)', batch: 'Batch code',
