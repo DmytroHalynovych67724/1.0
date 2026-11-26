@@ -2,9 +2,20 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const { findDeviceSpecs } = require('../services/deviceSpecs');
 const { icecatStatus } = require('../services/icecat');
+const rateLimit = require('express-rate-limit');
+const { findAiDeviceSpecs } = require('../services/aiDeviceSpecs');
 const { AppError, asyncHandler } = require('../utils/errors');
 
 const router = express.Router();
+
+const aiLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 12, keyGenerator: req => req.user.id,
+  handler: (_req, res) => res.status(429).json({ code: 'AI_SPEC_RATE_LIMIT', error: 'Please wait before requesting more AI lookups' }) });
+router.post('/ai', requireAuth, aiLimiter, asyncHandler(async (req, res) => {
+  const query = typeof req.body?.query === 'string' ? req.body.query.trim() : '';
+  const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+  if (query.length < 3 || query.length > 100 || category.length > 60) throw new AppError(400, 'VALIDATION_ERROR', 'Enter a device name between 3 and 100 characters');
+  res.json(await findAiDeviceSpecs(query, { category }));
+}));
 
 router.get(
   '/',

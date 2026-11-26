@@ -17,6 +17,7 @@ import { accountCopy } from '../accountCopy';
 import { mergeDetectedSpecs } from '../specAutofill.mjs';
 import { categoryLabel } from '../catalogTaxonomy';
 import { specCopy } from '../specCopy';
+import { aiSpecCopy } from '../aiSpecCopy';
 import AccountAccess, { accessLabel } from '../components/AccountAccess';
 import SupplyFields from '../components/SupplyFields';
 import UsedConditionFields from '../components/UsedConditionFields';
@@ -226,6 +227,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
   const sellerCopy = newSellerCopy[language] || newSellerCopy.pl;
   const supply = supplyCopy[language] || supplyCopy.pl;
   const sc = specCopy[language] || specCopy.pl;
+  const ac = aiSpecCopy[language] || aiSpecCopy.pl;
   const specInputPrefix = useId();
   const [form, setForm] = useState(
     initial
@@ -244,6 +246,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
   const [specNotice, setSpecNotice] = useState('');
   const [lookupAttempt, setLookupAttempt] = useState(0);
   const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupMode, setLookupMode] = useState('sources');
   const [specMetadata, setSpecMetadata] = useState(null);
   const [replaceSpecs, setReplaceSpecs] = useState(false);
   const replaceSpecsRef = useRef(false);
@@ -288,10 +291,10 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
     input.value = '';
   };
   const specKey = (match) => String(match.icecatId || `${match.source}:${match.title}`);
-  const applySpecMatch = useCallback((match, query) => {
+  const applySpecMatch = useCallback((match, query, preserveManual = false) => {
     setSelectedSpecKey(specKey(match));
     setSpecMetadata(match);
-    if (replaceSpecsRef.current) manualSpecKeys.current.clear();
+    if (replaceSpecsRef.current && !match.ai && !preserveManual) manualSpecKeys.current.clear();
     setForm((current) => ({
       ...current,
       brand: match.brand || current.brand,
@@ -306,7 +309,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
   }, []);
   useEffect(() => {
     const query = (lookupQuery || form.title).trim();
-    const lookupKey = `${form.category}:${query}:${lookupAttempt}:${language}`;
+    const lookupKey = `${form.category}:${query}:${lookupAttempt}:${language}:${lookupMode}`;
     if ((initial && !lookupAttempt) || query.length < 3 || lookupKey === lastLookup.current) return undefined;
     const timer = window.setTimeout(async () => {
       const requestId = lookupSequence.current + 1;
@@ -314,29 +317,32 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       lastLookup.current = lookupKey;
       setSpecsBusy(true);
       setSpecNotice('');
+      setSpecMatches([]);
       try {
-        const data = await api(`/device-specs?q=${encodeURIComponent(query)}&category=${encodeURIComponent(form.category)}&language=${encodeURIComponent(language)}`);
+        const data = lookupMode === 'ai'
+          ? await api('/device-specs/ai', { method: 'POST', body: JSON.stringify({ query, category: form.category }) })
+          : await api(`/device-specs?q=${encodeURIComponent(query)}&category=${encodeURIComponent(form.category)}&language=${encodeURIComponent(language)}`);
         if (requestId !== lookupSequence.current) return;
         const matches = data.results || [];
         if (!matches.length) {
           setSpecMatches([]);
           setSelectedSpecKey('');
-          setSpecNotice(c.noSpecs);
+          setSpecNotice(data.ai?.status === 'unrecognized' ? ac.unrecognized : data.ai && data.ai.status !== 'ready' ? ac.unavailable : c.noSpecs);
           return;
         }
         setSpecMatches(matches);
         const requestedStorage = query.match(/\b(32|64|128|256|512|1024)\s*(?:GB|ГБ|TB|ТБ)\b/i)?.[1];
         const match = matches.find((item) => requestedStorage && String(item.specs?.storage || '').includes(requestedStorage)) || matches[0];
-        if (match.matchConfidence === 'fallback' || matches.length > 1) {
+        if (lookupMode === 'ai' || match.matchConfidence === 'fallback' || matches.length > 1) {
           setSelectedSpecKey('');
-          setSpecNotice(c.chooseModel);
+          setSpecNotice(lookupMode === 'ai' ? (data.ai?.status === 'ready' ? ac.choose : ac.unavailable) : c.chooseModel);
         } else {
           applySpecMatch(match, query);
           setSpecNotice(c.specsApplied);
         }
       } catch (error) {
         if (requestId !== lookupSequence.current) return;
-        setSpecNotice(error.message);
+        setSpecNotice(error.code === 'AI_SPEC_RATE_LIMIT' ? ac.limit : error.message);
       } finally {
         if (requestId === lookupSequence.current) setSpecsBusy(false);
       }
@@ -345,7 +351,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       window.clearTimeout(timer);
       lookupSequence.current += 1;
     };
-  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language, lookupAttempt, lookupQuery]);
+  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language, lookupAttempt, lookupQuery, lookupMode, ac]);
   const submit = async (event) => {
     event.preventDefault();
     if (busy || photosBusy || photosGate.current) return;
@@ -403,15 +409,18 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
                 setSpecNotice('');
                 lastLookup.current = '';
                 setLookupQuery('');
+                setLookupMode('sources');
                 change('title', event.target.value);
               }}
               placeholder={language === 'pl' ? 'np. Apple iPhone 15 Pro 256 GB' : language === 'uk' ? 'наприклад Apple iPhone 15 Pro 256 GB' : 'e.g. Apple iPhone 15 Pro 256 GB'}
             />
-            <small className={`auto-spec-status${specsBusy ? ' is-loading' : ''}`}>{specsBusy ? c.searchingSpecs : specNotice}</small>
+            <small role="status" className={`auto-spec-status${specsBusy ? ' is-loading' : ''}`}>{specsBusy ? (lookupMode === 'ai' ? ac.working : c.searchingSpecs) : specNotice}</small>
           </label>
           {specMetadata && <aside className="span-2 spec-coverage" aria-live="polite">
             <b>{sc.filled}: {(listingSpecs[form.category] || []).filter((key) => form.specs?.[key]).length} / {(listingSpecs[form.category] || []).length}</b>
             <p>{sc.hint}</p>
+            {specMetadata.ai && <p>{ac.review} {specMetadata.ai.status !== 'ready' ? ac.noSource : ''}</p>}
+            {specMetadata.ai?.fields?.length > 0 && <details><summary>{ac.evidence}</summary><dl>{specMetadata.ai.fields.map(key => <div key={key}><dt>{listingSpecLabels[key]?.[language] || key}</dt><dd>{specMetadata.specs[key]} — <q>{specMetadata.ai.evidence[key]?.quote}</q></dd></div>)}</dl></details>}
             {(listingSpecs[form.category] || []).some((key) => !form.specs?.[key]) && <p>{sc.missing}: {(listingSpecs[form.category] || []).filter((key) => !form.specs?.[key]).map((key) => listingSpecLabels[key]?.[language] || key).join(', ')}</p>}
             <div className="spec-sources"><span>{sc.source}:</span>{(specMetadata.sources || (specMetadata.sourceUrl ? [{ title: specMetadata.source, url: specMetadata.sourceUrl }] : [])).filter((source) => /^https?:\/\//.test(source.url || '')).map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.title} ↗</a>)}</div>
           </aside>}
@@ -446,10 +455,11 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
           </label>
           <div className="listing-model-field auto-resolved-field">
             <label>{c.model}<input required value={form.model} onChange={(event) => change('model', event.target.value)} /></label>
-            <button className="quiet-button" type="button" disabled={specsBusy} onClick={() => { setLookupQuery([form.brand, form.model].filter(Boolean).join(' ') || form.title); setLookupAttempt((n) => n + 1); }}>{c.autoSpecs}</button>
+            <div className="spec-lookup-actions"><button className="primary-button" type="button" disabled={specsBusy || form.title.trim().length < 3} onClick={() => { setLookupMode('ai'); setLookupQuery(form.title.trim()); setLookupAttempt(n => n + 1); }}>{ac.button}</button>
+            <button className="quiet-button" type="button" disabled={specsBusy} onClick={() => { setLookupMode('sources'); setLookupQuery([form.brand, form.model].filter(Boolean).join(' ') || form.title); setLookupAttempt((n) => n + 1); }}>{c.autoSpecs}</button></div>
           </div>
           <label className="check-filter span-2"><input type="checkbox" checked={replaceSpecs} onChange={(event) => { replaceSpecsRef.current = event.target.checked; setReplaceSpecs(event.target.checked); }} /><span>{sc.replace}</span></label>
-          {specMatches.length > 0 && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0, 4).map((match) => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title); setSpecNotice(c.specsApplied); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '＋'}</span><div><b>{match.title}</b><small>{match.source} · {Object.keys(match.specs || {}).length} {language === 'pl' ? 'parametrów' : language === 'uk' ? 'характеристик' : 'specifications'}{match.specs?.storage ? ` · ${match.specs.storage}` : ''}</small></div></button>)}</div>}
+          {specMatches.length > 0 && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0, 4).map((match) => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title, lookupMode === 'ai'); setSpecNotice(match.ai ? ac.applied : c.specsApplied); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '＋'}</span><div><b>{match.title}</b><small>{match.ai ? 'AI · ' : ''}{match.source} · {Object.keys(match.specs || {}).length} {language === 'pl' ? 'parametrów' : language === 'uk' ? 'характеристик' : 'specifications'}{match.specs?.storage ? ` · ${match.specs.storage}` : ''}</small>{match.ai?.status !== undefined && match.ai.status !== 'ready' && <small>{ac.noSource}</small>}</div></button>)}</div>}
           <label>
             {c.category}
             <select
@@ -462,6 +472,9 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
                 setSpecMetadata(null);
                 lastLookup.current = '';
                 manualSpecKeys.current.clear();
+                setLookupMode('sources');
+                setLookupQuery('');
+                setSpecMetadata(null);
                 setForm((current) => ({ ...current, category: event.target.value, specs: {}, deviceDetails: { ...current.deviceDetails, specSource: '', specSourceId: '' } }));
               }}
             >

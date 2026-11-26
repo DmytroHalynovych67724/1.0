@@ -17,9 +17,11 @@ function capacities(value = '') {
 function normalizeDeviceQuery(value) {
   return String(value || '')
     .replace(/айфон/giu, 'iPhone').replace(/самсунг/giu, 'Samsung')
+    .replace(/(?:ксяомі|ксяоми|сяомі|сяоми|шяомі|ксиаоми)/giu, 'Xiaomi').replace(/редмі|редми/giu, 'Redmi')
     .replace(/про\s*макс/giu, 'Pro Max').replace(/про/giu, 'Pro')
     .replace(/ультра/giu, 'Ultra').replace(/піксель|пиксель/giu, 'Pixel')
     .replace(/iphone\s*(\d)/gi, 'iPhone $1')
+    .replace(/redmi\s*(\d)/gi, 'Redmi $1')
     .replace(/\s+/g, ' ').trim();
 }
 
@@ -64,8 +66,8 @@ function normalizePhoneMatch(match, query = '') {
     else if (!choices.color.includes(specs.color)) delete specs.color;
   }
   if (choices.sim && !choices.sim.includes(specs.sim)) delete specs.sim;
-  const battery = raw.battery?.match(/\b(\d{3,5})\s*mAh\b/i);
-  if (battery) specs.battery = battery[1] + ' mAh';
+  const battery = raw.battery?.match(/\b(\d{1,2}[ ,]\d{3}|\d{3,5})\s*mAh\b/i);
+  if (battery) specs.battery = battery[1].replace(/[ ,]/g, '') + ' mAh';
   for (const key of ['mainCamera', 'frontCamera']) {
     if (!raw[key]) continue;
     const cameras = [...raw[key].matchAll(/\b(\d+(?:[.,]\d+)?)\s*(?:MP(?:ix)?|megapixels?)\b/gi)].map((item) => item[1] + ' MP');

@@ -295,7 +295,7 @@ function mergeTitleSpecs(match, query, category) {
   return { ...match, specs };
 }
 
-async function wikipediaSpecs(query, category = '') {
+async function wikipediaSpecs(query, category = '', { includeSourceText = false } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6500);
   try {
@@ -344,9 +344,9 @@ async function wikipediaSpecs(query, category = '') {
       specs[key] = preciseWikipediaValue(specs[key], query);
       if (!specs[key]) delete specs[key];
     });
-    if (Object.keys(specs).length < 2) return null;
+    if (Object.keys(specs).length < 2 && !includeSourceText) return null;
     const identity = requestedDeviceIdentity(searchQuery, title);
-    return { ...identity, category, specs, source: 'Wikipedia', sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(selected.item.title.replaceAll(' ', '_'))}` };
+    return { ...identity, category, specs, source: 'Wikipedia', sourceUrl: `https://en.wikipedia.org/wiki/${encodeURIComponent(selected.item.title.replaceAll(' ', '_'))}`, ...(includeSourceText ? { sourceText: wikitext.slice(0, 20000) } : {}) };
   } finally {
     clearTimeout(timeout);
   }
@@ -486,4 +486,4 @@ function curatedSpecs(query) {
     .find((phone) => modelCompatible(query, phone.brand, phone.model));
 }
 
-module.exports = { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible };
+module.exports = { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible, wikipediaSpecs };

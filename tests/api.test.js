@@ -184,6 +184,16 @@ test('inventory codes prevent duplicate current SKU batches atomically and prese
   assert.equal((await request(`/api/products/${nextBatch.id}`, { method: 'PATCH', token: adminToken, body: { supplyDetails: { batch: 'LOT-C' } } })).response.status, 200);
 });
 
+test('AI specification endpoint requires a session, validates input and reports the source-only fallback', async () => {
+  assert.equal((await request('/api/device-specs/ai', { method: 'POST', body: { query: 'iPhone 11' } })).response.status, 401);
+  assert.equal((await request('/api/device-specs/ai', { method: 'POST', token: adminToken, body: { query: 'x' } })).response.status, 400);
+  const result = await request('/api/device-specs/ai', { method: 'POST', token: adminToken, body: { query: 'iPhone 11', category: 'Smartfony' } });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.ai.status, 'not_configured');
+  assert.equal(result.body.results[0].model, 'iPhone 11');
+  assert.ok(!JSON.stringify(result.body).includes('sourceText'));
+});
+
 test.before(async () => {
   await setup();
   await seed();

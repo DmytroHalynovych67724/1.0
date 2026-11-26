@@ -178,6 +178,7 @@ npm run dev
 | `PUT/PATCH /api/products/:id` | власник/admin    | повне або часткове оновлення                          |
 | `DELETE /api/products/:id`    | власник/admin    | видалення оголошення                                  |
 | `GET /api/device-specs?q=…`   | користувач/admin | Open Icecat, GTIN/MPN і резервний пошук характеристик |
+| `POST /api/device-specs/ai` | авторизований користувач | AI-розпізнавання моделі та доповнення характеристик за джерелом; тіло `{query, category}` |
 
 ### Чати
 

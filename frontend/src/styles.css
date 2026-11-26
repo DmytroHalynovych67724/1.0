@@ -3262,10 +3262,13 @@ textarea:focus {
 .listing-model-field {
   align-self: end;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: end;
   gap: 8px;
 }
+.spec-lookup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.spec-lookup-actions .primary-button { min-height: 44px; font-size: 13px; }
+.spec-coverage q, .spec-coverage dd { overflow-wrap: anywhere; }
 .auto-spec-status {
   min-height: 17px;
   margin-top: 8px;
