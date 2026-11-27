@@ -38,7 +38,7 @@ function referenceResults(payload, { brand, model, productCode = '' }) {
     if (!productCode && (!wikipediaTitleCompatible(query, identity) || !modelCompatible(query, brand, identity))) return [];
     const text = typeof result.raw_content === 'string' && result.raw_content.trim() ? result.raw_content : result.content;
     if (typeof text !== 'string' || text.trim().length < 60) return [];
-    if (productCode && (!referenceMatchesCode({title,url:url.href,text},productCode) || !modelCompatible(query,brand,`${identity} ${text.slice(0,2000)}`))) return [];
+    if (productCode && (!referenceMatchesCode({title,url:url.href,text},productCode) || (!modelCompatible(query,brand,identity) && !modelCompatible(query,brand,`${identity} ${text.slice(0,2000)}`)))) return [];
     seen.add(url.href);
     return [{ title, url: url.href, text: text.slice(0,60000), ...(commercial ? {commercial:true} : {}), official: OFFICIAL_DOMAINS.some(domain=>under(url.hostname,domain)) }];
   }).sort((a,b)=>sourceQuality(b)-sourceQuality(a)).filter(source => {
