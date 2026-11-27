@@ -58,3 +58,15 @@ test('web references require both the exact code and matching laptop model',()=>
   assert.ok(sources[0].url.includes('21JK00Q8TH'));
   assert.equal(referenceResults({results:[{title:'Lenovo ThinkPad X1 Gen 9 21JK00Q8TH',url:'https://lenovo.com/21JK00Q8TH',content:'ThinkPad X1 Gen 9. Different family, different factory configuration. RAM: 16 GB.'}]},candidate).length,0);
 });
+
+
+test('platform identifiers cannot match longer configuration codes',()=>{
+  assert.equal(hasProductCode('AN515-58-57AN','AN515-58'),false);
+  assert.equal(hasProductCode('Part: NH.QFJAA.003.1','NH.QFJAA.003'),false);
+  assert.equal(hasProductCode('Part: NH.QFJAA.003','NH.QFJAA.003'),true);
+  assert.equal(referenceMatchesCode({title:'Acer Nitro 5 AN515-58',text:'Series AN515-58. Configurations: AN515-58-57AN, AN515-58-7578.'},'AN515-58'),false);
+  assert.equal(referenceMatchesCode({title:'Acer Nitro 5',url:'https://www.acer.com/ca-en/laptops/nitro/nitro-5/pdp/NH.QFJAA.003'},'NH.QFJAA.003'),true);
+  assert.equal(referenceMatchesCode({url:'https://psref.lenovo.com/Detail/ThinkPad?M=21JK00Q8TH'},'21JK00Q8TH'),true);
+  assert.equal(referenceMatchesCode({url:'https://example.com/AN515-58-57AN.html'},'AN515-58'),false);
+  assert.equal(referenceMatchesCode({url:'https://example.com/AN515-58-57AN.html'},'AN515-58-57AN'),true);
+});
