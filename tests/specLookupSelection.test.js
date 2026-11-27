@@ -15,3 +15,15 @@ test('one AI model fills immediately while ambiguous and empty results require s
   assert.equal(selectSpecLookupResult([], { ai: true }).autoApply, false);
   assert.equal(selectSpecLookupResult([{ ...model, matchConfidence: 'exact' }]).autoApply, true);
 });
+
+
+test('typing never starts a lookup; an explicit button attempt is required', async () => {
+  const { lookupRequestKey } = await import('../frontend/src/specLookupSelection.mjs');
+  for (const name of ['', 'a', 'Samsung A53', 'Nothing Phone 2a']) {
+    assert.equal(lookupRequestKey(name, 0, 'ai'), null);
+  }
+  assert.equal(lookupRequestKey(' a ', 1, 'ai'), null);
+  assert.equal(lookupRequestKey(' Samsung A53 ', 1, 'ai'), 'Samsung A53:1:ai');
+  assert.notEqual(lookupRequestKey('Samsung A53', 2, 'ai'), lookupRequestKey('Samsung A53', 1, 'ai'));
+  assert.equal(lookupRequestKey('Edited title', 0, 'ai'), null);
+});

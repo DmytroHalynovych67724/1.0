@@ -1,6 +1,4 @@
 const { fetchIcecatProduct } = require('./icecat');
-const phoneProfiles = require('./phoneProfiles');
-const verifiedProfiles = require('./verifiedDeviceProfiles');
 const { spacedIdentity, inferDeviceCategory } = require('./deviceIdentity');
 const { normalizeDeviceQuery, normalizePhoneMatch } = require('./phoneSpecs');
 const {
@@ -10,35 +8,6 @@ const {
   variantTokens,
 } = require('./icecatCatalog');
 
-const CURATED_PHONES = [
-  ...verifiedProfiles.filter(profile => profile.category === 'Smartfony'),
-  ...phoneProfiles,
-  // Manufacturer reference pages; memory/battery values not published by Apple are omitted.
-  { brand: 'Apple', model: 'iPhone 15 Pro Max', sourceUrl: 'https://support.apple.com/en-us/111828', specs: { screen: '6.7″ OLED', resolution: '2796 × 1290', refreshRate: '120 Hz', processor: 'Apple A17 Pro', storage: '256 GB / 512 GB / 1 TB', mainCamera: '48 MP + 12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', displayType: 'OLED', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C 3', weight: '221 g' } },
-  { brand: 'Samsung', model: 'Galaxy S24 Ultra', sourceUrl: 'https://www.samsungmobilepress.com/media-assets/galaxy-s24-ultra?tab=specs', specs: { screen: '6.8″ Dynamic AMOLED 2X', resolution: '3120 × 1440', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3 for Galaxy', ram: '12 GB', storage: '256 GB / 512 GB / 1 TB', battery: '5000 mAh', mainCamera: '200 MP + 50 MP + 12 MP + 10 MP', frontCamera: '12 MP', os: 'Android', displayType: 'AMOLED', charging: '45 W', weight: '232 g', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.3, NFC, USB‑C' } },
-  { brand: 'Apple', model: 'iPhone 15', specs: { screen: '6.1″ OLED', resolution: '2556 × 1179', refreshRate: '60 Hz', processor: 'Apple A16 Bionic', ram: '6 GB', storage: '128 GB / 256 GB / 512 GB', battery: '3349 mAh', mainCamera: '48 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', connectivity: '5G, Wi‑Fi 6, Bluetooth 5.3, NFC, USB‑C', displayType: 'OLED', charging: '20 W', weight: '171 g' } },
-  { brand: 'Apple', model: 'iPhone 15 Pro', specs: { screen: '6.1″ LTPO OLED', resolution: '2556 × 1179', refreshRate: '120 Hz', processor: 'Apple A17 Pro', ram: '8 GB', storage: '128 GB / 256 GB / 512 GB / 1 TB', battery: '3274 mAh', mainCamera: '48 MP + 12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C 3', displayType: 'LTPO OLED', charging: '20 W', weight: '187 g' } },
-  { brand: 'Apple', model: 'iPhone 14', specs: { screen: '6.1″ OLED', resolution: '2532 × 1170', refreshRate: '60 Hz', processor: 'Apple A15 Bionic', ram: '6 GB', storage: '128 GB / 256 GB / 512 GB', battery: '3279 mAh', mainCamera: '12 MP + 12 MP', frontCamera: '12 MP', os: 'iOS', connectivity: '5G, Wi‑Fi 6, Bluetooth 5.3, NFC, Lightning', displayType: 'OLED', charging: '20 W', weight: '172 g' } },
-  { brand: 'Samsung', model: 'Galaxy S24', icecatId: '118055399', specs: { screen: '6.2″ Dynamic AMOLED 2X', resolution: '2340 × 1080', refreshRate: '120 Hz', processor: 'Exynos 2400 / Snapdragon 8 Gen 3', ram: '8 GB', storage: '128 GB / 256 GB', battery: '4000 mAh', mainCamera: '50 MP + 10 MP + 12 MP', frontCamera: '12 MP', os: 'Android', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C', displayType: 'AMOLED', charging: '25 W', weight: '167 g' } },
-  { brand: 'Samsung', model: 'Galaxy S23', icecatId: '107934906', specs: { screen: '6.1″ Dynamic AMOLED 2X', resolution: '2340 × 1080', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 2', ram: '8 GB', storage: '128 GB / 256 GB', battery: '3900 mAh', mainCamera: '50 MP + 10 MP + 12 MP', frontCamera: '12 MP', os: 'Android', connectivity: '5G, Wi‑Fi 6E, Bluetooth 5.3, NFC, USB‑C', displayType: 'AMOLED', charging: '25 W', weight: '168 g' } },
-  { brand: 'Samsung', model: 'Galaxy A55', icecatId: '120236481', specs: { screen: '6.6″ Super AMOLED', resolution: '2340 × 1080', refreshRate: '120 Hz', processor: 'Exynos 1480', ram: '8 GB / 12 GB', storage: '128 GB / 256 GB', battery: '5000 mAh', mainCamera: '50 MP + 12 MP + 5 MP', frontCamera: '32 MP', os: 'Android', connectivity: '5G, Wi‑Fi 6, Bluetooth 5.3, NFC, USB‑C', displayType: 'AMOLED', charging: '25 W', weight: '213 g' } },
-  { brand: 'Google', model: 'Pixel 9 Pro', specs: { screen: '6.3″ LTPO OLED', resolution: '2856 × 1280', refreshRate: '120 Hz', processor: 'Google Tensor G4', ram: '16 GB', storage: '128 GB / 256 GB / 512 GB / 1 TB', battery: '4700 mAh', mainCamera: '50 MP + 48 MP + 48 MP', frontCamera: '42 MP', os: 'Android', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.3, NFC, USB‑C', displayType: 'LTPO OLED', charging: '27 W', weight: '199 g' } },
-  { brand: 'Google', model: 'Pixel 8', specs: { screen: '6.2″ OLED', resolution: '2400 × 1080', refreshRate: '120 Hz', processor: 'Google Tensor G3', ram: '8 GB', storage: '128 GB / 256 GB', battery: '4575 mAh', mainCamera: '50 MP + 12 MP', frontCamera: '10.5 MP', os: 'Android', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.3, NFC, USB‑C', displayType: 'OLED', charging: '27 W', weight: '187 g' } },
-  { brand: 'Xiaomi', model: '14', specs: { screen: '6.36″ LTPO OLED', resolution: '2670 × 1200', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3', ram: '8 GB / 12 GB / 16 GB', storage: '256 GB / 512 GB / 1 TB', battery: '4610 mAh', mainCamera: '50 MP + 50 MP + 50 MP', frontCamera: '32 MP', os: 'Android', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.4, NFC, USB‑C', displayType: 'LTPO OLED', charging: '90 W', weight: '193 g' } },
-  { brand: 'OnePlus', model: '12', specs: { screen: '6.82″ LTPO AMOLED', resolution: '3168 × 1440', refreshRate: '120 Hz', processor: 'Snapdragon 8 Gen 3', ram: '12 GB / 16 GB / 24 GB', storage: '256 GB / 512 GB / 1 TB', battery: '5400 mAh', mainCamera: '50 MP + 64 MP + 48 MP', frontCamera: '32 MP', os: 'Android', connectivity: '5G, Wi‑Fi 7, Bluetooth 5.4, NFC, USB‑C', displayType: 'LTPO AMOLED', charging: '100 W', weight: '220 g' } },
-];
-const CURATED_DEVICES = [
-  ...verifiedProfiles.filter(profile => profile.category !== 'Smartfony'),
-  { category: 'Laptopy', brand: 'Apple', model: 'MacBook Air M2', specs: { screen: '13.6″ Liquid Retina IPS', resolution: '2560 × 1664', refreshRate: '60 Hz', processor: 'Apple M2', ram: '8 GB / 16 GB / 24 GB', storage: '256 GB / 512 GB / 1 TB / 2 TB', gpu: 'Apple M2 8-core / 10-core GPU', battery: '52.6 Wh', os: 'macOS', connectivity: 'MagSafe 3, 2× Thunderbolt / USB 4, 3.5 mm', wifi: 'Wi‑Fi 6', bluetooth: '5.3', weight: '1.24 kg' } },
-  { category: 'Laptopy', brand: 'Lenovo', model: 'Legion 5', specs: { screen: '15.6″ / 16″ IPS', resolution: 'Full HD / WQXGA', refreshRate: '144 Hz / 165 Hz', processor: 'AMD Ryzen 5 / Ryzen 7 or Intel Core i5 / i7', ram: '16 GB / 32 GB', storage: '512 GB / 1 TB SSD', gpu: 'NVIDIA GeForce RTX series', os: 'Windows', connectivity: 'USB‑C, USB‑A, HDMI, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.x' } },
-  { category: 'Laptopy', brand: 'ASUS', model: 'TUF Gaming A15', specs: { screen: '15.6″ IPS', resolution: '1920 × 1080', refreshRate: '144 Hz', processor: 'AMD Ryzen series', ram: '16 GB / 32 GB', storage: '512 GB / 1 TB SSD', gpu: 'NVIDIA GeForce RTX series', os: 'Windows', connectivity: 'USB‑C, USB‑A, HDMI, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.x' } },
-  { category: 'Audio', brand: 'Sony', model: 'WH-1000XM5', specs: { audioType: 'Słuchawki nauszne', connectivity: 'Bluetooth, 3.5 mm, USB‑C', bluetooth: '5.2', battery: 'do 30 h z ANC / 40 h bez ANC', charging: 'USB‑C, szybkie ładowanie', features: 'ANC, tryb ambient, multipoint', weight: '250 g' } },
-  { category: 'Audio', brand: 'Apple', model: 'AirPods Pro 2', specs: { audioType: 'Słuchawki dokanałowe', connectivity: 'Bluetooth, USB‑C / MagSafe', bluetooth: '5.3', battery: 'do 6 h / do 30 h z etui', features: 'ANC, tryb kontaktu, dźwięk przestrzenny', color: 'White' } },
-  { category: 'Gaming', brand: 'Sony', model: 'PlayStation 5 Slim', specs: { platform: 'PlayStation 5', processor: 'AMD Zen 2', ram: '16 GB GDDR6', storage: '1 TB SSD', gpu: 'AMD RDNA 2', resolution: 'do 4K', refreshRate: 'do 120 Hz', connectivity: 'HDMI 2.1, USB, Ethernet', wifi: 'Wi‑Fi 6', bluetooth: '5.1', color: 'White' } },
-  { category: 'Gaming', brand: 'Nintendo', model: 'Switch OLED', specs: { platform: 'Nintendo Switch', screen: '7″ OLED', resolution: '1280 × 720', storage: '64 GB', connectivity: 'USB‑C, HDMI przez stację dokującą', wifi: 'Wi‑Fi 5', bluetooth: '4.1', color: 'White / Neon' } },
-  { category: 'Monitory', brand: 'Dell', model: 'UltraSharp U2723QE', specs: { screen: '27″', displayType: 'IPS Black', resolution: '3840 × 2160 (4K UHD)', refreshRate: '60 Hz', connectivity: 'USB‑C, DisplayPort, HDMI, USB hub, Ethernet', features: 'KVM, Power Delivery 90 W', color: 'Silver / Black' } },
-  { category: 'Akcesoria', brand: 'Logitech', model: 'MX Master 3S', specs: { accessoryType: 'Mysz', connectivity: 'Bluetooth Low Energy / Logi Bolt', bluetooth: 'Low Energy', battery: 'do 70 dni', charging: 'USB‑C', features: '8000 DPI, ciche kliknięcia, MagSpeed', color: 'Graphite / Pale Grey' } },
-];
 const LOOKUP_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const lookupCache = new Map();
 const inFlightLookups = new Map();
@@ -358,74 +327,28 @@ async function wikipediaSpecs(query, category = '', { includeSourceText = false,
   }
 }
 
-async function lookupDeviceSpecs(query, { category = '' } = {}) {
+async function lookupDeviceSpecs(query, { category = '', wikiLookup = wikipediaSpecs, icecatLookup = fetchIcecatProduct, catalogLookup = searchIcecatCatalog } = {}) {
   const normalized = String(query || '').trim().toLowerCase();
   if (normalized.length < 3) return [];
   const gtin = normalized.match(/(?:^|\D)(\d{8,14})(?:\D|$)/)?.[1];
   if (gtin) {
-    const icecatMatch = await fetchIcecatProduct({ gtin });
+    const icecatMatch = await icecatLookup({ gtin });
     if (icecatMatch) return [mergeTitleSpecs(icecatMatch, query, category)];
   }
   const knownBrand = ['Samsung', 'Apple', 'Lenovo', 'HP', 'Dell', 'ASUS', 'Acer', 'Sony', 'LG', 'Xiaomi', 'Google', 'OnePlus']
     .find((brand) => normalized.includes(brand.toLowerCase()));
   const productCode = String(query).match(/\b(?=[A-Z0-9/-]{6,}\b)(?=[A-Z0-9/-]*\d)(?=[A-Z0-9/-]*[A-Z])[A-Z0-9/-]+\b/i)?.[0];
-  if (knownBrand && productCode && !CURATED_PHONES.some((phone) => modelCompatible(modelSearchQuery(query, category), phone.brand, phone.model))) {
-    const icecatMatch = await fetchIcecatProduct({ brand: knownBrand, productCode });
+  if (knownBrand && productCode) {
+    const icecatMatch = await icecatLookup({ brand: knownBrand, productCode });
     if (icecatMatch) return [mergeTitleSpecs(icecatMatch, query, category)];
   }
-  const localPhones = category && category !== 'Smartfony' ? [] : [...CURATED_PHONES]
-    .sort((left, right) => right.model.length - left.model.length)
-    .filter((phone) => modelCompatible(modelSearchQuery(query, category), phone.brand, phone.model))
-    .slice(0, 5);
-  const local = localPhones.map((phone) => {
-    const connectivity = phone.specs.connectivity || '';
-    const wifi = connectivity.match(/Wi[‑-]Fi\s*[^,]+/i)?.[0] || '';
-    const bluetooth = connectivity.match(/Bluetooth\s*[\d.]+/i)?.[0] || '';
-    return {
-      ...phone,
-      category: 'Smartfony',
-      title: `${phone.brand} ${phone.model}`,
-      specs: {
-        ...phone.specs,
-        ...(wifi ? { wifi } : {}),
-        ...(bluetooth ? { bluetooth: bluetooth.replace(/Bluetooth\s*/i, '') } : {}),
-        ...(connectivity.includes('NFC') && !phone.specs.features ? { features: 'NFC' } : {}),
-      },
-      source: phone.source || 'NaShary Open Cache',
-    };
-  });
-  if (local.length) {
-    const primary = localPhones[0];
-    if (primary.icecatId) {
-      const icecatMatch = await fetchIcecatProduct(
-        { icecatId: primary.icecatId },
-        { brand: primary.brand, model: primary.model, title: `${primary.brand} ${primary.model}` }
-      );
-      if (icecatMatch) return [mergeTitleSpecs({
-        ...local[0], ...icecatMatch, brand: primary.brand, model: primary.model, category: 'Smartfony',
-        specs: { ...local[0].specs, ...Object.fromEntries(Object.entries(icecatMatch.specs || {}).filter(([, value]) => String(value || '').trim())) },
-        sources: [{ title: 'Open Icecat', url: icecatMatch.sourceUrl }, ...(primary.sourceUrl ? [{ title: 'Model reference', url: primary.sourceUrl }] : [])],
-      }, query, category), ...local.slice(1).map((item) => mergeTitleSpecs(item, query, category))];
-    }
-    return local.map((item) => mergeTitleSpecs(item, query, category));
-  }
-  const curatedDevices = CURATED_DEVICES
-    .filter((device) => !category || device.category === category)
-    .filter((device) => modelCompatible(modelSearchQuery(query, category), device.brand, device.model))
-    .map((device) => mergeTitleSpecs({
-      ...device,
-      title: `${device.brand} ${device.model}`,
-      source: device.source || 'NaShary Open Cache',
-      matchConfidence: device.matchConfidence || (device.model === 'Legion 5' || device.model === 'TUF Gaming A15' ? 'fallback' : 'exact'),
-    }, query, category));
-  if (curatedDevices.length) return curatedDevices;
   try {
-    const catalogCandidates = category && category !== 'Smartfony' ? [] : await searchIcecatCatalog(query, { limit: 6 });
+    const catalogCandidates = category && category !== 'Smartfony' ? [] : await catalogLookup(query, { limit: 6 });
     if (catalogCandidates.length) {
       const catalogMatches = (
         await Promise.all(
           catalogCandidates.map(async (candidate) => {
-            const match = await fetchIcecatProduct(
+            const match = await icecatLookup(
               { icecatId: candidate.icecatId },
               {
                 brand: candidate.brand,
@@ -454,10 +377,10 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
       }
     }
   } catch (_error) {
-    // The compact local catalog and Wikipedia remain available if the remote index is unavailable.
+    // Wikipedia remains available if the remote index is unavailable.
   }
   try {
-    const remote = await wikipediaSpecs(query, category);
+    const remote = await wikiLookup(query, category);
     if (remote) return [mergeTitleSpecs({ ...remote, matchConfidence: 'fallback' }, query, category)];
     const parsed = specsFromTitle(query, category);
     if (Object.keys(parsed).length >= 2) {
@@ -473,6 +396,10 @@ async function lookupDeviceSpecs(query, { category = '' } = {}) {
 async function findDeviceSpecs(query, options = {}) {
   query = normalizeDeviceQuery(query);
   options = { ...options, category: inferDeviceCategory(query, options.category || '') };
+  if (options.wikiLookup || options.icecatLookup || options.catalogLookup) {
+    const value = await lookupDeviceSpecs(query, options);
+    return value.map(match => options.category === 'Smartfony' || match.category === 'Smartfony' ? normalizePhoneMatch(match, query) : match);
+  }
   const key = `${normalize(options.category || '')}:${normalize(query)}`;
   const cached = lookupCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
@@ -487,10 +414,4 @@ async function findDeviceSpecs(query, options = {}) {
   return pending;
 }
 
-function curatedSpecs(query) {
-  return [...CURATED_PHONES]
-    .sort((a, b) => b.model.length - a.model.length)
-    .find((phone) => modelCompatible(query, phone.brand, phone.model));
-}
-
-module.exports = { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible, wikipediaSpecs };
+module.exports = { findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible, wikipediaSpecs };

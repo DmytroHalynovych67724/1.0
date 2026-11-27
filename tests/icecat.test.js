@@ -1,7 +1,15 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { normalizeIcecatProduct } = require('../backend/services/icecat');
-const { curatedSpecs, findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible } = require('../backend/services/deviceSpecs');
+const { findDeviceSpecs, labelledWikiField, modelCompatible, preciseWikipediaValue, specsFromTitle, wikipediaTitleCompatible } = require('../backend/services/deviceSpecs');
+
+const { curatedSpecs } = require('../backend/services/demoDeviceProfiles');
+const fixtureLookup = { icecatLookup: async () => null, catalogLookup: async () => [], wikiLookup: async query => {
+ const phone = curatedSpecs(query.replace(/\b\d+\s*\/\s*\d+\s*GB|\b\d+\s*(?:GB|TB)\b/ig, '').trim());
+ if (phone) return { ...phone, category: 'Smartfony', source: 'Source fixture' };
+ if (/macbook/i.test(query)) return { brand: 'Apple', model: 'MacBook Air M2', category:'Laptopy', specs:{processor:'Apple M2',screen:'13.6 inch'},source:'Source fixture' };
+ return {brand:'Sony',model:'WH-1000XM5',category:'Audio',specs:{connectivity:'Bluetooth',battery:'30 h'},source:'Source fixture'};
+} };
 
 function feature(name, value) {
   return {
@@ -73,12 +81,12 @@ test('phone model matching never replaces a requested suffix with the base model
 
 test('exact Pro Max and Ultra model lookup keeps the requested configuration', async () => {
   const { findDeviceSpecs } = require('../backend/services/deviceSpecs');
-  const apple = await findDeviceSpecs('Apple iPhone 15 Pro Max 1 TB', { category: 'Smartfony' });
+  const apple = await findDeviceSpecs('Apple iPhone 15 Pro Max 1 TB', { ...fixtureLookup, category: 'Smartfony' });
   assert.equal(apple[0].model, 'iPhone 15 Pro Max');
   assert.equal(apple[0].specs.storage, '1 TB');
   assert.equal(apple[0].specs.resolution, '2796 × 1290');
   assert.ok(apple[0].sourceUrl.startsWith('https://support.apple.com/'));
-  const samsung = await findDeviceSpecs('Samsung Galaxy S24 Ultra 12/512 GB', { category: 'Smartfony' });
+  const samsung = await findDeviceSpecs('Samsung Galaxy S24 Ultra 12/512 GB', { ...fixtureLookup, category: 'Smartfony' });
   assert.equal(samsung[0].model, 'Galaxy S24 Ultra');
   assert.equal(samsung[0].specs.ram, '12 GB');
   assert.equal(samsung[0].specs.storage, '512 GB');
@@ -104,12 +112,12 @@ test('Wikipedia fallback rejects a series page when the requested variant is mis
 });
 
 test('model-name lookup also covers laptops and audio devices', async () => {
-  const laptop = await findDeviceSpecs('MacBook Air M2 13 inch 8/256 GB', { category: 'Laptopy' });
+  const laptop = await findDeviceSpecs('MacBook Air M2 13 inch 8/256 GB', { ...fixtureLookup, category: 'Laptopy' });
   assert.equal(laptop[0].model, 'MacBook Air M2');
   assert.equal(laptop[0].specs.processor, 'Apple M2');
   assert.match(laptop[0].specs.screen, /13\.6/);
 
-  const headphones = await findDeviceSpecs('Sony WH-1000XM5', { category: 'Audio' });
+  const headphones = await findDeviceSpecs('Sony WH-1000XM5', { ...fixtureLookup, category: 'Audio' });
   assert.equal(headphones[0].model, 'WH-1000XM5');
   assert.match(headphones[0].specs.connectivity, /Bluetooth/);
   assert.match(headphones[0].specs.battery, /30 h/);

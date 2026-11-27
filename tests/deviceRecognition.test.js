@@ -19,22 +19,13 @@ test('model matching handles GT 3 and GT3 without treating MI6 disambiguation or
   assert.equal(result.specs.processor, 'Snapdragon 835');
 });
 
-test('manufacturer references fill Mi 6 and GT3; a PlayStation corrects the smartphone category without guessing capacity', async () => {
-  for (const [query, chip, sourceHost] of [['Xiaomi mi 6', '835', 'mi.com'], ['realme gt 3', 'Snapdragon', 'realme.com']]) {
-    const [result] = await findDeviceSpecs(query, { category: 'Smartfony' });
-    assert.ok(result.specs.processor.includes(chip));
-    assert.ok(Object.keys(result.specs).length > 10);
-    assert.ok(result.sourceUrl.includes(sourceHost));
-    assert.equal(result.specs.storage, undefined);
-  }
-  const [consoleModel] = await findDeviceSpecs('PlayStation 5', { category: 'Smartfony' });
-  assert.equal(consoleModel.category, 'Gaming');
-  assert.equal(consoleModel.model, 'PlayStation 5');
-  assert.equal(consoleModel.specs.storage, undefined);
-  assert.ok(consoleModel.specs.processor.includes('Zen 2'));
-  assert.equal(modelCompatible('PlayStation 5', 'Sony', 'PlayStation 5 Slim'), false);
-  assert.equal(normalizePhoneMatch({ specs: { connectivity: 'Wi-Fi 2.4 GHz / 5 GHz' } }).specs.wifi, undefined);
-  assert.equal(normalizePhoneMatch({ specs: { connectivity: 'Wi-Fi 6E, Bluetooth 5.3' } }).specs.wifi, 'Wi-Fi 6E');
+test('general lookup uses retrieved references without a prepared model profile', async () => {
+  const [result] = await findDeviceSpecs('Samsung Galaxy A53', {category:'Smartfony',icecatLookup:async()=>null,catalogLookup:async()=>[],wikiLookup:async()=>({brand:'Samsung',model:'Galaxy A53',specs:{processor:'Source CPU',battery:'5000 mAh'},source:'Fetched reference',sourceUrl:'https://example.com/reference'})});
+  assert.equal(result.specs.processor,'Source CPU');
+  assert.equal(result.specs.storage,undefined);
+  assert.equal(result.source,'Fetched reference');
+  assert.equal(modelCompatible('PlayStation 5','Sony','PlayStation 5 Slim'),false);
+  assert.equal(normalizePhoneMatch({specs:{connectivity:'Wi-Fi 2.4 GHz / 5 GHz'}}).specs.wifi,undefined);
 });
 
 test('AI context keeps a bounded infobox and removes citations while using a small generation budget', async () => {

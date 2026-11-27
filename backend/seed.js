@@ -2,7 +2,7 @@ const { setup } = require('./app');
 const { getDB } = require('./db');
 const { ensureAdmin } = require('./services/admin');
 const { currencyForRegion, normalizeRegion } = require('./utils/regions');
-const { curatedSpecs } = require('./services/deviceSpecs');
+const { curatedSpecs } = require('./services/demoDeviceProfiles');
 
 const BASE_DEMO_PRODUCTS = [
   {

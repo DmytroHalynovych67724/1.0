@@ -4,8 +4,10 @@ const { findDeviceSpecs, labelledWikiField, modelCompatible } = require('../back
 const { normalizePhoneMatch, PHONE_SPEC_KEYS } = require('../backend/services/phoneSpecs');
 const { validateProduct } = require('../backend/utils/validation');
 
+const fixtureLookup = { icecatLookup: async () => null, catalogLookup: async () => [], wikiLookup: async () => ({ ...require('../backend/services/phoneProfiles')[0], category:'Smartfony',source:'Source fixture' }) };
+
 test('iPhone 11 fills model specifications and leaves real configuration for the seller', async () => {
-  const [phone] = await findDeviceSpecs('iPhone 11', { category: 'Smartfony' });
+  const [phone] = await findDeviceSpecs('iPhone 11', { ...fixtureLookup, category: 'Smartfony' });
   assert.equal(phone.model, 'iPhone 11');
   assert.equal(phone.specs.displayType, 'IPS LCD (Liquid Retina HD)');
   assert.equal(phone.specs.resolution, '1792 × 828');
@@ -20,7 +22,7 @@ test('iPhone 11 fills model specifications and leaves real configuration for the
   assert.deepEqual(phone.choices.storage, ['64 GB', '128 GB', '256 GB']);
   assert.ok(phone.sources.some((source) => source.url.includes('support.apple.com')));
   assert.doesNotThrow(() => validateProduct({ specs: phone.specs }, { partial: true }));
-  const [configured] = await findDeviceSpecs('айфон11 128 ГБ Black', { category: 'Smartfony' });
+  const [configured] = await findDeviceSpecs('айфон11 128 ГБ Black', { ...fixtureLookup, category: 'Smartfony' });
   assert.equal(configured.specs.storage, '128 GB');
   assert.equal(configured.specs.color, 'Black');
   assert.deepEqual(configured.coverage.missing, ['sim']);
@@ -29,7 +31,7 @@ test('iPhone 11 fills model specifications and leaves real configuration for the
 });
 
 test('an unsupported iPhone 11 storage size is not silently invented', async () => {
-  const [phone] = await findDeviceSpecs('iPhone 11 512 GB', { category: 'Smartfony' });
+  const [phone] = await findDeviceSpecs('iPhone 11 512 GB', { ...fixtureLookup, category: 'Smartfony' });
   assert.equal(phone.specs.storage, undefined);
   assert.deepEqual(phone.choices.storage, ['64 GB', '128 GB', '256 GB']);
 });

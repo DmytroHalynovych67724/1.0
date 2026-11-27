@@ -1,5 +1,9 @@
 import { mergeDetectedSpecs } from './specAutofill.mjs';
 
+export function lookupRequestKey(query, attempt, mode) {
+  return attempt > 0 && query.trim().length >= 3 ? `${query.trim()}:${attempt}:${mode}` : null;
+}
+
 export function specsAfterLookup(current, match, query, manualKeys = []) {
   return Object.values(match?.specs || {}).some(Boolean)
     ? mergeDetectedSpecs(current, match.specs, query, manualKeys, match.choices || {})

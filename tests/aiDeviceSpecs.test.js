@@ -4,6 +4,7 @@ const { normalizePhoneMatch, normalizeDeviceQuery } = require('../backend/servic
 const {
   findAiDeviceSpecs,
   groundedFields,
+  groundedReferences,
   parseCandidates,
   requestSpecJson,
 } = require('../backend/services/aiDeviceSpecs');
@@ -68,6 +69,7 @@ test('AI lookup uses source evidence, keeps existing facts, preserves uncertaint
   const requested = [];
   const result = await findAiDeviceSpecs('сяомі редмі 9', {
     category: 'Smartfony',
+    searchSources: async () => ({ status: 'not_configured', sources: [] }),
     requestJson: async (_prompt, input) =>
       input.name
         ? {
@@ -163,4 +165,43 @@ test('unavailable AI falls back honestly and provider responses are validated wi
     ),
     null
   );
+});
+
+
+test('AI fills an arbitrary model from web sources without a prepared profile', async () => {
+  const result = await findAiDeviceSpecs('Nothing Phone 2a', {
+    category: 'Smartfony',
+    findSpecs: async () => [],
+    fetchSource: async () => null,
+    searchSources: async () => ({ status: 'ready', sources: [{ title: 'Nothing Phone 2a specifications', url: 'https://nothing.tech/pages/phone-2a', text: 'Processor: Dimensity 7200 Pro. Battery capacity: 5000 mAh. Charging: 45 W.' }] }),
+    requestJson: async (_prompt, input) => input.name
+      ? { candidates: [{ brand: 'Nothing', model: 'Phone 2a' }] }
+      : { fields: [
+          { key: 'processor', value: 'Dimensity 7200 Pro', quote: 'Processor: Dimensity 7200 Pro.', sourceId: input.references[0].id },
+          { key: 'battery', value: '5000 mAh', quote: 'Battery capacity: 5000 mAh.', sourceId: input.references[0].id },
+          { key: 'charging', value: '120 W', quote: 'Charging: 120 W.', sourceId: input.references[0].id },
+        ] },
+  });
+  assert.equal(result.results[0].specs.processor, 'Dimensity 7200 Pro');
+  assert.equal(result.results[0].specs.battery, '5000 mAh');
+  assert.equal(result.results[0].specs.charging, undefined);
+  assert.equal(result.results[0].ai.webSearch, 'ready');
+  assert.equal(result.results[0].ai.evidence.processor.url, 'https://nothing.tech/pages/phone-2a');
+  assert.ok(!JSON.stringify(result).includes('sourceText'));
+});
+
+test('evidence belongs to the specified reference and cannot fabricate or cross sources', () => {
+  const references = [
+    { id: 'one', url: 'https://nothing.tech/a', text: 'Charging: 45 W.' },
+    { id: 'two', url: 'https://nothing.tech/b', text: 'Battery: 5000 mAh.' },
+  ];
+  const result = groundedReferences({ fields: [null,
+    { key: 'charging', value: '45 W', quote: 'Charging: 45 W.', sourceId: 'two' },
+    { key: 'charging', value: '45 W', quote: 'Charging: 45 W.', sourceId: 'unknown' },
+    { key: 'charging', value: '45 W', quote: 'Charging: 45 W.', sourceId: 'one' },
+    { key: 'battery', value: '5000 mAh', quote: 'Battery: 5000 mAh.' },
+    { key: 'ram', value: '8 GB', quote: '8 GB', sourceId: 'one' },
+  ] }, references);
+  assert.deepEqual(result.specs, { charging: '45 W' });
+  assert.equal(result.evidence.charging.url, references[0].url);
 });

@@ -17,7 +17,7 @@ import { accountCopy } from '../accountCopy';
 import { categoryLabel } from '../catalogTaxonomy';
 import { specCopy } from '../specCopy';
 import { aiSpecCopy } from '../aiSpecCopy';
-import { selectSpecLookupResult, specsAfterLookup } from '../specLookupSelection.mjs';
+import { selectSpecLookupResult, specsAfterLookup, lookupRequestKey } from '../specLookupSelection.mjs';
 import { listingFormCopy } from '../listingFormCopy';
 import AccountAccess, { accessLabel } from '../components/AccountAccess';
 import SupplyFields from '../components/SupplyFields';
@@ -313,8 +313,8 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
   }, []);
   useEffect(() => {
     const query = (lookupQuery || form.title).trim();
-    const lookupKey = `${lookupMode === 'ai' ? 'auto' : form.category}:${query}:${lookupAttempt}:${language}:${lookupMode}`;
-    if ((initial && !lookupAttempt) || query.length < 3 || lookupKey === lastLookup.current) return undefined;
+    const lookupKey = lookupRequestKey(query, lookupAttempt, lookupMode);
+    if (!lookupKey || lookupKey === lastLookup.current) return undefined;
     const timer = window.setTimeout(async () => {
       const requestId = lookupSequence.current + 1;
       lookupSequence.current = requestId;
@@ -415,6 +415,8 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
                 setSpecNotice('');
                 lastLookup.current = '';
                 setLookupQuery('');
+                setLookupAttempt(0);
+                setSpecsBusy(false);
                 setLookupMode('sources');
                 setSpecMetadata(null);
                 change('title', event.target.value);
@@ -448,6 +450,8 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
                 manualSpecKeys.current.clear();
                 setLookupMode('sources');
                 setLookupQuery('');
+                setLookupAttempt(0);
+                setSpecsBusy(false);
                 setForm((current) => ({ ...current, category: event.target.value, specs: {}, deviceDetails: { ...current.deviceDetails, specSource: '', specSourceId: '' } }));
               }}
             >

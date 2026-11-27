@@ -26,6 +26,7 @@ process.env.ADMIN_USERNAME = 'qa-admin';
 process.env.ADMIN_PASSWORD = 'QaAdminPass123!';
 
 const { app, setup } = require('../backend/app');
+app.locals.deviceSpecOptions = { icecatLookup:async()=>null, catalogLookup:async()=>[], wikiLookup:async query=>{ const match=require('../backend/services/demoDeviceProfiles').curatedSpecs(query);return match?{...match,category:'Smartfony',source:'Test source'}:null; } };
 const database = require('../backend/db');
 const { DEMO_PRODUCTS, seed } = require('../backend/seed');
 
