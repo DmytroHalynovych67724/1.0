@@ -79,3 +79,9 @@ test('retailer configuration facts are explicitly attributed and require seller 
   });
   assert.equal(result.results[0].specs.ram,'16 GB');assert.equal(result.results[0].configurationSource,'retailer');assert.equal(result.results[0].source,'Retailer catalog');assert.equal(result.ai.reviewRequired,true);
 });
+
+
+test('SEO link suffixes cannot masquerade as a longer hardware configuration code',()=>{
+  assert.equal(referenceMatchesCode({title:'Acer Nitro 5 AN515-58-58GJ',text:'[Details](https://www.mironet.cz/acer-an515-58-58gj-i5-12450h-16gb-ram). Configuration AN515-58-58GJ. RAM: 16 GB.'},'AN515-58-58GJ'),true);
+  assert.equal(referenceMatchesCode({title:'Acer Nitro 5 AN515-58',text:'Model AN515-58-58GJ, processor A. Model AN515-58-57AN, processor B.'},'AN515-58'),false);
+});

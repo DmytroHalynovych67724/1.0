@@ -9,7 +9,7 @@ function hasProductCode(text, code) {
   return Boolean(escaped) && new RegExp(`(?:^|[^a-z0-9#._/-])${escaped}(?=$|[^a-z0-9#._/-]|[.](?=$|[^a-z0-9]))`, 'i').test(String(text));
 }
 function referenceMatchesCode(source, code) {
-  const text = String(source.text || '');
+  const text = String(source.text || '').replace(/https?:\/\/[^\s<>)]+/gi, ' ');
   const escaped = normalizeProductCode(code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   // A platform identifier cannot inherit specifications from its longer variant codes.
   if (new RegExp(`(?:^|[^a-z0-9#._/-])${escaped}[-._/][a-z0-9]`,'i').test(`${source.title || ''} ${text}`)) return false;

@@ -68,7 +68,7 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
       const request = async (domains, manufacturerOnly = false) => {
         const response = await fetchImpl('https://api.tavily.com/search', {
           method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
-          body:JSON.stringify({query:`${candidate.brand} ${candidate.model} ${candidate.productCode || ''} ${manufacturerOnly ? 'technical specifications' : 'full specifications -leak -rumor -rumour -comparison'}`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
+          body:JSON.stringify({query:candidate.productCode ? `"${normalizeProductCode(candidate.productCode)}" ${candidate.brand} specifications` : `${candidate.brand} ${candidate.model} ${manufacturerOnly ? 'technical specifications' : 'full specifications -leak -rumor -rumour -comparison'}`, search_depth:'basic', exact_match:Boolean(candidate.productCode), max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
         });
         if (!response.ok) { if (debugSources) diagnostics.push({http:response.status,scope:domains===MERCHANT_DOMAINS?'retailer':'core'}); return {status:response.status===429?'rate_limited':'unavailable',results:[]}; }
         const payload = await response.json();
@@ -76,7 +76,7 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
         return {status:'ready',results:Array.isArray(payload?.results)?payload.results:[]};
       };
       const primary = await request(CORE_DOMAINS);
-      if (primary.status !== 'ready') return {status:primary.status,sources:[]};
+      if (primary.status !== 'ready') return {status:primary.status,sources:[],...(debugSources?{diagnostics}:{})};
       let sources = referenceResults(primary,candidate);
       if (sources.length < 2 || Math.max(0,...sources.map(source=>technicalCoverage(source.text))) < 6) {
         try {
