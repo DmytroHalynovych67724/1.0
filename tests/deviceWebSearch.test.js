@@ -118,3 +118,26 @@ test('a short encyclopedia result triggers a manufacturer search instead of repe
   assert.ok(result.sources.some(source=>source.official));
   assert.equal(result.sources.length,2);
 });
+
+
+test('retailer catalogs are restricted to exact configuration codes',()=>{
+  const source={title:'Acer Nitro 5 AN515-58-58GJ',url:'https://www.mironet.cz/acer-nitro-5-58gj',content:'Acer Nitro 5 AN515-58-58GJ. Processor Intel Core i5-12450H. RAM 16 GB. SSD 1 TB. NVIDIA RTX 4050.'};
+  const candidate={brand:'Acer',model:'Nitro 5'};
+  assert.equal(referenceResults({results:[source]},candidate).length,0);
+  assert.equal(referenceResults({results:[source]},{...candidate,productCode:'AN515-58-58GJ'})[0].commercial,true);
+  assert.equal(referenceResults({results:[source]},{...candidate,productCode:'AN515-58-57AN'}).length,0);
+  assert.equal(referenceResults({results:[source]},{...candidate,productCode:'AN515-58'}).length,0);
+});
+
+test('missing exact configuration sources use one bounded retailer fallback',async()=>{
+  let calls=0;
+  const result=await searchDeviceSources({brand:'Acer',model:'Nitro 5',productCode:'AN515-58-58GJ'},{apiKey:'test',fetchImpl:async(_url,options)=>{
+    calls++;
+    const body=JSON.parse(options.body);
+    if(calls===1){assert.ok(!body.include_domains.includes('mironet.cz'));return {ok:true,json:async()=>({results:[]})};}
+    assert.ok(body.include_domains.includes('mironet.cz'));
+    assert.ok(body.query.includes('AN515-58-58GJ'));
+    return {ok:true,json:async()=>({results:[{title:'Acer Nitro 5 AN515-58-58GJ',url:'https://www.mironet.cz/acer-nitro-5-58gj',content:'Acer Nitro 5 AN515-58-58GJ. Processor Intel Core i5. RAM 16 GB. SSD 1 TB. NVIDIA RTX 4050.'}]})};
+  }});
+  assert.equal(calls,2);assert.equal(result.status,'ready');assert.equal(result.sources[0].commercial,true);
+});

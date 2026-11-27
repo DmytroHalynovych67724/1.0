@@ -1,5 +1,5 @@
 const SIGNALS = [
-  /\b(processor|chipset|cpu|soc|snapdragon|dimensity|exynos|bionic)\b/i,
+  /\b(processor|procesor|prozessor|chipset|cpu|soc|snapdragon|dimensity|exynos|bionic)\b/i,
   /\b(display|screen|diagonal|pOLED|OLED|AMOLED|LCD)\b/i,
   /\b(resolution|pixels|FHD|QHD|[124]K)\b/i,
   /\b(refresh|\d+\s*Hz)\b/i,
@@ -7,11 +7,13 @@ const SIGNALS = [
   /\b(charging|charger|TurboPower|\d+\s*W)\b/i,
   /\b(camera|\d+\s*MP)\b/i,
   /\b(front|selfie)\b/i,
-  /\b(operating system|Android|iOS|Windows)\b/i,
+  /\b(operating system|Android|iOS|Windows|Linux)\b/i,
   /\b(Wi[ -]?Fi|802\.11)\b/i,
   /\bBluetooth\b/i,
-  /\b(weight|dimensions|\d+\s*g)\b/i,
-  /\b(LPDDR|RAM type|memory type)\b/i,
+  /\b(weight|hmotnost|dimensions|\d+\s*(?:kg|g))\b/i,
+  /\b(LPDDR|RAM|memory|DDR[345])\b/i,
+  /\b(SSD|HDD|NVMe|storage)\b/i,
+  /\b(gpu|graphics|GeForce|Radeon|RTX|GTX)|grafick/i,
   /\b(NFC|USB|GPS|fingerprint|IP6[578]|IP5[234])\b/i,
 ];
 function technicalCoverage(text) {

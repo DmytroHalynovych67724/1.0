@@ -7,7 +7,9 @@ const CACHE = new Map();
 const PENDING = new Map();
 const OFFICIAL_DOMAINS = ['apple.com','samsung.com','samsungmobilepress.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','xbox.com','nintendo.com','lenovo.com','asus.com','acer.com','msi.com','gigabyte.com','razer.com','frame.work','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
 const DIRECTORY_DOMAINS = ['gsmarena.com','notebookcheck.net','nanoreview.net','wikipedia.org'];
-const REFERENCE_DOMAINS = [...OFFICIAL_DOMAINS, ...DIRECTORY_DOMAINS];
+const MERCHANT_DOMAINS = ['alza.cz','alza.sk','mironet.cz','tonerpartner.cz','datart.cz','morele.net','x-kom.pl','komputronik.pl','rozetka.com.ua','brain.com.ua','telemart.ua','moyo.ua','comfy.ua','foxtrot.com.ua','currys.co.uk','notebooksbilliger.de','cyberport.de','alternate.de','bhphotovideo.com'];
+const CORE_DOMAINS = [...OFFICIAL_DOMAINS, ...DIRECTORY_DOMAINS];
+const REFERENCE_DOMAINS = [...CORE_DOMAINS, ...MERCHANT_DOMAINS];
 const under = (host, domain) => host === domain || host.endsWith('.' + domain);
 
 function safeReferenceUrl(value) {
@@ -25,6 +27,8 @@ function referenceResults(payload, { brand, model, productCode = '' }) {
   return (Array.isArray(payload?.results) ? payload.results : []).flatMap(result => {
     const url = safeReferenceUrl(result?.url);
     if (!url || seen.has(url.href) || /(?:^|\/)(?:compare|comparison)(?:[./_-]|$)/i.test(url.pathname)) return [];
+    const commercial = MERCHANT_DOMAINS.some(domain=>under(url.hostname,domain));
+    if (commercial && !productCode) return [];
     const title = typeof result.title === 'string' ? result.title.slice(0,200) : '';
     if (/\bvs\b|\bversus\b|\bleak(?:s|ed)?\b|\brumou?rs?\b|\bunconfirmed\b|\bconcept\b/i.test(`${title} ${url.pathname.replace(/[-_]/g,' ')}`)) return [];
     const domainBrand = OFFICIAL_DOMAINS.some(domain => under(url.hostname,domain)) ? brand : '';
@@ -36,7 +40,7 @@ function referenceResults(payload, { brand, model, productCode = '' }) {
     if (typeof text !== 'string' || text.trim().length < 60) return [];
     if (productCode && (!referenceMatchesCode({title,url:url.href,text},productCode) || !modelCompatible(query,brand,`${identity} ${text.slice(0,2000)}`))) return [];
     seen.add(url.href);
-    return [{ title, url: url.href, text: text.slice(0,60000), official: OFFICIAL_DOMAINS.some(domain=>under(url.hostname,domain)) }];
+    return [{ title, url: url.href, text: text.slice(0,60000), ...(commercial ? {commercial:true} : {}), official: OFFICIAL_DOMAINS.some(domain=>under(url.hostname,domain)) }];
   }).sort((a,b)=>sourceQuality(b)-sourceQuality(a)).filter(source => {
     const host = new URL(source.url).hostname;
     const domain = REFERENCE_DOMAINS.find(domain => under(host,domain));
@@ -69,13 +73,13 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
         const payload = await response.json();
         return {status:'ready',results:Array.isArray(payload?.results)?payload.results:[]};
       };
-      const primary = await request(REFERENCE_DOMAINS);
+      const primary = await request(CORE_DOMAINS);
       if (primary.status !== 'ready') return {status:primary.status,sources:[]};
       let sources = referenceResults(primary,candidate);
       if (sources.length < 2 || Math.max(0,...sources.map(source=>technicalCoverage(source.text))) < 6) {
         try {
           const needsManufacturer = !sources.some(source=>source.official);
-          const supplement = await request(needsManufacturer ? OFFICIAL_DOMAINS : DIRECTORY_DOMAINS, needsManufacturer);
+          const supplement = await request(candidate.productCode ? MERCHANT_DOMAINS : needsManufacturer ? OFFICIAL_DOMAINS : DIRECTORY_DOMAINS, !candidate.productCode && needsManufacturer);
           if (supplement.status === 'ready') sources = referenceResults({results:[...primary.results,...supplement.results]},candidate);
         } catch { /* Keep useful primary sources if the supplementary search times out. */ }
       }

@@ -70,3 +70,12 @@ test('platform identifiers cannot match longer configuration codes',()=>{
   assert.equal(referenceMatchesCode({url:'https://example.com/AN515-58-57AN.html'},'AN515-58'),false);
   assert.equal(referenceMatchesCode({url:'https://example.com/AN515-58-57AN.html'},'AN515-58-57AN'),true);
 });
+
+
+test('retailer configuration facts are explicitly attributed and require seller review',async()=>{
+  const result=await findAiDeviceSpecs('Acer Nitro 5',{category:'Laptopy',productCode:'AN515-58-58GJ',findSpecs:async()=>[],
+    searchSources:async()=>({status:'ready',sources:[{commercial:true,title:'Acer Nitro 5 AN515-58-58GJ',url:'https://www.mironet.cz/acer-nitro-5-58gj',text:'Code AN515-58-58GJ. RAM: 16 GB. SSD: 1 TB.'}]}),
+    requestJson:async(_prompt,input)=>input.name?{candidates:[{brand:'Acer',model:'Nitro 5'}]}:{fields:[{key:'ram',value:'16 GB',quote:'RAM: 16 GB.',sourceId:'source-1'},{key:'storage',value:'1 TB',quote:'SSD: 1 TB.',sourceId:'source-1'}]},
+  });
+  assert.equal(result.results[0].specs.ram,'16 GB');assert.equal(result.results[0].configurationSource,'retailer');assert.equal(result.results[0].source,'Retailer catalog');assert.equal(result.ai.reviewRequired,true);
+});

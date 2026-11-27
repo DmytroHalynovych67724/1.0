@@ -346,7 +346,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
           setSpecNotice(lookupMode === 'ai' ? (data.ai?.status === 'ready' ? ac.choose : ac.unavailable) : c.chooseModel);
         } else {
           applySpecMatch(match, query, lookupMode === 'ai');
-          setSpecNotice(lookupMode === 'ai' ? ac.applied : c.specsApplied);
+          setSpecNotice(match.configurationSource === 'retailer' ? fc.retailerApplied : lookupMode === 'ai' ? ac.applied : c.specsApplied);
         }
       } catch (error) {
         if (requestId !== lookupSequence.current) return;
@@ -359,7 +359,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       window.clearTimeout(timer);
       lookupSequence.current += 1;
     };
-  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, form.deviceDetails.productCode, initial, language, lookupAttempt, lookupQuery, lookupMode, ac, fc.noFacts, fc.tryAi, fc.codeUnconfirmed]);
+  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, form.deviceDetails.productCode, initial, language, lookupAttempt, lookupQuery, lookupMode, ac, fc.noFacts, fc.tryAi, fc.codeUnconfirmed, fc.retailerApplied]);
   const submit = async (event) => {
     event.preventDefault();
     if (busy || photosBusy || photosGate.current) return;
@@ -428,7 +428,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
 <button className="primary-button" type="button" disabled={specsBusy || form.title.trim().length < 3} onClick={() => { setLookupMode('ai'); setLookupQuery(form.title.trim()); setLookupAttempt(n => n + 1); }}>{specsBusy && lookupMode === 'ai' ? '…' : ac.button}</button></div>
 <p className="span-2 lookup-feedback" role="status">{specsBusy ? (lookupMode === 'ai' ? ac.working : c.searchingSpecs) : specNotice}</p>
 {specMetadata && <div className="span-2 device-model-summary"><span aria-hidden="true">✓</span><strong>{specMetadata.brand} {specMetadata.model}</strong><small>{filledSpecCount} / {allSpecKeys.length} {fc.filled}</small></div>}
-{specMatches.length > 0 && (specMatches.length > 1 || (!selectedSpecKey && specMatches.some(match => Object.values(match.specs || {}).some(Boolean)))) && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0,4).map(match => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title, lookupMode === 'ai'); setSpecNotice(Object.values(match.specs || {}).some(Boolean) ? (match.ai ? ac.applied : c.specsApplied) : fc.noFacts); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '→'}</span><div><b>{match.title}</b><small>{Object.values(match.specs || {}).filter(Boolean).length} {fc.specs.toLowerCase()}</small></div></button>)}</div>}
+{specMatches.length > 0 && (specMatches.length > 1 || (!selectedSpecKey && specMatches.some(match => Object.values(match.specs || {}).some(Boolean)))) && <div className="span-2 spec-lookup-results" aria-label={c.chooseModel}>{specMatches.slice(0,4).map(match => <button className={`spec-match-card${selectedSpecKey === specKey(match) ? ' is-selected' : ''}`} type="button" key={specKey(match)} onClick={() => { applySpecMatch(match, form.title, lookupMode === 'ai'); setSpecNotice(Object.values(match.specs || {}).some(Boolean) ? (match.configurationSource === 'retailer' ? fc.retailerApplied : match.ai ? ac.applied : c.specsApplied) : fc.noFacts); }}><span>{selectedSpecKey === specKey(match) ? '✓' : '→'}</span><div><b>{match.title}</b><small>{Object.values(match.specs || {}).filter(Boolean).length} {fc.specs.toLowerCase()}</small></div></button>)}</div>}
           <label className="auto-resolved-field">
             {c.brand}
             <input
