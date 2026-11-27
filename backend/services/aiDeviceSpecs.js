@@ -310,7 +310,7 @@ async function findAiDeviceSpecs(query, options = {}) {
       if (CACHE.size >= 128) CACHE.delete(CACHE.keys().next().value);
       CACHE.set(key, {
         result,
-        expires: Date.now() + (result.ai.status === 'ready' && !result.results?.some(item => ['no_source', 'extraction_unavailable'].includes(item.ai?.status)) ? 3600000 : 30000),
+        expires: Date.now() + (result.ai.status === 'ready' && !result.results?.some(item => ['no_source', 'extraction_unavailable'].includes(item.ai?.status) || Object.values(item.specs || {}).filter(Boolean).length < 6) ? 3600000 : 30000),
       });
       return result;
     })

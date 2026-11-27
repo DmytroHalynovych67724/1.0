@@ -99,3 +99,22 @@ test('a full reference without a 5G title suffix is accepted for the same genera
   const results=referenceResults({results:[{title:'Motorola Moto G84 full specifications',url:'https://www.gsmarena.com/motorola_moto_g84-12526.php',content:text}]},{brand:'Motorola',model:'Moto G84 5G'});
   assert.equal(results.length,1);
 });
+
+
+test('a short encyclopedia result triggers a manufacturer search instead of repeating directories', async () => {
+  let calls=0;
+  const candidate={brand:'Samsung',model:'A57 5G'};
+  const result=await searchDeviceSources(candidate,{apiKey:'test',fetchImpl:async(_url,options)=>{
+    calls++;
+    const body=JSON.parse(options.body);
+    if(calls===1) return {ok:true,json:async()=>({results:[{title:'Samsung Galaxy A57 5G',url:'https://de.wikipedia.org/wiki/Samsung_Galaxy_A57_5G',content:'Samsung Galaxy A57 5G. Processor Exynos 1680. Battery 5000 mAh. Display Super AMOLED.'}]})};
+    assert.ok(body.include_domains.includes('samsung.com'));
+    assert.ok(!body.include_domains.includes('wikipedia.org'));
+    assert.ok(!body.query.includes('-comparison'));
+    return {ok:true,json:async()=>({results:[{title:'Galaxy A57 5G specs Samsung',url:'https://www.samsung.com/uk/smartphones/galaxy-a/galaxy-a57-5g/',content:'Samsung Galaxy A57 5G. Screen 6.7 inches, Super AMOLED, 120 Hz. Camera 50 MP. Wi-Fi 6. Bluetooth 5.3. Battery 5000 mAh.'}]})};
+  }});
+  assert.equal(calls,2);
+  assert.equal(result.status,'ready');
+  assert.ok(result.sources.some(source=>source.official));
+  assert.equal(result.sources.length,2);
+});

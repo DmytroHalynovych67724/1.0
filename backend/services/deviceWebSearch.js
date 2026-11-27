@@ -60,10 +60,10 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), timeoutMs);
     try {
-      const request = async domains => {
+      const request = async (domains, manufacturerOnly = false) => {
         const response = await fetchImpl('https://api.tavily.com/search', {
           method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
-          body:JSON.stringify({query:`${candidate.brand} ${candidate.model} ${candidate.productCode || ''} full specifications -leak -rumor -rumour -comparison`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
+          body:JSON.stringify({query:`${candidate.brand} ${candidate.model} ${candidate.productCode || ''} ${manufacturerOnly ? 'technical specifications' : 'full specifications -leak -rumor -rumour -comparison'}`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
         });
         if (!response.ok) return {status:response.status===429?'rate_limited':'unavailable',results:[]};
         const payload = await response.json();
@@ -74,7 +74,8 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
       let sources = referenceResults(primary,candidate);
       if (sources.length < 2 || Math.max(0,...sources.map(source=>technicalCoverage(source.text))) < 6) {
         try {
-          const supplement = await request(DIRECTORY_DOMAINS);
+          const needsManufacturer = !sources.some(source=>source.official);
+          const supplement = await request(needsManufacturer ? OFFICIAL_DOMAINS : DIRECTORY_DOMAINS, needsManufacturer);
           if (supplement.status === 'ready') sources = referenceResults({results:[...primary.results,...supplement.results]},candidate);
         } catch { /* Keep useful primary sources if the supplementary search times out. */ }
       }
@@ -83,7 +84,7 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
     finally { clearTimeout(timer); }
   })().then(result=>{
     if (CACHE.size>=128) CACHE.delete(CACHE.keys().next().value);
-    CACHE.set(key,{result,expires:Date.now()+(result.status==='ready'?3600000:30000)});
+    CACHE.set(key,{result,expires:Date.now()+(result.status==='ready' && Math.max(0,...result.sources.map(source=>technicalCoverage(source.text)))>=6 ? 3600000 : 30000)});
     return result;
   }).finally(()=>PENDING.delete(key));
   PENDING.set(key,pending);
