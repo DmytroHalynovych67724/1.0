@@ -1,5 +1,6 @@
+const { validProductCode } = require('../services/deviceProductCode');
 const INSPECTION_KEYS = ['screen', 'battery', 'cameras', 'buttons', 'connectivity', 'serialNumber'];
-const TEXT_KEYS = ['display', 'body', 'completeness', 'defects', 'repairs', 'batteryRuntime', 'country', 'specSource', 'specSourceId'];
+const TEXT_KEYS = ['display', 'body', 'completeness', 'defects', 'repairs', 'batteryRuntime', 'country', 'specSource', 'specSourceId', 'productCode'];
 const HEALTH_STATES = ['unknown', 'reported', 'unavailable', 'not_applicable'];
 const DEFECT_STATES = ['unknown', 'none', 'reported'];
 
@@ -31,6 +32,7 @@ function validateDeviceDetails(raw, errors) {
     if (!allowed.includes(key)) fail(key, 'Unknown condition field');
     else if (TEXT_KEYS.includes(key) && (typeof value !== 'string' || value.length > 300)) fail(key, 'Use text up to 300 characters');
   }
+  if (raw.productCode && !validProductCode(raw.productCode)) fail('productCode', 'Use a model product code of 3 to 50 letters, digits or . _ / # -');
   if ('grade' in raw && !['', 'A+', 'A', 'B', 'C', 'D'].includes(raw.grade)) fail('grade', 'Invalid seller condition grade');
   if ('serialChecked' in raw && typeof raw.serialChecked !== 'boolean') fail('serialChecked', 'Use a boolean');
   if ('batteryHealth' in raw && raw.batteryHealth !== '' && raw.batteryHealth !== null && !validHealth(raw.batteryHealth)) fail('batteryHealth', 'Battery health must be an integer from 0 to 100, or omitted');

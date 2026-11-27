@@ -1,3 +1,4 @@
+const { normalizeProductCode } = require('./deviceProductCode');
 const { fetchIcecatProduct } = require('./icecat');
 const { spacedIdentity, inferDeviceCategory } = require('./deviceIdentity');
 const { normalizeDeviceQuery, normalizePhoneMatch } = require('./phoneSpecs');
@@ -335,9 +336,16 @@ async function wikipediaSpecs(query, category = '', { includeSourceText = false,
   }
 }
 
-async function lookupDeviceSpecs(query, { category = '', wikiLookup = wikipediaSpecs, icecatLookup = fetchIcecatProduct, catalogLookup = searchIcecatCatalog } = {}) {
+async function lookupDeviceSpecs(query, { category = '', productCode: requestedCode = '', wikiLookup = wikipediaSpecs, icecatLookup = fetchIcecatProduct, catalogLookup = searchIcecatCatalog } = {}) {
   const normalized = String(query || '').trim().toLowerCase();
   if (normalized.length < 3) return [];
+  if (requestedCode) {
+    const brand = ['Samsung','Apple','Lenovo','HP','Dell','ASUS','Acer','MSI','Gigabyte','Microsoft'].find(name => new RegExp(`\\b${name}\\b`,'i').test(query));
+    if (!brand) return [];
+    const match = await icecatLookup({brand,productCode:requestedCode}).catch(()=>null);
+    if (!match || normalize(match.brand) !== normalize(brand) || normalizeProductCode(match.productCode) !== normalizeProductCode(requestedCode)) return [];
+    return [{...match,category:match.category || category,productCode:normalizeProductCode(requestedCode),configurationMatched:true}];
+  }
   const gtin = normalized.match(/(?:^|\D)(\d{8,14})(?:\D|$)/)?.[1];
   if (gtin) {
     const icecatMatch = await icecatLookup({ gtin });
@@ -408,7 +416,7 @@ async function findDeviceSpecs(query, options = {}) {
     const value = await lookupDeviceSpecs(query, options);
     return value.map(match => options.category === 'Smartfony' || match.category === 'Smartfony' ? normalizePhoneMatch(match, query) : match);
   }
-  const key = `${normalize(options.category || '')}:${normalize(query)}`;
+  const key = `${normalize(options.category || '')}:${normalize(query)}:${normalizeProductCode(options.productCode)}`;
   const cached = lookupCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
   if (inFlightLookups.has(key)) return inFlightLookups.get(key);

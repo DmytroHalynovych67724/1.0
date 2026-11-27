@@ -188,6 +188,7 @@ test('inventory codes prevent duplicate current SKU batches atomically and prese
 test('AI specification endpoint requires a session, validates input and reports the source-only fallback', async () => {
   assert.equal((await request('/api/device-specs/ai', { method: 'POST', body: { query: 'iPhone 11' } })).response.status, 401);
   assert.equal((await request('/api/device-specs/ai', { method: 'POST', token: adminToken, body: { query: 'x' } })).response.status, 400);
+  assert.equal((await request('/api/device-specs/ai', {method:'POST',token:adminToken,body:{query:'Lenovo ThinkPad',category:'Laptopy',productCode:{bad:true}}})).response.status,400);
   const result = await request('/api/device-specs/ai', { method: 'POST', token: adminToken, body: { query: 'iPhone 11', category: 'Smartfony' } });
   assert.equal(result.response.status, 200);
   assert.equal(result.body.ai.status, 'not_configured');

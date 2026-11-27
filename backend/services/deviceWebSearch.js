@@ -1,10 +1,11 @@
+const { normalizeProductCode, referenceMatchesCode } = require('./deviceProductCode');
 const { technicalCoverage } = require('./deviceSourceText');
 const { isIP } = require('node:net');
 const { wikipediaTitleCompatible, modelCompatible } = require('./deviceSpecs');
 
 const CACHE = new Map();
 const PENDING = new Map();
-const OFFICIAL_DOMAINS = ['apple.com','samsung.com','samsungmobilepress.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','xbox.com','nintendo.com','lenovo.com','asus.com','acer.com','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
+const OFFICIAL_DOMAINS = ['apple.com','samsung.com','samsungmobilepress.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','xbox.com','nintendo.com','lenovo.com','asus.com','acer.com','msi.com','gigabyte.com','razer.com','frame.work','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
 const DIRECTORY_DOMAINS = ['gsmarena.com','notebookcheck.net','nanoreview.net','wikipedia.org'];
 const REFERENCE_DOMAINS = [...OFFICIAL_DOMAINS, ...DIRECTORY_DOMAINS];
 const under = (host, domain) => host === domain || host.endsWith('.' + domain);
@@ -18,7 +19,7 @@ function safeReferenceUrl(value) {
   } catch { return null; }
 }
 
-function referenceResults(payload, { brand, model }) {
+function referenceResults(payload, { brand, model, productCode = '' }) {
   const query = `${brand} ${model}`;
   const seen = new Set();
   return (Array.isArray(payload?.results) ? payload.results : []).flatMap(result => {
@@ -30,9 +31,10 @@ function referenceResults(payload, { brand, model }) {
     let path;
     try { path = decodeURIComponent(url.pathname); } catch { return []; }
     const identity = `${domainBrand} ${title} ${path.replace(/[-_/]/g,' ')}`;
-    if (!wikipediaTitleCompatible(query, identity) || !modelCompatible(query, brand, identity)) return [];
+    if (!productCode && (!wikipediaTitleCompatible(query, identity) || !modelCompatible(query, brand, identity))) return [];
     const text = typeof result.raw_content === 'string' && result.raw_content.trim() ? result.raw_content : result.content;
     if (typeof text !== 'string' || text.trim().length < 60) return [];
+    if (productCode && (!referenceMatchesCode({title,url:url.href,text},productCode) || !modelCompatible(query,brand,`${identity} ${text.slice(0,2000)}`))) return [];
     seen.add(url.href);
     return [{ title, url: url.href, text: text.slice(0,60000), official: OFFICIAL_DOMAINS.some(domain=>under(url.hostname,domain)) }];
   }).sort((a,b)=>sourceQuality(b)-sourceQuality(a)).filter(source => {
@@ -50,7 +52,7 @@ function sourceQuality(source) {
 
 async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_KEY, fetchImpl = global.fetch, timeoutMs = 12000 } = {}) {
   if (!apiKey) return { status: 'not_configured', sources: [] };
-  const key = `${candidate.brand}:${candidate.model}`.toLowerCase();
+  const key = `${candidate.brand}:${candidate.model}:${normalizeProductCode(candidate.productCode)}`.toLowerCase();
   if (CACHE.get(key)?.expires > Date.now()) return CACHE.get(key).result;
   if (PENDING.has(key)) return PENDING.get(key);
   if (PENDING.size >= 16) return { status: 'busy', sources: [] };
@@ -61,7 +63,7 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
       const request = async domains => {
         const response = await fetchImpl('https://api.tavily.com/search', {
           method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
-          body:JSON.stringify({query:`${candidate.brand} ${candidate.model} full specifications -leak -rumor -rumour -comparison`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
+          body:JSON.stringify({query:`${candidate.brand} ${candidate.model} ${candidate.productCode || ''} full specifications -leak -rumor -rumour -comparison`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
         });
         if (!response.ok) return {status:response.status===429?'rate_limited':'unavailable',results:[]};
         const payload = await response.json();

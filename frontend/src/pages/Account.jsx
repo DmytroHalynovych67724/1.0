@@ -313,7 +313,8 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
   }, []);
   useEffect(() => {
     const query = (lookupQuery || form.title).trim();
-    const lookupKey = lookupRequestKey(query, lookupAttempt, lookupMode);
+    const productCode = form.category === 'Laptopy' ? (form.deviceDetails.productCode || '').trim() : '';
+    const lookupKey = lookupRequestKey(`${query}:${productCode}`, lookupAttempt, lookupMode);
     if (!lookupKey || lookupKey === lastLookup.current) return undefined;
     const timer = window.setTimeout(async () => {
       const requestId = lookupSequence.current + 1;
@@ -324,8 +325,8 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       setSpecMatches([]);
       try {
         const data = lookupMode === 'ai'
-          ? await api('/device-specs/ai', { method: 'POST', body: JSON.stringify({ query, category: form.category }) })
-          : await api(`/device-specs?q=${encodeURIComponent(query)}&category=${encodeURIComponent(form.category)}&language=${encodeURIComponent(language)}`);
+          ? await api('/device-specs/ai', { method: 'POST', body: JSON.stringify({ query, category: form.category, productCode }) })
+          : await api(`/device-specs?q=${encodeURIComponent(query)}&category=${encodeURIComponent(form.category)}&language=${encodeURIComponent(language)}&productCode=${encodeURIComponent(productCode)}`);
         if (requestId !== lookupSequence.current) return;
         const matches = data.results || [];
         if (!matches.length) {
@@ -339,7 +340,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
         const { match, autoApply, identityOnly } = selectSpecLookupResult(matches, { ai: lookupMode === 'ai', requestedStorage });
         if (identityOnly) {
           applySpecMatch(match, query, true);
-          setSpecNotice(match.ai?.status === 'extraction_unavailable' ? ac.extractionUnavailable : fc.noFacts);
+          setSpecNotice(match.productCode && !match.configurationMatched ? fc.codeUnconfirmed : match.ai?.status === 'extraction_unavailable' ? ac.extractionUnavailable : fc.noFacts);
         } else if (!autoApply) {
           setSelectedSpecKey('');
           setSpecNotice(lookupMode === 'ai' ? (data.ai?.status === 'ready' ? ac.choose : ac.unavailable) : c.chooseModel);
@@ -358,7 +359,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
       window.clearTimeout(timer);
       lookupSequence.current += 1;
     };
-  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, initial, language, lookupAttempt, lookupQuery, lookupMode, ac, fc.noFacts, fc.tryAi]);
+  }, [applySpecMatch, c.chooseModel, c.noSpecs, c.specsApplied, form.category, form.title, form.deviceDetails.productCode, initial, language, lookupAttempt, lookupQuery, lookupMode, ac, fc.noFacts, fc.tryAi, fc.codeUnconfirmed]);
   const submit = async (event) => {
     event.preventDefault();
     if (busy || photosBusy || photosGate.current) return;
@@ -460,6 +461,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
               ))}
             </select>
           </label>
+{form.category === 'Laptopy' && <label className="span-2">{fc.productCode}<input maxLength={50} value={form.deviceDetails.productCode || ''} placeholder="21JK00Q8TH" onChange={event => { lookupSequence.current += 1; lastLookup.current = ''; setLookupAttempt(0); setLookupQuery(''); setSpecsBusy(false); setSpecMatches([]); setSpecNotice(''); setSpecMetadata(null); setForm(current => ({...current,deviceDetails:{...current.deviceDetails,productCode:event.target.value}})); }} /><small>{fc.productCodeHint}</small></label>}
 <details className="span-2 listing-options"><summary>{fc.otherLookup}</summary><div className="lookup-alternatives"><button className="quiet-button" type="button" disabled={specsBusy} onClick={() => { setLookupMode('sources'); setLookupQuery([form.brand,form.model].filter(Boolean).join(' ') || form.title); setLookupAttempt(n => n+1); }}>{c.autoSpecs}</button><label className="check-filter"><input type="checkbox" checked={replaceSpecs} onChange={event => { replaceSpecsRef.current=event.target.checked;setReplaceSpecs(event.target.checked); }} /><span>{sc.replace}</span></label></div></details></div></section>
 <section className="span-2 listing-form-section"><header className="listing-form-heading"><span>2</span><div><h2>{fc.sale}</h2><p>{fc.saleHint}</p></div></header><div className="form-grid-react">          <label>
             {c.price}
