@@ -4,6 +4,7 @@ export const aiSpecCopy = {
     working: 'AI розпізнає модель і перевіряє джерела…',
     choose: 'AI знайшов можливі моделі. Обери свій пристрій, щоб застосувати характеристики.',
     unavailable: 'AI зараз недоступний. Показуємо результати звичайного пошуку.',
+    extractionUnavailable: 'Джерела знайдено, але AI зараз не зміг прочитати характеристики. Спробуй ще раз трохи пізніше. Введені дані збережено.',
     unrecognized: 'AI не розпізнав пристрій. Уточни бренд і модель.',
     noSource: 'Модель розпізнана, але повного джерела немає. Пропуски потрібно уточнити.',
     review:
@@ -17,6 +18,7 @@ export const aiSpecCopy = {
     working: 'AI rozpoznaje model i sprawdza źródła…',
     choose: 'AI znalazło możliwe modele. Wybierz urządzenie, aby zastosować parametry.',
     unavailable: 'AI jest niedostępne. Pokazujemy wyniki zwykłego wyszukiwania.',
+    extractionUnavailable: 'Źródła znalezione, ale AI nie mogło teraz odczytać parametrów. Spróbuj ponownie później. Twoje dane zachowano.',
     unrecognized: 'AI nie rozpoznało urządzenia. Podaj dokładniejszą markę i model.',
     noSource: 'Model rozpoznany, ale brak pełnego źródła. Sprawdź brakujące dane.',
     review:
@@ -30,6 +32,7 @@ export const aiSpecCopy = {
     working: 'AI is identifying the model and checking sources…',
     choose: 'AI found possible models. Choose your device to apply its specifications.',
     unavailable: 'AI is unavailable. Showing regular lookup results.',
+    extractionUnavailable: 'Sources found, but AI could not read the specifications right now. Try again later. Your entries were preserved.',
     unrecognized: 'AI could not identify the device. Specify the brand and model.',
     noSource: 'Model identified, but a full reference is unavailable. Check missing values.',
     review:

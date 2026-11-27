@@ -339,7 +339,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
         const { match, autoApply, identityOnly } = selectSpecLookupResult(matches, { ai: lookupMode === 'ai', requestedStorage });
         if (identityOnly) {
           applySpecMatch(match, query, true);
-          setSpecNotice(fc.noFacts);
+          setSpecNotice(match.ai?.status === 'extraction_unavailable' ? ac.extractionUnavailable : fc.noFacts);
         } else if (!autoApply) {
           setSelectedSpecKey('');
           setSpecNotice(lookupMode === 'ai' ? (data.ai?.status === 'ready' ? ac.choose : ac.unavailable) : c.chooseModel);

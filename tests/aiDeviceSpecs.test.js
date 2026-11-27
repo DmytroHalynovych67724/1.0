@@ -205,3 +205,15 @@ test('evidence belongs to the specified reference and cannot fabricate or cross 
   assert.deepEqual(result.specs, { charging: '45 W' });
   assert.equal(result.evidence.charging.url, references[0].url);
 });
+
+
+test('provider failures expose only safe categories and never partially apply truncated JSON', async () => {
+  for (const [response, reason] of [
+    [{ ok: false, status: 429, json: async () => ({ error: { message: 'private provider details' } }) }, 'rate_limit'],
+    [{ ok: true, json: async () => ({ choices: [{ finish_reason: 'length', message: { content: '{"fields":[]}' } }] }) }, 'response_truncated'],
+  ]) {
+    let failure;
+    assert.equal(await requestSpecJson('', {}, { apiKey: 'test', fetchImpl: async () => response, onFailure: value => { failure = value; } }), null);
+    assert.equal(failure, reason);
+  }
+});

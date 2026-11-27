@@ -11,6 +11,7 @@ test('web references only allow known HTTPS domains and exact models', () => {
     { title: 'Nothing Phone 2a review', url: 'https://www.gsmarena.com/nothing-phone-2a', content: text },
     { title: 'Phone 2a specs', url: 'https://nothing.tech/pages/phone-2a', raw_content: text },
     { title: 'Phone 2a specs duplicate', url: 'https://nothing.tech/pages/phone-2a#more', content: text },
+    { title: 'Nothing Phone 2a specifications revealed by new leak', url: 'https://www.notebookcheck.net/nothing-phone-2a-leak.html', content: text },
     { title: 'Nothing Phone 2a comparison', url: 'https://www.gsmarena.com/compare.php3?idPhone1=12760', content: text },
     { title: 'Nothing Phone 2a Neo', url: 'https://nothing.tech/pages/phone-2a-neo', content: text },
     { title: 'Nothing Phone 2a Pro', url: 'https://nothing.tech/pages/phone-2a-pro', content: text },

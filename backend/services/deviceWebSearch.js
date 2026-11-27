@@ -23,7 +23,7 @@ function referenceResults(payload, { brand, model }) {
     const url = safeReferenceUrl(result?.url);
     if (!url || seen.has(url.href) || /(?:^|\/)(?:compare|comparison)(?:[./_-]|$)/i.test(url.pathname)) return [];
     const title = typeof result.title === 'string' ? result.title.slice(0,200) : '';
-    if (/\bvs\b|\bversus\b/i.test(title)) return [];
+    if (/\bvs\b|\bversus\b|\bleak(?:s|ed)?\b|\brumou?rs?\b|\bunconfirmed\b|\bconcept\b/i.test(`${title} ${url.pathname.replace(/[-_]/g,' ')}`)) return [];
     const domainBrand = OFFICIAL_DOMAINS.some(domain => under(url.hostname,domain)) ? brand : '';
     let path;
     try { path = decodeURIComponent(url.pathname); } catch { return []; }
@@ -48,7 +48,7 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
     try {
       const response = await fetchImpl('https://api.tavily.com/search', {
         method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
-        body:JSON.stringify({query:`${candidate.brand} ${candidate.model} technical specifications`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:REFERENCE_DOMAINS}),
+        body:JSON.stringify({query:`${candidate.brand} ${candidate.model} specifications -leak -rumor -rumour -comparison`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:REFERENCE_DOMAINS}),
       });
       if (!response.ok) return {status:response.status===429?'rate_limited':'unavailable',sources:[]};
       const sources = referenceResults(await response.json(), candidate);
