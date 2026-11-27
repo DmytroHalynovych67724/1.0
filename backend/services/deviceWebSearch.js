@@ -1,4 +1,5 @@
 const { normalizeProductCode, referenceMatchesCode } = require('./deviceProductCode');
+const { fetchReferencePage } = require('./deviceReferencePage');
 const { technicalCoverage } = require('./deviceSourceText');
 const { isIP } = require('node:net');
 const { wikipediaTitleCompatible, modelCompatible } = require('./deviceSpecs');
@@ -7,7 +8,7 @@ const CACHE = new Map();
 const PENDING = new Map();
 const OFFICIAL_DOMAINS = ['apple.com','samsung.com','samsungmobilepress.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','xbox.com','nintendo.com','lenovo.com','asus.com','acer.com','msi.com','gigabyte.com','razer.com','frame.work','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
 const DIRECTORY_DOMAINS = ['gsmarena.com','notebookcheck.net','nanoreview.net','wikipedia.org'];
-const MERCHANT_DOMAINS = ['alza.cz','alza.sk','mironet.cz','tonerpartner.cz','datart.cz','morele.net','x-kom.pl','komputronik.pl','rozetka.com.ua','brain.com.ua','telemart.ua','moyo.ua','comfy.ua','foxtrot.com.ua','currys.co.uk','notebooksbilliger.de','cyberport.de','alternate.de','bhphotovideo.com','arukereso.hu','heureka.cz'];
+const MERCHANT_DOMAINS = ['alza.cz','alza.sk','mironet.cz','tonerpartner.cz','datart.cz','morele.net','x-kom.pl','komputronik.pl','rozetka.com.ua','brain.com.ua','telemart.ua','moyo.ua','comfy.ua','foxtrot.com.ua','currys.co.uk','notebooksbilliger.de','cyberport.de','alternate.de','bhphotovideo.com','arukereso.hu','heureka.cz','acer-shop.sk'];
 const CORE_DOMAINS = [...OFFICIAL_DOMAINS, ...DIRECTORY_DOMAINS];
 const REFERENCE_DOMAINS = [...CORE_DOMAINS, ...MERCHANT_DOMAINS];
 const under = (host, domain) => host === domain || host.endsWith('.' + domain);
@@ -54,7 +55,7 @@ function sourceQuality(source) {
   return technicalCoverage(source.text) * 3 + (source.official ? 12 : 0) + (/specifications|specs|technical|faq|support/i.test(`${source.title} ${source.url}`) ? 6 : 0);
 }
 
-async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_KEY, fetchImpl = global.fetch, timeoutMs = 12000, debugSources = false } = {}) {
+async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_KEY, fetchImpl = global.fetch, timeoutMs = 12000, debugSources = false, sourceLoader = url => fetchReferencePage(url,{safeUrl:safeReferenceUrl}) } = {}) {
   if (!apiKey) return { status: 'not_configured', sources: [] };
   const key = `${candidate.brand}:${candidate.model}:${normalizeProductCode(candidate.productCode)}:${debugSources}`.toLowerCase();
   if (CACHE.get(key)?.expires > Date.now()) return CACHE.get(key).result;
@@ -85,6 +86,14 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
           if (supplement.status === 'ready') sources = referenceResults({results:[...primary.results,...supplement.results]},candidate);
         } catch { /* Keep useful primary sources if the supplementary search times out. */ }
       }
+      clearTimeout(timer);
+      const thinCatalogs=sources.filter(source=>source.commercial && technicalCoverage(source.text)<6).slice(0,2);
+      const expanded=await Promise.all(thinCatalogs.map(async source=>{
+        const text=await sourceLoader(source.url).catch(()=>null);
+        return text && referenceMatchesCode({...source,text},candidate.productCode) && technicalCoverage(text)>technicalCoverage(source.text) ? {...source,text} : source;
+      }));
+      const expandedByUrl=new Map(expanded.map(source=>[source.url,source]));
+      sources=sources.map(source=>expandedByUrl.get(source.url)||source);
       return {status:sources.length?'ready':'not_found',sources,...(debugSources?{diagnostics}: {})};
     } catch { return {status:'unavailable',sources:[]}; }
     finally { clearTimeout(timer); }

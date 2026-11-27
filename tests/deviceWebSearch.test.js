@@ -131,7 +131,7 @@ test('retailer catalogs are restricted to exact configuration codes',()=>{
 
 test('missing exact configuration sources use one bounded retailer fallback',async()=>{
   let calls=0;
-  const result=await searchDeviceSources({brand:'Acer',model:'Nitro 5',productCode:'AN515-58-58GJ'},{apiKey:'test',fetchImpl:async(_url,options)=>{
+  const result=await searchDeviceSources({brand:'Acer',model:'Nitro 5',productCode:'AN515-58-58GJ'},{sourceLoader:async()=>null,apiKey:'test',fetchImpl:async(_url,options)=>{
     calls++;
     const body=JSON.parse(options.body);
     if(calls===1){assert.ok(!body.include_domains.includes('mironet.cz'));return {ok:true,json:async()=>({results:[]})};}
