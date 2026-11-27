@@ -219,3 +219,13 @@ test('provider failures expose only safe categories and never partially apply tr
     assert.equal(failure, reason);
   }
 });
+
+
+test('short Samsung phone names resolve the Galaxy family without a model-specific profile',()=>{
+  for(const model of ['A57 5G','M34','S25 Ultra','Z Flip 7']) {
+    const [result]=parseCandidates({candidates:[{brand:'Samsung',model}]},`Samsung ${model}`,{category:'Smartfony'});
+    assert.equal(result.model,`Galaxy ${model}`);
+  }
+  assert.equal(parseCandidates({candidates:[{brand:'Samsung',model:'S95D'}]},'Samsung S95D',{category:'Laptopy'})[0].model,'S95D');
+  assert.equal(parseCandidates({candidates:[{brand:'Samsung',model:'Galaxy A57 5G'}]},'Samsung A57 5G',{category:'Smartfony'})[0].model,'Galaxy A57 5G');
+});

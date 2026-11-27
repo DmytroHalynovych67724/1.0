@@ -81,13 +81,15 @@ async function requestSpecJson(
   }
 }
 
-function parseCandidates(value, query) {
+function parseCandidates(value, query, {category = ''} = {}) {
   if (!Array.isArray(value?.candidates)) return [];
   const queryNumbers = normalizeDeviceQuery(query).match(/\d+/g) || [];
   const seen = new Set();
   return value.candidates.slice(0, 3).flatMap((candidate) => {
     const brand = compact(candidate?.brand);
-    const model = compact(candidate?.model);
+    let model = compact(candidate?.model);
+    // Samsung phone series use Galaxy in source titles; this is a family alias, not model specifications.
+    if (category === 'Smartfony' && /^Samsung$/i.test(brand) && /^(?:[ASMF]\s*\d{1,3}|Z\s*(?:Fold|Flip)\s*\d{1,2})(?:\s|$)/i.test(model)) model = `Galaxy ${model}`;
     const title = `${brand} ${model}`;
     const key = title.toLowerCase();
     if (
@@ -188,7 +190,7 @@ async function lookupAiSpecs(
   );
   if (!identity)
     return { results: await findSpecs(query, { category, productCode }), ai: { status: 'unavailable' } };
-  const candidates = parseCandidates(identity, query);
+  const candidates = parseCandidates(identity, query, {category});
   if (!candidates.length) {
     const results = await findSpecs(query, { category, productCode });
     return { results, ai: { status: results.length ? 'source_only' : 'unrecognized' } };
