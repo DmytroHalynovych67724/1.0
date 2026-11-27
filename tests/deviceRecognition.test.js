@@ -41,3 +41,22 @@ test('AI context keeps a bounded infobox and removes citations while using a sma
     return { ok: true, json: async () => ({ choices: [{ message: { content: '{}' } }] }) };
   } });
 });
+
+
+test('technical context keeps late specification rows instead of a long shop navigation', () => {
+  const raw=('Shop accessories and sign in to your account.\n').repeat(600) +
+    '## Technical specifications\nProcessor | Example Chip 9\nDisplay | 6.55 inches pOLED\nResolution | 2400 x 1080 pixels\nRefresh rate | 120 Hz\nBattery | 5000 mAh\nCharging | 30 W\nCamera | 50 MP\nWi-Fi | 802.11ac\nBluetooth | 5.1\n' + ('Delivery and payment details.\n').repeat(300);
+  const snippet=sourceSnippet(raw,1800);
+  for (const fact of ['Example Chip 9','6.55 inches','2400 x 1080','120 Hz','5000 mAh','30 W','50 MP','802.11ac','5.1']) assert.ok(snippet.includes(fact),fact);
+  assert.ok(snippet.length<=1800);
+  assert.ok(!snippet.includes('Shop accessories'));
+});
+
+
+test('5G connectivity is not mistaken for a model generation, while explicit 4G conflicts are rejected', () => {
+  assert.equal(modelCompatible('Motorola Moto G84 5G','Motorola','Moto G84'),true);
+  assert.equal(wikipediaTitleCompatible('Motorola Moto G84 5G','Motorola Moto G84'),true);
+  assert.equal(modelCompatible('Motorola Moto G84 5G','Motorola','Moto G85'),false);
+  assert.equal(modelCompatible('Xiaomi Redmi Note 11 5G','Xiaomi','Redmi Note 11 4G'),false);
+  assert.equal(wikipediaTitleCompatible('Xiaomi Redmi Note 11 5G','Xiaomi Redmi Note 11 4G'),false);
+});

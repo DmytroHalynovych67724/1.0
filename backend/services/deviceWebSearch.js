@@ -1,10 +1,12 @@
+const { technicalCoverage } = require('./deviceSourceText');
 const { isIP } = require('node:net');
 const { wikipediaTitleCompatible, modelCompatible } = require('./deviceSpecs');
 
 const CACHE = new Map();
 const PENDING = new Map();
 const OFFICIAL_DOMAINS = ['apple.com','samsung.com','samsungmobilepress.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','xbox.com','nintendo.com','lenovo.com','asus.com','acer.com','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
-const REFERENCE_DOMAINS = [...OFFICIAL_DOMAINS, 'gsmarena.com','notebookcheck.net','nanoreview.net','wikipedia.org'];
+const DIRECTORY_DOMAINS = ['gsmarena.com','notebookcheck.net','nanoreview.net','wikipedia.org'];
+const REFERENCE_DOMAINS = [...OFFICIAL_DOMAINS, ...DIRECTORY_DOMAINS];
 const under = (host, domain) => host === domain || host.endsWith('.' + domain);
 
 function safeReferenceUrl(value) {
@@ -32,8 +34,18 @@ function referenceResults(payload, { brand, model }) {
     const text = typeof result.raw_content === 'string' && result.raw_content.trim() ? result.raw_content : result.content;
     if (typeof text !== 'string' || text.trim().length < 60) return [];
     seen.add(url.href);
-    return [{ title, url: url.href, text: text.slice(0,18000), official: OFFICIAL_DOMAINS.some(domain=>under(url.hostname,domain)) }];
-  }).sort((a,b)=>Number(b.official)-Number(a.official)).slice(0,3);
+    return [{ title, url: url.href, text: text.slice(0,60000), official: OFFICIAL_DOMAINS.some(domain=>under(url.hostname,domain)) }];
+  }).sort((a,b)=>sourceQuality(b)-sourceQuality(a)).filter(source => {
+    const host = new URL(source.url).hostname;
+    const domain = REFERENCE_DOMAINS.find(domain => under(host,domain));
+    if (seen.has(`domain:${domain}`)) return false;
+    seen.add(`domain:${domain}`);
+    return true;
+  }).slice(0,3);
+}
+
+function sourceQuality(source) {
+  return technicalCoverage(source.text) * 3 + (source.official ? 12 : 0) + (/specifications|specs|technical|faq|support/i.test(`${source.title} ${source.url}`) ? 6 : 0);
 }
 
 async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_KEY, fetchImpl = global.fetch, timeoutMs = 12000 } = {}) {
@@ -46,12 +58,24 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), timeoutMs);
     try {
-      const response = await fetchImpl('https://api.tavily.com/search', {
-        method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
-        body:JSON.stringify({query:`${candidate.brand} ${candidate.model} specifications -leak -rumor -rumour -comparison`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:REFERENCE_DOMAINS}),
-      });
-      if (!response.ok) return {status:response.status===429?'rate_limited':'unavailable',sources:[]};
-      const sources = referenceResults(await response.json(), candidate);
+      const request = async domains => {
+        const response = await fetchImpl('https://api.tavily.com/search', {
+          method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
+          body:JSON.stringify({query:`${candidate.brand} ${candidate.model} full specifications -leak -rumor -rumour -comparison`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
+        });
+        if (!response.ok) return {status:response.status===429?'rate_limited':'unavailable',results:[]};
+        const payload = await response.json();
+        return {status:'ready',results:Array.isArray(payload?.results)?payload.results:[]};
+      };
+      const primary = await request(REFERENCE_DOMAINS);
+      if (primary.status !== 'ready') return {status:primary.status,sources:[]};
+      let sources = referenceResults(primary,candidate);
+      if (sources.length < 2 || Math.max(0,...sources.map(source=>technicalCoverage(source.text))) < 6) {
+        try {
+          const supplement = await request(DIRECTORY_DOMAINS);
+          if (supplement.status === 'ready') sources = referenceResults({results:[...primary.results,...supplement.results]},candidate);
+        } catch { /* Keep useful primary sources if the supplementary search times out. */ }
+      }
       return {status:sources.length?'ready':'not_found',sources};
     } catch { return {status:'unavailable',sources:[]}; }
     finally { clearTimeout(timer); }

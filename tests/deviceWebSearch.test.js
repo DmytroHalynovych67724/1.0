@@ -26,7 +26,7 @@ test('web references only allow known HTTPS domains and exact models', () => {
   assert.deepEqual(referenceResults(null, candidate), []);
 });
 
-test('Tavily uses one bounded server request and caches concurrent lookups', async () => {
+test('thin Tavily sources trigger at most one supplementary request shared by concurrent lookups', async () => {
   let calls = 0;
   const options = { apiKey: 'test-web-secret', fetchImpl: async (url, options) => {
     calls++;
@@ -41,12 +41,12 @@ test('Tavily uses one bounded server request and caches concurrent lookups', asy
     return { ok: true, json: async () => ({ results: [{ title: 'Phone 2a', url: 'https://nothing.tech/pages/phone-2a', content: text }] }) };
   } };
   const results = await Promise.all([searchDeviceSources(candidate, options), searchDeviceSources(candidate, options)]);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.equal(results[0].status, 'ready');
   assert.equal(results[0].sources.length, 1);
   assert.deepEqual(results[0], results[1]);
   await searchDeviceSources(candidate, options);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
 });
 
 test('missing keys, rate limits, malformed responses and connection failures are honest', async () => {
@@ -62,4 +62,40 @@ test('missing keys, rate limits, malformed responses and connection failures are
     assert.deepEqual(result.sources, []);
   }
   assert.equal((await searchDeviceSources({ brand: 'Nothing', model: 'Phone 905' }, { apiKey: 'test', fetchImpl: async () => { throw new Error('offline'); } })).status, 'unavailable');
+});
+
+
+test('regional copies cannot crowd out a complete independent specification source', () => {
+  const results = referenceResults({results:[
+    {title:'Phone 2a',url:'https://nothing.tech/gb/en/phone-2a',content:text},
+    {title:'Phone 2a',url:'https://nothing.tech/hr/hr/phone-2a',content:text},
+    {title:'Phone 2a',url:'https://nothing.tech/we/en/phone-2a',content:text},
+    {title:'Nothing Phone 2a full specifications',url:'https://www.gsmarena.com/nothing_phone_2a.php',content:text},
+  ]},candidate);
+  assert.equal(results.length,2);
+  assert.equal(results.filter(source=>source.official).length,1);
+  assert.ok(results.some(source=>source.url.includes('gsmarena.com')));
+});
+
+test('supplementary search is limited to independent references and keeps primary data on failure', async () => {
+  let calls=0;
+  const result=await searchDeviceSources({brand:'Nothing',model:'Phone 906'}, {apiKey:'test',fetchImpl:async (_url,options)=>{
+    calls++;
+    const body=JSON.parse(options.body);
+    if(calls===2){
+      assert.ok(body.include_domains.includes('gsmarena.com'));
+      assert.ok(!body.include_domains.includes('nothing.tech'));
+      return {ok:false,status:429};
+    }
+    return {ok:true,json:async()=>({results:[{title:'Nothing Phone 906',url:'https://nothing.tech/phone-906',content:text}]})};
+  }});
+  assert.equal(calls,2);
+  assert.equal(result.status,'ready');
+  assert.equal(result.sources.length,1);
+});
+
+
+test('a full reference without a 5G title suffix is accepted for the same generation', () => {
+  const results=referenceResults({results:[{title:'Motorola Moto G84 full specifications',url:'https://www.gsmarena.com/motorola_moto_g84-12526.php',content:text}]},{brand:'Motorola',model:'Moto G84 5G'});
+  assert.equal(results.length,1);
 });

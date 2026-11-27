@@ -22,9 +22,11 @@ test('AI extraction requires actual source quotes and excludes configuration and
         { key: 'color', value: 'Black', quote: 'Black' },
         { key: 'batteryHealth', value: '100%', quote: '100%' },
         { key: 'price', value: '500', quote: '500' },
+        { key: 'screen', value: 'pOLED display', quote: 'pOLED display' },
+        { key: 'charging', value: 'TurboPower 30', quote: 'TurboPower 30' },
       ],
     },
-    'Processor: Helio G80\nCharging: 18 W\nStorage: 128 GB\nDual SIM Black 100% 500'
+    'Processor: Helio G80\nCharging: 18 W\nStorage: 128 GB\nDual SIM Black 100% 500 pOLED display TurboPower 30'
   );
   assert.deepEqual(result.specs, { processor: 'Helio G80', charging: '18 W' });
   assert.equal(result.evidence.processor, 'Processor: Helio G80');

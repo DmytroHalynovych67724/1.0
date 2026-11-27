@@ -52,7 +52,14 @@ function cleanWiki(value = '') {
     .slice(0, 220);
 }
 
+function networkCompatible(query, candidate) {
+  const requested = normalize(query).match(/\b[2345]g\b/)?.[0];
+  const found = normalize(candidate).match(/\b[2345]g\b/)?.[0];
+  return !requested || !found || requested === found;
+}
+
 function modelCompatible(query, brand, model) {
+  if (!networkCompatible(query, model)) return false;
   const candidate = new Set(identityTokens(spacedIdentity(`${brand} ${model}`), brand));
   const required = identityTokens(spacedIdentity(query), brand);
   if (!required.length || required.some((token) => !candidate.has(token))) return false;
@@ -64,6 +71,7 @@ function modelCompatible(query, brand, model) {
 }
 
 function wikipediaTitleCompatible(query, title, pageModels = '') {
+  if (!networkCompatible(query, title)) return false;
   if (/disambiguation|list of|comparison|history|timeline/i.test(title)) return false;
   const brand = ['Apple','Samsung','Xiaomi','Google','realme','Sony','OnePlus','Lenovo','ASUS','Nintendo'].find(name => normalize(query).includes(normalize(name))) || '';
   const combined = normalize(`${title} ${pageModels}`);

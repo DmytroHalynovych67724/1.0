@@ -1,7 +1,7 @@
 const { normalize } = require('./icecatCatalog');
 
 function spacedIdentity(value) {
-  return normalize(value).replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2');
+  return normalize(value).replace(/\b[2345]g\b/g, ' ').replace(/([a-z])(\d)/g, '$1 $2').replace(/(\d)([a-z])/g, '$1 $2');
 }
 
 function inferDeviceCategory(query, fallback = '') {
