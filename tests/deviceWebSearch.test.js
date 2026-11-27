@@ -135,9 +135,9 @@ test('missing exact configuration sources use one bounded retailer fallback',asy
     calls++;
     const body=JSON.parse(options.body);
     if(calls===1){assert.ok(!body.include_domains.includes('mironet.cz'));return {ok:true,json:async()=>({results:[]})};}
-    assert.ok(body.include_domains.includes('mironet.cz'));
+    assert.equal(body.include_domains,undefined);
     assert.ok(body.query.includes('"AN515-58-58GJ"'));
-    assert.equal(body.exact_match,true);
+    assert.equal(body.exact_match,false);
     assert.ok(!body.query.includes('Nitro 5'));
     assert.ok(!body.query.includes('-comparison'));
     return {ok:true,json:async()=>({results:[{title:'Acer Nitro 5 AN515-58-58GJ',url:'https://www.mironet.cz/acer-nitro-5-58gj',content:'Acer Nitro 5 AN515-58-58GJ. Processor Intel Core i5. RAM 16 GB. SSD 1 TB. NVIDIA RTX 4050.'}]})};

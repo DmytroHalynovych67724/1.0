@@ -7,7 +7,7 @@ const CACHE = new Map();
 const PENDING = new Map();
 const OFFICIAL_DOMAINS = ['apple.com','samsung.com','samsungmobilepress.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','xbox.com','nintendo.com','lenovo.com','asus.com','acer.com','msi.com','gigabyte.com','razer.com','frame.work','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
 const DIRECTORY_DOMAINS = ['gsmarena.com','notebookcheck.net','nanoreview.net','wikipedia.org'];
-const MERCHANT_DOMAINS = ['alza.cz','alza.sk','mironet.cz','tonerpartner.cz','datart.cz','morele.net','x-kom.pl','komputronik.pl','rozetka.com.ua','brain.com.ua','telemart.ua','moyo.ua','comfy.ua','foxtrot.com.ua','currys.co.uk','notebooksbilliger.de','cyberport.de','alternate.de','bhphotovideo.com'];
+const MERCHANT_DOMAINS = ['alza.cz','alza.sk','mironet.cz','tonerpartner.cz','datart.cz','morele.net','x-kom.pl','komputronik.pl','rozetka.com.ua','brain.com.ua','telemart.ua','moyo.ua','comfy.ua','foxtrot.com.ua','currys.co.uk','notebooksbilliger.de','cyberport.de','alternate.de','bhphotovideo.com','arukereso.hu','heureka.cz'];
 const CORE_DOMAINS = [...OFFICIAL_DOMAINS, ...DIRECTORY_DOMAINS];
 const REFERENCE_DOMAINS = [...CORE_DOMAINS, ...MERCHANT_DOMAINS];
 const under = (host, domain) => host === domain || host.endsWith('.' + domain);
@@ -65,14 +65,14 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
     const timer = setTimeout(()=>controller.abort(), timeoutMs);
     try {
       const diagnostics = [];
-      const request = async (domains, manufacturerOnly = false) => {
+      const request = async (domains, manufacturerOnly = false, broadCodeSearch = false) => {
         const response = await fetchImpl('https://api.tavily.com/search', {
           method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
-          body:JSON.stringify({query:candidate.productCode ? `"${normalizeProductCode(candidate.productCode)}" ${candidate.brand} specifications` : `${candidate.brand} ${candidate.model} ${manufacturerOnly ? 'technical specifications' : 'full specifications -leak -rumor -rumour -comparison'}`, search_depth:'basic', exact_match:Boolean(candidate.productCode), max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
+          body:JSON.stringify({query:candidate.productCode ? `"${normalizeProductCode(candidate.productCode)}"` : `${candidate.brand} ${candidate.model} ${manufacturerOnly ? 'technical specifications' : 'full specifications -leak -rumor -rumour -comparison'}`, search_depth:'basic', exact_match:Boolean(candidate.productCode) && !broadCodeSearch, max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, ...(broadCodeSearch ? {} : {include_domains:domains})}),
         });
-        if (!response.ok) { if (debugSources) diagnostics.push({http:response.status,scope:domains===MERCHANT_DOMAINS?'retailer':'core'}); return {status:response.status===429?'rate_limited':'unavailable',results:[]}; }
+        if (!response.ok) { if (debugSources) diagnostics.push({http:response.status,scope:broadCodeSearch?'broad-code':domains===MERCHANT_DOMAINS?'retailer':'core'}); return {status:response.status===429?'rate_limited':'unavailable',results:[]}; }
         const payload = await response.json();
-        if (debugSources) diagnostics.push({scope:domains===MERCHANT_DOMAINS?'retailer':'core',results:(payload?.results || []).map(item=>({title:item.title,url:item.url,rawLength:String(item.raw_content||'').length,contentLength:String(item.content||'').length,codeMatch:referenceMatchesCode({title:item.title,url:item.url,text:item.raw_content || item.content},candidate.productCode || '')}))});
+        if (debugSources) diagnostics.push({scope:broadCodeSearch?'broad-code':domains===MERCHANT_DOMAINS?'retailer':'core',results:(payload?.results || []).map(item=>({title:item.title,url:item.url,rawLength:String(item.raw_content||'').length,contentLength:String(item.content||'').length,codeMatch:referenceMatchesCode({title:item.title,url:item.url,text:item.raw_content || item.content},candidate.productCode || '')}))});
         return {status:'ready',results:Array.isArray(payload?.results)?payload.results:[]};
       };
       const primary = await request(CORE_DOMAINS);
@@ -81,7 +81,7 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
       if (sources.length < 2 || Math.max(0,...sources.map(source=>technicalCoverage(source.text))) < 6) {
         try {
           const needsManufacturer = !sources.some(source=>source.official);
-          const supplement = await request(candidate.productCode ? MERCHANT_DOMAINS : needsManufacturer ? OFFICIAL_DOMAINS : DIRECTORY_DOMAINS, !candidate.productCode && needsManufacturer);
+          const supplement = await request(candidate.productCode ? MERCHANT_DOMAINS : needsManufacturer ? OFFICIAL_DOMAINS : DIRECTORY_DOMAINS, !candidate.productCode && needsManufacturer, Boolean(candidate.productCode));
           if (supplement.status === 'ready') sources = referenceResults({results:[...primary.results,...supplement.results]},candidate);
         } catch { /* Keep useful primary sources if the supplementary search times out. */ }
       }
