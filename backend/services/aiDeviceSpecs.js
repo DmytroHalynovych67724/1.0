@@ -176,6 +176,7 @@ async function lookupAiSpecs(
   {
     category = '',
     productCode = '',
+    debugSources = false,
     requestJson = requestSpecJson,
     findSpecs = findDeviceSpecs,
     fetchSource = wikipediaSpecs,
@@ -200,7 +201,7 @@ async function lookupAiSpecs(
       const [matches, source, web] = await Promise.all([
         findSpecs(candidate.title, { category, productCode }).catch(() => []),
         (productCode ? Promise.resolve(null) : fetchSource(candidate.title, category, { includeSourceText: true })).catch(() => null),
-        searchSources({...candidate,productCode}).catch(() => ({status:'unavailable',sources:[]})),
+        searchSources({...candidate,productCode},{debugSources}).catch(() => ({status:'unavailable',sources:[]})),
       ]);
       const matched = matches.find((match) =>
         productCode ? normalizeProductCode(match.productCode) === normalizeProductCode(productCode) : modelCompatible(candidate.title, match.brand, match.model)
@@ -264,6 +265,7 @@ async function lookupAiSpecs(
           fields: Object.keys(additions),
           evidence,
           webSearch: web.status,
+          ...(debugSources ? {sourceDiagnostics:web.diagnostics} : {}),
           ...(failureReason ? { failureReason } : {}),
         },
       };
@@ -295,7 +297,7 @@ async function findAiDeviceSpecs(query, options = {}) {
   query = compact(query).slice(0, 100);
   if (!process.env.GROQ_API_KEY && !options.requestJson)
     return { results: await findDeviceSpecs(query, options), ai: { status: 'not_configured' } };
-  if (options.requestJson || options.findSpecs || options.fetchSource || options.searchSources)
+  if (options.debugSources || options.requestJson || options.findSpecs || options.fetchSource || options.searchSources)
     return lookupAiSpecs(query, options);
   const key = JSON.stringify([
     query.toLowerCase(),

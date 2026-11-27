@@ -54,9 +54,9 @@ function sourceQuality(source) {
   return technicalCoverage(source.text) * 3 + (source.official ? 12 : 0) + (/specifications|specs|technical|faq|support/i.test(`${source.title} ${source.url}`) ? 6 : 0);
 }
 
-async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_KEY, fetchImpl = global.fetch, timeoutMs = 12000 } = {}) {
+async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_KEY, fetchImpl = global.fetch, timeoutMs = 12000, debugSources = false } = {}) {
   if (!apiKey) return { status: 'not_configured', sources: [] };
-  const key = `${candidate.brand}:${candidate.model}:${normalizeProductCode(candidate.productCode)}`.toLowerCase();
+  const key = `${candidate.brand}:${candidate.model}:${normalizeProductCode(candidate.productCode)}:${debugSources}`.toLowerCase();
   if (CACHE.get(key)?.expires > Date.now()) return CACHE.get(key).result;
   if (PENDING.has(key)) return PENDING.get(key);
   if (PENDING.size >= 16) return { status: 'busy', sources: [] };
@@ -64,13 +64,15 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
     const controller = new AbortController();
     const timer = setTimeout(()=>controller.abort(), timeoutMs);
     try {
+      const diagnostics = [];
       const request = async (domains, manufacturerOnly = false) => {
         const response = await fetchImpl('https://api.tavily.com/search', {
           method:'POST', signal:controller.signal, headers:{authorization:`Bearer ${apiKey}`,'content-type':'application/json'},
           body:JSON.stringify({query:`${candidate.brand} ${candidate.model} ${candidate.productCode || ''} ${manufacturerOnly ? 'technical specifications' : 'full specifications -leak -rumor -rumour -comparison'}`, search_depth:'basic', max_results:5, include_raw_content:'text', include_answer:false, include_images:false, auto_parameters:false, include_domains:domains}),
         });
-        if (!response.ok) return {status:response.status===429?'rate_limited':'unavailable',results:[]};
+        if (!response.ok) { if (debugSources) diagnostics.push({http:response.status,scope:domains===MERCHANT_DOMAINS?'retailer':'core'}); return {status:response.status===429?'rate_limited':'unavailable',results:[]}; }
         const payload = await response.json();
+        if (debugSources) diagnostics.push({scope:domains===MERCHANT_DOMAINS?'retailer':'core',results:(payload?.results || []).map(item=>({title:item.title,url:item.url,rawLength:String(item.raw_content||'').length,contentLength:String(item.content||'').length,codeMatch:referenceMatchesCode({title:item.title,url:item.url,text:item.raw_content || item.content},candidate.productCode || '')}))});
         return {status:'ready',results:Array.isArray(payload?.results)?payload.results:[]};
       };
       const primary = await request(CORE_DOMAINS);
@@ -83,7 +85,7 @@ async function searchDeviceSources(candidate, { apiKey = process.env.TAVILY_API_
           if (supplement.status === 'ready') sources = referenceResults({results:[...primary.results,...supplement.results]},candidate);
         } catch { /* Keep useful primary sources if the supplementary search times out. */ }
       }
-      return {status:sources.length?'ready':'not_found',sources};
+      return {status:sources.length?'ready':'not_found',sources,...(debugSources?{diagnostics}: {})};
     } catch { return {status:'unavailable',sources:[]}; }
     finally { clearTimeout(timer); }
   })().then(result=>{

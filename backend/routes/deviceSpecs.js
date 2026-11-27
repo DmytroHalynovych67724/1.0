@@ -20,7 +20,7 @@ router.post('/ai', requireAuth, aiLimiter, asyncHandler(async (req, res) => {
   const query = typeof req.body?.query === 'string' ? req.body.query.trim() : '';
   const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
   if (query.length < 3 || query.length > 100 || category.length > 60) throw new AppError(400, 'VALIDATION_ERROR', 'Enter a device name between 3 and 100 characters');
-  res.json(await findAiDeviceSpecs(query, { ...req.app.locals.deviceSpecOptions, category, productCode: requestedCode(req.body?.productCode) }));
+  res.json(await findAiDeviceSpecs(query, { ...req.app.locals.deviceSpecOptions, category, productCode: requestedCode(req.body?.productCode), debugSources: req.user.role === 'admin' && req.body?.debugSources === true }));
 }));
 
 router.get(
