@@ -3,7 +3,7 @@ const { wikipediaTitleCompatible, modelCompatible } = require('./deviceSpecs');
 
 const CACHE = new Map();
 const PENDING = new Map();
-const OFFICIAL_DOMAINS = ['apple.com','samsung.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','nintendo.com','lenovo.com','asus.com','acer.com','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
+const OFFICIAL_DOMAINS = ['apple.com','samsung.com','samsungmobilepress.com','mi.com','xiaomi.com','oneplus.com','oneplus.cn','realme.com','oppo.com','vivo.com','honor.com','huawei.com','motorola.com','sony.com','playstation.com','xbox.com','nintendo.com','lenovo.com','asus.com','acer.com','dell.com','hp.com','microsoft.com','store.google.com','nothing.tech','fairphone.com','tecno-mobile.com','infinixmobility.com'];
 const REFERENCE_DOMAINS = [...OFFICIAL_DOMAINS, 'gsmarena.com','notebookcheck.net','nanoreview.net','wikipedia.org'];
 const under = (host, domain) => host === domain || host.endsWith('.' + domain);
 
@@ -21,8 +21,9 @@ function referenceResults(payload, { brand, model }) {
   const seen = new Set();
   return (Array.isArray(payload?.results) ? payload.results : []).flatMap(result => {
     const url = safeReferenceUrl(result?.url);
-    if (!url || seen.has(url.href)) return [];
+    if (!url || seen.has(url.href) || /(?:^|\/)(?:compare|comparison)(?:[./_-]|$)/i.test(url.pathname)) return [];
     const title = typeof result.title === 'string' ? result.title.slice(0,200) : '';
+    if (/\bvs\b|\bversus\b/i.test(title)) return [];
     const domainBrand = OFFICIAL_DOMAINS.some(domain => under(url.hostname,domain)) ? brand : '';
     let path;
     try { path = decodeURIComponent(url.pathname); } catch { return []; }
