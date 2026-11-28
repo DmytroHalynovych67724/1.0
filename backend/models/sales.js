@@ -66,8 +66,39 @@ async function changeGlobalStatus({orderId,status,changedBy}) {
     await synchronizeOrder(db,order,changedBy);
   }).immediate();
 }
-async function orderFulfillments(orderId) { return getDB().prepare('SELECT sellerId,status,updatedAt FROM order_fulfillments WHERE orderId=?').all(orderId); }
-function projectSale(row) {
+function shipmentData(row) {
+  return { carrier: row.shipmentCarrier || '', trackingNumber: row.trackingNumber || '', revision: row.shipmentRevision || 0, updatedAt: row.shipmentUpdatedAt || null };
+}
+function fulfillmentTimeline(row, history) {
+  return [{ id: 'created', status: 'created', createdAt: row.fulfillmentCreatedAt || row.createdAt }, ...history];
+}
+async function orderFulfillments(orderId) {
+  const db = getDB();
+  const rows = await db.prepare('SELECT * FROM order_fulfillments WHERE orderId=?').all(orderId);
+  const history = await db.prepare('SELECT id,sellerId,status,createdAt FROM fulfillment_history WHERE orderId=? ORDER BY createdAt,rowid').all(orderId);
+  return rows.map(row => ({ sellerId: row.sellerId, status: row.status, updatedAt: row.updatedAt,
+    shipment: shipmentData(row), history: fulfillmentTimeline(row, history.filter(item => item.sellerId === row.sellerId).map(({ id, status, createdAt }) => ({ id, status, createdAt }))) }));
+}
+async function saveShipment({ orderId, sellerId, body }) {
+  if (!body || !Number.isSafeInteger(body.revision) || body.revision < 0 || typeof body.carrier !== 'string' || typeof body.trackingNumber !== 'string') throw new AppError(400,'VALIDATION_ERROR','Check shipment fields');
+  const carrier = body.carrier.trim(), trackingNumber = body.trackingNumber.trim();
+  if (carrier.length > 60 || trackingNumber.length > 80 || /[\r\n\0]/.test(carrier) || (Boolean(carrier) !== Boolean(trackingNumber)) || (trackingNumber && !/^[a-z0-9][a-z0-9 ._/-]{1,79}$/i.test(trackingNumber))) throw new AppError(400,'VALIDATION_ERROR','Enter a carrier and a valid tracking number, or clear both');
+  const db = getDB();
+  return db.transaction(async () => {
+    const row = await db.prepare('SELECT f.*,o.checkoutData FROM order_fulfillments f JOIN orders o ON o.id=f.orderId WHERE f.orderId=? AND f.sellerId=?').get(orderId,sellerId);
+    if (!row) throw new AppError(404,'SALE_NOT_FOUND','Sale not found');
+    if (!['confirmed','shipped'].includes(row.status) || parse(row.checkoutData,{}).deliveryMethod === 'pickup') throw new AppError(409,'SHIPMENT_NOT_EDITABLE','Shipment details cannot be edited at this stage');
+    if (row.shipmentRevision !== body.revision) throw new AppError(409,'SHIPMENT_CHANGED','Shipment details changed. Refresh before saving');
+    if (row.shipmentCarrier === carrier && row.trackingNumber === trackingNumber) return shipmentData(row);
+    const now = Date.now();
+    const changed = await db.prepare('UPDATE order_fulfillments SET shipmentCarrier=?,trackingNumber=?,shipmentRevision=shipmentRevision+1,shipmentUpdatedAt=? WHERE orderId=? AND sellerId=? AND shipmentRevision=?').run(carrier,trackingNumber,now,orderId,sellerId,body.revision);
+    if (!changed.changes) throw new AppError(409,'SHIPMENT_CHANGED','Refresh before saving');
+    await db.prepare('INSERT INTO fulfillment_history (id,orderId,sellerId,status,changedBy,createdAt) VALUES (?,?,?,?,?,?)').run(uuidv4(),orderId,sellerId,'shipment_updated',sellerId,now);
+    return { carrier, trackingNumber, revision: body.revision + 1, updatedAt: now };
+  }).immediate();
+}
+
+function projectSale(row, history = []) {
   const items=sellerItems(row,row.sellerId);
   const checkout=parse(row.checkoutData,{});
   const delivery={};
@@ -77,7 +108,7 @@ function projectSale(row) {
     if (checkout.name) recipient.name=checkout.name;
     if (row.saleStatus !== 'created') for (const key of ['phone','address','city','postalCode','country','deliveryPoint']) if (checkout[key]) recipient[key]=checkout[key];
   }
-  return {orderId:row.id,status:row.saleStatus,createdAt:row.createdAt,updatedAt:row.saleUpdatedAt,items:items.map(item=>({id:item.productId || item.id,title:item.title,image:item.image,price:item.price,qty:item.qty,lineTotal:lineCents(item)/100,condition:item.condition,supplyDetails:Object.fromEntries(['deliveryTerms','warrantyTerms','returnTerms'].filter(key=>typeof item.supplyDetails?.[key]==='string').map(key=>[key,item.supplyDetails[key]]))})),goodsTotal:items.reduce((sum,item)=>sum+lineCents(item),0)/100,currency:currencyForRegion(row.region),region:row.region,delivery,recipient,nextStatuses:nextStatuses(row.saleStatus,checkout.deliveryMethod==='pickup').filter(status=>status!=='completed')};
+  return {orderId:row.id,shipment:shipmentData(row),history:fulfillmentTimeline(row,history),status:row.saleStatus,createdAt:row.createdAt,updatedAt:row.saleUpdatedAt,items:items.map(item=>({id:item.productId || item.id,title:item.title,image:item.image,price:item.price,qty:item.qty,lineTotal:lineCents(item)/100,condition:item.condition,supplyDetails:Object.fromEntries(['deliveryTerms','warrantyTerms','returnTerms'].filter(key=>typeof item.supplyDetails?.[key]==='string').map(key=>[key,item.supplyDetails[key]]))})),goodsTotal:items.reduce((sum,item)=>sum+lineCents(item),0)/100,currency:currencyForRegion(row.region),region:row.region,delivery,recipient,nextStatuses:nextStatuses(row.saleStatus,checkout.deliveryMethod==='pickup').filter(status=>status!=='completed')};
 }
 async function listSales({sellerId,region,days,status,limit=20,offset=0}) {
   const db=getDB();
@@ -94,7 +125,9 @@ async function listSales({sellerId,region,days,status,limit=20,offset=0}) {
   const filter=status?' AND f.status=@status':'';
   const listParams=status?{...params,status}:params;
   const total=(await db.prepare(`SELECT COUNT(*) AS total FROM order_fulfillments f JOIN orders o ON o.id=f.orderId WHERE ${where}${filter}`).get(listParams)).total;
-  const rows=await db.prepare(`SELECT o.*,f.sellerId,f.status AS saleStatus,f.updatedAt AS saleUpdatedAt FROM order_fulfillments f JOIN orders o ON o.id=f.orderId WHERE ${where}${filter} ORDER BY o.createdAt DESC,o.id DESC LIMIT @limit OFFSET @offset`).all({...listParams,limit,offset});
-  return {items:rows.map(projectSale),total,summary,currency:currencyForRegion(region),region,days,limit,offset};
+  const rows=await db.prepare(`SELECT o.*,f.sellerId,f.status AS saleStatus,f.updatedAt AS saleUpdatedAt,f.createdAt AS fulfillmentCreatedAt,f.shipmentCarrier,f.trackingNumber,f.shipmentRevision,f.shipmentUpdatedAt FROM order_fulfillments f JOIN orders o ON o.id=f.orderId WHERE ${where}${filter} ORDER BY o.createdAt DESC,o.id DESC LIMIT @limit OFFSET @offset`).all({...listParams,limit,offset});
+  const history = rows.length ? await db.prepare(`SELECT id,orderId,status,createdAt FROM fulfillment_history WHERE sellerId=? AND orderId IN (${rows.map(()=>'?').join(',')}) ORDER BY createdAt,rowid`).all(sellerId,...rows.map(row=>row.id)) : [];
+  const items = rows.map(row => projectSale(row, history.filter(event => event.orderId === row.id).map(({ id, status, createdAt }) => ({ id, status, createdAt }))));
+  return {items,total,summary,currency:currencyForRegion(region),region,days,limit,offset};
 }
-module.exports={insertFulfillments,changeSale,changeGlobalStatus,orderFulfillments,listSales,nextStatuses};
+module.exports={saveShipment,insertFulfillments,changeSale,changeGlobalStatus,orderFulfillments,listSales,nextStatuses};

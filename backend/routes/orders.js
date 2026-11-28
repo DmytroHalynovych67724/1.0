@@ -1,4 +1,4 @@
-const { listSales, changeSale } = require('../models/sales');
+const { listSales, changeSale, saveShipment } = require('../models/sales');
 const express = require('express');
 const { createOrder, getOrder, listOrders, updateOrderStatus } = require('../models/orders');
 const { requireAdmin, requireAuth } = require('../middleware/auth');
@@ -33,6 +33,9 @@ router.get('/sales', asyncHandler(async(req,res)=>{
   const status=req.query.status || '';
   if (!['pl','ua','eu'].includes(region) || ![0,7,30,90].includes(days) || !['','created','confirmed','shipped','delivered','completed','cancelled'].includes(status)) throw new AppError(400,'VALIDATION_ERROR','Invalid sales filters');
   res.json(await listSales({sellerId:req.user.id,region,days,status,...validatePagination(req.query)}));
+}));
+router.patch('/sales/:id/shipment', asyncHandler(async(req,res)=>{
+  res.json(await saveShipment({orderId:req.params.id,sellerId:req.user.id,body:req.body}));
 }));
 router.patch('/sales/:id/status', asyncHandler(async(req,res)=>{
   const status=typeof req.body?.status==='string'?req.body.status:'';

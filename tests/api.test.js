@@ -1727,3 +1727,43 @@ test('sale terms remain in purchase and seller snapshots after product editing',
   assert.deepEqual(sales.body.items.find(sale=>sale.orderId===ordered.body.id).items[0].supplyDetails,terms);
   assert.equal((await request(`/api/products/${id}`,{method:'PATCH',token:seller.token,body:{supplyDetails:{returnTerms:'x'.repeat(501)}}})).response.status,400);
 });
+
+
+test('manual shipment belongs to each seller, preserves statuses and rejects stale edits', async () => {
+  const a=await registerAndLogin('shipment-a'),b=await registerAndLogin('shipment-b'),buyer=await registerAndLogin('shipment-buyer'),stranger=await registerAndLogin('shipment-stranger');
+  const make=async seller=>(await request('/api/products',{method:'POST',token:seller.token,body:productPayload({condition:'used',delivery:'shipping'})})).body;
+  const pa=await make(a),pb=await make(b);
+  const order=await request('/api/orders',{method:'POST',token:buyer.token,body:{items:[{id:pa.id,qty:1},{id:pb.id,qty:1}],checkout:{deliveryMethod:'shipping'}}});
+  assert.equal(order.response.status,201);
+  const id=order.body.id;
+  const patch=(token,body={carrier:'Test carrier',trackingNumber:'LOCAL-123456',revision:0})=>request(`/api/orders/sales/${id}/shipment`,{method:'PATCH',token,body});
+  assert.equal((await patch(stranger.token)).response.status,404);
+  assert.equal((await patch(buyer.token)).response.status,404);
+  assert.equal((await patch(a.token)).response.status,409);
+  await request(`/api/orders/sales/${id}/status`,{method:'PATCH',token:a.token,body:{status:'confirmed'}});
+  const saved=await patch(a.token);assert.equal(saved.response.status,200);assert.equal(saved.body.revision,1);
+  const retry=await patch(a.token,{carrier:'Test carrier',trackingNumber:'LOCAL-123456',revision:1});
+  assert.equal(retry.body.revision,1);
+  assert.equal((await patch(a.token)).body.code,'SHIPMENT_CHANGED');
+  const races=await Promise.all(['LOCAL-200','LOCAL-300'].map(trackingNumber=>patch(a.token,{carrier:'Test carrier',trackingNumber,revision:1})));
+  assert.deepEqual(races.map(x=>x.response.status).sort(),[200,409]);
+  const sales=await request('/api/orders/sales?region=pl',{token:a.token});
+  const sale=sales.body.items.find(item=>item.orderId===id);
+  assert.equal(sale.status,'confirmed');assert.equal(sale.shipment.revision,2);
+  assert.deepEqual(sale.history.map(event=>event.status),['created','confirmed','shipment_updated','shipment_updated']);
+  assert.ok(sale.history.every(event=>!('changedBy' in event)));
+  const other=await request('/api/orders/sales?region=pl',{token:b.token});
+  assert.equal(other.body.items.find(item=>item.orderId===id).shipment.trackingNumber,'');
+  const purchase=await request(`/api/orders/${id}`,{token:buyer.token});
+  assert.equal(purchase.body.fulfillments.find(x=>x.sellerId===a.user.id).shipment.trackingNumber,sale.shipment.trackingNumber);
+  assert.equal(purchase.body.fulfillments.find(x=>x.sellerId===b.user.id).history.length,1);
+  for (const body of [{carrier:'Test',trackingNumber:'',revision:2},{carrier:'Test',trackingNumber:'bad\nnumber',revision:2},{carrier:'Test',trackingNumber:'LOCAL',revision:-1}]) assert.equal((await patch(a.token,body)).response.status,400);
+  await request(`/api/orders/sales/${id}/status`,{method:'PATCH',token:a.token,body:{status:'shipped'}});
+  assert.equal((await patch(a.token,{carrier:'Test',trackingNumber:'LOCAL-400',revision:2})).response.status,200);
+  await request(`/api/orders/sales/${id}/status`,{method:'PATCH',token:a.token,body:{status:'delivered'}});
+  assert.equal((await patch(a.token,{carrier:'Test',trackingNumber:'LOCAL-500',revision:3})).body.code,'SHIPMENT_NOT_EDITABLE');
+  const pickupProduct=(await request('/api/products',{method:'POST',token:a.token,body:productPayload({condition:'used',delivery:'pickup'})})).body;
+  const pickup=(await request('/api/orders',{method:'POST',token:buyer.token,body:{items:[{id:pickupProduct.id,qty:1}],checkout:{deliveryMethod:'pickup'}}})).body;
+  await request(`/api/orders/sales/${pickup.id}/status`,{method:'PATCH',token:a.token,body:{status:'confirmed'}});
+  assert.equal((await request(`/api/orders/sales/${pickup.id}/shipment`,{method:'PATCH',token:a.token,body:{carrier:'Test',trackingNumber:'LOCAL-123',revision:0}})).body.code,'SHIPMENT_NOT_EDITABLE');
+});

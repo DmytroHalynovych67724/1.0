@@ -264,3 +264,19 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
 @media (max-width: 700px) { .sale-terms dl { grid-template-columns: 1fr; } }
 
 .order-item-copy { min-width: 0; flex: 1; font-size: 13px; overflow-wrap: anywhere; }
+
+.shipment-summary { margin: 14px 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.shipment-summary dl { display: grid; gap: 10px; margin: 12px 0; }
+.shipment-summary dt { font-size: 11px; color: var(--muted); }
+.shipment-summary dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.shipment-summary p, .shipment-editor p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.shipment-number { font-family: ui-monospace, monospace; user-select: all; }
+.shipment-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.shipment-fields label { display: grid; gap: 6px; min-width: 0; }
+.shipment-fields input { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); }
+.fulfillment-history summary, .shipment-editor summary { cursor: pointer; padding: 8px 0; }
+.fulfillment-history ol { list-style: none; padding: 0 0 0 12px; border-left: 2px solid var(--line); margin: 12px 0; }
+.fulfillment-history li { display: grid; gap: 4px; padding: 8px 0 8px 8px; font-size: 12px; }
+.fulfillment-history time { color: var(--muted); font-size: 11px; }
+.buyer-fulfillment-info { flex: 1; min-width: 0; }
+@media(max-width:520px) { .shipment-fields { grid-template-columns: 1fr; } }

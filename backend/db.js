@@ -473,6 +473,10 @@ async function migrateSellerSales(database) {
     );
     CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, appliedAt INTEGER NOT NULL);
   `);
+  await addColumnIfMissing(database, 'order_fulfillments', 'shipmentCarrier', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'order_fulfillments', 'trackingNumber', "TEXT NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, 'order_fulfillments', 'shipmentRevision', 'INTEGER NOT NULL DEFAULT 0');
+  await addColumnIfMissing(database, 'order_fulfillments', 'shipmentUpdatedAt', 'INTEGER');
   if (await database.prepare('SELECT 1 FROM schema_migrations WHERE name = ?').get('seller-sales-v1')) return;
   await database.transaction(async () => {
     const orders = await database.prepare('SELECT id, items, status, createdAt, updatedAt FROM orders').all();
