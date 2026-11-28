@@ -1784,7 +1784,7 @@ test('managed showcase fills every category with ordinary demo accounts and cann
     const examples=response.body.filter(item=>item.id.startsWith('demo-showcase-'));
     assert.ok(examples.length>0);assert.ok(examples.every(item=>item.isDemo && !item.sellerVerified && item.description.includes('DEMO')));
     const categories=new Set(response.body.map(item=>item.category));
-    assert.ok(['Smartfony','Laptopy','Tablety','Gaming','Audio','Monitory','Foto','Akcesoria'].every(category=>categories.has(category))); 
+    assert.ok(['Smartfony','Laptopy','Tablety','Gaming','Audio','Monitory','Foto','Akcesoria'].every(category=>categories.has(category)));
   }
   const id=showcaseProducts()[0].id;
   const buyer=await registerAndLogin('showcase-buyer');
