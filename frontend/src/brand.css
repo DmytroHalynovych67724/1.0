@@ -227,3 +227,10 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
 .route-error p { color: var(--muted); line-height: 1.7; max-width: 60ch; }
 .route-error > div { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
 .quick-view-modal :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+
+/* Real configuration facets remain readable on narrow screens. */
+.model-variant-filter > .model-configuration-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); width: 100%; gap: 14px; }
+.model-configuration-fields label { min-width: 0; display: grid; gap: 7px; font-size: 12px; color: var(--muted); }
+.model-configuration-fields select { width: 100%; min-width: 0; min-height: 44px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); font: inherit; }
+.model-configuration-fields select:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.model-specs-section dd { overflow-wrap: anywhere; }

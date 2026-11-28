@@ -21,7 +21,7 @@ export default function ModelOffer({ offer, words: c }) {
     <Link className="model-offer-image" to={`/product/${offer.id}`} aria-label={offer.title}><img src={imageUrl(offer.images?.[0])} alt=""/></Link>
     <div className="offer-core"><span className={`condition condition--${offer.condition}`}>{t(offer.condition === 'new' ? 'new' : 'used')}</span><h3><Link to={`/product/${offer.id}`}>{offer.title}</Link></h3>
       <p>{offer.location} · {delivery[offer.delivery]?.[language] || offer.delivery}</p>
-      <p>{[offer.specs?.storage, offer.specs?.color].filter(Boolean).join(' · ')}</p>
+      <p>{[details.productCode, offer.specs?.processor, offer.specs?.gpu, offer.specs?.ram, offer.specs?.storage, offer.specs?.color].filter(Boolean).join(' · ')}</p>
       <small>{dc.source}</small><dl>{rows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     </div>
     <div className="offer-seller"><small>{c.seller}</small><b>{offer.seller}</b>{offer.sellerVerified && <span title={dc.profileHint}>✓ {dc.profile}</span>}<strong>{formatPrice(offer.price, offer.currency)}</strong>
