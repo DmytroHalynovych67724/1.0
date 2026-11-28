@@ -72,7 +72,7 @@ async function createOrder({ userId, items, checkout: checkoutData = {}, promoCo
         .get(item.id);
 
       if (!product || product.status !== 'active' || product.moderationStatus !== 'approved' ||
-          product.sellerAccountStatus === 'suspended' || (product.condition === 'new' && !product.id.startsWith('demo-') && !product.sellerCanSellNew) || (!demoCatalogEnabled() && product.id.startsWith('demo-'))) {
+          product.sellerAccountStatus === 'suspended' || (product.condition === 'new' && !product.id.startsWith('demo-') && !product.sellerCanSellNew) || (product.id.startsWith('demo-showcase-') || (!demoCatalogEnabled() && product.id.startsWith('demo-')))) {
         throw new AppError(
           409,
           'PRODUCT_UNAVAILABLE',

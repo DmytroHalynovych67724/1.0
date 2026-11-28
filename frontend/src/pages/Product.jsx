@@ -214,6 +214,7 @@ function ProductDetails({ id }) {
             {categoryLabel(product.category, language) || product.category} · {product.location}
           </span>
           <h1>{product.title}</h1>
+          {product.isDemo && <p className="demo-listing-notice" role="note">{language === 'uk' ? 'Демонстраційний товар. Ціна, залишок і стан тестові; фото ілюстративне. Цей товар не продається.' : language === 'en' ? 'Demo listing. Price, stock and condition are test data; photos are illustrative. This item is not for sale.' : 'Produkt demonstracyjny. Cena, stan i ilość są testowe; zdjęcia są ilustracyjne. Produkt nie jest na sprzedaż.'}</p>}
           <div className="listing-status-row"><span className={availabilityFor(product) === 'in_stock' ? 'is-available' : ''}>{supply[availabilityFor(product)]}</span><span>{t(product.condition === 'new' ? 'new' : 'used')}</span>{product.supplyDetails?.marketVersion && <span>{product.supplyDetails.marketVersion}</span>}{product.isDemo && <span>DEMO</span>}</div>
           <div className="listing-highlights" aria-label={tabs[4]}>{['storage', 'ram', 'screen', 'processor'].filter((key) => product.specs?.[key]).map((key) => <div key={key}><small>{specWords[key]?.[language]}</small><b>{product.specs[key]}</b></div>)}</div>
           <Link className="model-offers-link" to={`/model/${encodeURIComponent(product.brand)}/${encodeURIComponent(product.model)}`}>{c.modelOffers}</Link>

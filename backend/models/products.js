@@ -91,7 +91,7 @@ async function listProducts(filters = {}) {
     where.push("(p.condition != 'new' OR p.id LIKE 'demo-%' OR u.role = 'admin' OR u.canSellNew = 1)");
   }
   if (!filters.includeDemo && !demoCatalogEnabled()) {
-    where.push("(p.id NOT LIKE 'demo-%' OR p.id IN (" + SHOWCASE_IDS.map((id) => "'" + id + "'").join(',') + "))");
+    where.push("(p.id NOT LIKE 'demo-%' OR p.id LIKE 'demo-showcase-%' OR p.id IN (" + SHOWCASE_IDS.map((id) => "'" + id + "'").join(',') + "))");
   }
 
   if (filters.q) {

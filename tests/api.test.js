@@ -1767,3 +1767,30 @@ test('manual shipment belongs to each seller, preserves statuses and rejects sta
   await request(`/api/orders/sales/${pickup.id}/status`,{method:'PATCH',token:a.token,body:{status:'confirmed'}});
   assert.equal((await request(`/api/orders/sales/${pickup.id}/shipment`,{method:'PATCH',token:a.token,body:{carrier:'Test',trackingNumber:'LOCAL-123',revision:0}})).body.code,'SHIPMENT_NOT_EDITABLE');
 });
+
+
+test('managed showcase fills every category with ordinary demo accounts and cannot be bought', async () => {
+  const {populateShowcase,showcaseProducts}=require('../backend/services/showcase');
+  const db=database.getDB();
+  const before=(await db.prepare('SELECT COUNT(*) AS count FROM products').get()).count;
+  const first=await populateShowcase(db);
+  assert.equal(first.credentials.length,6);assert.equal(first.inserted,showcaseProducts().length);
+  const again=await populateShowcase(db);assert.equal(again.inserted,0);assert.equal(again.credentials.length,0);
+  assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM products').get()).count,before+first.inserted);
+  const owners=await db.prepare("SELECT role,canSellNew,verificationStatus FROM users WHERE id LIKE 'demo-showcase-user-%'").all();
+  assert.equal(owners.length,6);assert.ok(owners.every(owner=>owner.role==='user' && !owner.canSellNew && owner.verificationStatus!=='verified'));
+  for(const region of ['pl','ua','eu']) {
+    const response=await request('/api/products?region='+region);
+    const examples=response.body.filter(item=>item.id.startsWith('demo-showcase-'));
+    assert.ok(examples.length>0);assert.ok(examples.every(item=>item.isDemo && !item.sellerVerified && item.description.includes('DEMO')));
+    const categories=new Set(response.body.map(item=>item.category));
+    assert.ok(['Smartfony','Laptopy','Tablety','Gaming','Audio','Monitory','Foto','Akcesoria'].every(category=>categories.has(category))); 
+  }
+  const id=showcaseProducts()[0].id;
+  const buyer=await registerAndLogin('showcase-buyer');
+  const order=await request('/api/orders',{method:'POST',token:buyer.token,body:{items:[{id,qty:1}]}});
+  assert.equal(order.response.status,409);
+  const item=await request('/api/products/'+id);assert.equal(item.body.stock,showcaseProducts()[0].stock);
+  const history=(await request('/api/orders?scope=mine',{token:buyer.token})).body;
+  assert.equal(history.length,0);
+});

@@ -8,7 +8,7 @@ function isPublicProduct(product) {
     product.moderationStatus !== 'hidden' &&
     product.sellerAccountStatus !== 'suspended' &&
     (product.condition !== 'new' || product.id.startsWith('demo-') || product.sellerCanSellNew) &&
-    (demoCatalogEnabled() || !product.id.startsWith('demo-') || SHOWCASE_IDS.includes(product.id)));
+    (demoCatalogEnabled() || !product.id.startsWith('demo-') || SHOWCASE_IDS.includes(product.id) || product.id.startsWith('demo-showcase-')));
 }
 
 module.exports = { demoCatalogEnabled, isPublicProduct, SHOWCASE_IDS };

@@ -280,3 +280,5 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
 .fulfillment-history time { color: var(--muted); font-size: 11px; }
 .buyer-fulfillment-info { flex: 1; min-width: 0; }
 @media(max-width:520px) { .shipment-fields { grid-template-columns: 1fr; } }
+
+.demo-listing-notice { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--brand-soft); color: var(--ink); font-size: 13px; line-height: 1.6; }
