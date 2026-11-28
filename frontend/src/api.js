@@ -1,3 +1,4 @@
+import { requestWithTimeout } from './requestTimeout.mjs';
 import { safeStorage } from './browserStorage.mjs';
 
 export class ApiError extends Error {
@@ -239,8 +240,16 @@ export async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (token) headers.set('authorization', `Bearer ${token}`);
   if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
-  const response = await fetch(`${apiBase}${path}`, { ...options, headers });
-  const payload = response.status === 204 ? null : await response.json().catch(() => null);
+  const { timeoutMs, ...fetchOptions } = options;
+  const limit = timeoutMs || (path.startsWith('/auth/') ? 45000 : /device-specs|assistant|products\/import/.test(path) ? 90000 : 30000);
+  let response, payload;
+  try {
+    ({ response, payload } = await requestWithTimeout(`${apiBase}${path}`, { ...fetchOptions, headers }, limit));
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    throw new ApiError(error.code === 'REQUEST_TIMEOUT' ? 'Serwer nie odpowiedział na czas. Spróbuj ponownie.' : 'Brak połączenia z serwerem. Spróbuj ponownie.', 0, error.code === 'REQUEST_TIMEOUT' ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR');
+  }
+  if (response.ok && response.status !== 204 && payload === null) throw new ApiError('Nieprawidłowa odpowiedź serwera.', response.status, 'INVALID_RESPONSE');
   if (!response.ok) {
     if (response.status === 401 && token) {
       safeStorage.removeItem('nashary-token');
@@ -252,7 +261,7 @@ export async function api(path, options = {}) {
         payload?.message ||
         'Nie udało się wykonać operacji.',
       response.status,
-      payload?.code || payload?.error?.code,
+      payload?.code || payload?.error?.code || (response.status >= 500 ? 'SERVER_UNAVAILABLE' : undefined),
       payload?.details || payload?.error?.details
     );
   }
