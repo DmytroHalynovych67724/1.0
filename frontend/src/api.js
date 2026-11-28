@@ -91,7 +91,7 @@ function filterDemoProducts(items, params) {
     if (params.get('maxPrice') && Number(product.price) > Number(params.get('maxPrice'))) return false;
     if (query) {
       const haystack = [
-        product.title,
+        product.deviceDetails?.productCode, product.supplyDetails?.sku, product.title,
         product.description,
         product.brand,
         product.model,

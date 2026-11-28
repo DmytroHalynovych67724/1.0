@@ -1667,3 +1667,42 @@ test('pickup sales skip shipping and migration backfills historical seller snaps
   await database.closeDB();await database.initDB();
   assert.equal((await database.getDB().prepare('SELECT * FROM order_fulfillments WHERE orderId=?').all(id)).length,1);
 });
+
+
+test('catalog import creates private drafts, permits safe retries and never overwrites stock', async () => {
+  const { randomUUID } = require('node:crypto');
+  const row = { title: 'Import test notebook', brand: 'Test', model: 'Config', category: 'Laptopy', price: 100, stock: 2, location: 'Warszawa', delivery: 'pickup', supplyDetails: { sku: randomUUID() } };
+  const body = { requestId: randomUUID(), region: 'pl', rows: [row] };
+  const submit = (payload=body, token=adminToken) => request('/api/products/import', {method:'POST',token,body:payload});
+  assert.equal((await request('/api/products/import',{method:'POST',body})).response.status,401);
+  const privateSeller=await registerAndLogin('import-private');
+  assert.equal((await submit(body,privateSeller.token)).response.status,403);
+  const first=await submit(); assert.equal(first.response.status,200,JSON.stringify(first.body));
+  assert.equal(first.body.results[0].state,'created');
+  const id=first.body.results[0].id;
+  assert.equal((await request(`/api/products/${id}`)).response.status,404);
+  const mine=await request('/api/products/mine',{token:adminToken});
+  assert.equal(mine.body.find(x=>x.id===id).status,'draft');
+  const again=await submit(); assert.equal(again.body.results[0].state,'existing'); assert.equal(again.body.results[0].id,id);
+  const duplicate=await submit({...body,requestId:randomUUID(),rows:[{...row,stock:50}]});
+  assert.equal(duplicate.body.results[0].code,'INVENTORY_CODE_CONFLICT');
+  assert.equal((await request('/api/products/mine',{token:adminToken})).body.find(x=>x.id===id).stock,2);
+  const invalidSku=randomUUID();
+  const invalid=await submit({...body,requestId:randomUUID(),rows:[{...row,supplyDetails:{sku:invalidSku}},{...row,price:-1}]});
+  assert.equal(invalid.response.status,400);
+  assert.equal((await request('/api/products/mine',{token:adminToken})).body.some(x=>x.supplyDetails?.sku===invalidSku),false);
+  const partial=await submit({...body,requestId:randomUUID(),rows:[row,{...row,supplyDetails:{sku:randomUUID()}}]});
+  assert.deepEqual(partial.body.results.map(x=>x.state),['failed','created']);
+});
+
+
+test('public search finds manufacturer codes and SKU but does not expose private batches', async () => {
+  const { randomUUID } = require('node:crypto');
+  const code='PN-'+randomUUID(), sku='SKU-'+randomUUID(), batch='BATCH-'+randomUUID();
+  const product=await createProduct({condition:'new',deviceDetails:{productCode:code},supplyDetails:{sku,batch}});
+  for (const query of [code,sku,code+' '+sku]) {
+    const found=await request('/api/products?q='+encodeURIComponent(query));
+    assert.equal(found.response.status,200); assert.ok(found.body.some(item=>item.id===product.id));
+  }
+  assert.equal((await request('/api/products?q='+encodeURIComponent(batch))).body.some(item=>item.id===product.id),false);
+});

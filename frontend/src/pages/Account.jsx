@@ -846,7 +846,7 @@ export default function Account() {
           </article>
         </section>
       )}
-      {tab === 'listings' && <SellerInventory listings={listings} user={user} language={language} c={c} formatPrice={formatPrice} onEdit={setEditing} onRemove={remove} loading={loading} />}
+      {tab === 'listings' && <SellerInventory region={region} onImported={refresh} listings={listings} user={user} language={language} c={c} formatPrice={formatPrice} onEdit={setEditing} onRemove={remove} loading={loading} />}
       {tab === 'sales' && <SellerSales />}
       {tab === 'orders' && (
         <section className="account-section">

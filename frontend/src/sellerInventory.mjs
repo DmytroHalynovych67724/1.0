@@ -22,6 +22,8 @@ export function filterInventory(items, { condition = 'all', status = '', query =
       item.title,
       item.brand,
       item.model,
+      item.deviceDetails?.productCode,
+      ...Object.values(item.specs || {}),
       item.supplyDetails?.sku,
       item.supplyDetails?.batch,
     ]

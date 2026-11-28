@@ -12,7 +12,40 @@ const { isPublicProduct } = require('../utils/catalog');
 const { AppError, asyncHandler } = require('../utils/errors');
 const { CONDITIONS, REGIONS, validateProduct } = require('../utils/validation');
 
+const { prepareCatalogImport } = require('../utils/catalogImport');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
+const importing = new Set();
+const importLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: process.env.NODE_ENV === 'test' ? 100 : 10,
+  keyGenerator: req => req.user.id, standardHeaders: true, legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({ code: 'RATE_LIMITED', error: 'Try importing later' }),
+});
+
+// Validate every row before writing. Individual failures are reported and retrying
+// the same request reuses successful rows, without updating existing inventory.
+router.post('/import', requireAuth, importLimiter, asyncHandler(async (req, res) => {
+  if (req.user.role !== 'admin' && !req.user.canSellNew) throw new AppError(403, 'NEW_SELLER_APPROVAL_REQUIRED', 'Approval is required');
+  if (importing.has(req.user.id)) throw new AppError(409, 'IMPORT_BUSY', 'An import is already running');
+  const rows = prepareCatalogImport(req.body, req.user);
+  importing.add(req.user.id);
+  const results = [];
+  try {
+    for (const { id, product, row } of rows) {
+      try {
+        const owner = await getProductOwner(id);
+        if (owner === req.user.id) { results.push({ row, id, state: 'existing' }); continue; }
+        if (owner !== undefined) throw new AppError(409, 'IMPORT_WRITE_FAILED', 'Import ID conflict');
+        await createProduct(product, { id, createdBy: req.user.id });
+        results.push({ row, id, state: 'created' });
+      } catch (error) {
+        // A retry on another worker may have completed the same deterministic ID.
+        if (await getProductOwner(id) === req.user.id) results.push({ row, id, state: 'existing' });
+        else results.push({ row, state: 'failed', code: error.code === 'INVENTORY_CODE_CONFLICT' ? error.code : 'IMPORT_WRITE_FAILED' });
+      }
+    }
+    res.json({ results });
+  } finally { importing.delete(req.user.id); }
+}));
 
 function optionalQueryString(query, field, maxLength) {
   if (query[field] === undefined || query[field] === '') return undefined;

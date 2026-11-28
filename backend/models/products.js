@@ -98,7 +98,7 @@ async function listProducts(filters = {}) {
     // Match each term across the title, model and actual configuration, in any order.
     const terms = filters.q.toLowerCase().trim().split(/\s+/).filter(Boolean);
     terms.forEach((term, index) => {
-      where.push(`LOWER(COALESCE(p.title, '') || ' ' || COALESCE(p.description, '') || ' ' || COALESCE(p.brand, '') || ' ' || COALESCE(p.model, '') || ' ' || COALESCE(p.location, '') || ' ' || COALESCE(p.specs, '')) LIKE @q${index} ESCAPE '\\'`);
+      where.push(`LOWER(COALESCE(p.title, '') || ' ' || COALESCE(p.description, '') || ' ' || COALESCE(p.brand, '') || ' ' || COALESCE(p.model, '') || ' ' || COALESCE(p.location, '') || ' ' || COALESCE(p.specs, '') || ' ' || CASE WHEN json_valid(p.deviceDetails) THEN COALESCE(json_extract(p.deviceDetails, '$.productCode'), '') ELSE '' END || ' ' || CASE WHEN json_valid(p.supplyDetails) THEN COALESCE(json_extract(p.supplyDetails, '$.sku'), '') ELSE '' END) LIKE @q${index} ESCAPE '\\'`);
       params[`q${index}`] = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
     });
   }

@@ -1,3 +1,4 @@
+import CatalogImport from './CatalogImport';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { imageUrl } from '../api';
@@ -101,6 +102,8 @@ export const inventoryCopy = {
 
 export default function SellerInventory({
   listings,
+  region,
+  onImported,
   user,
   language,
   c,
@@ -196,6 +199,7 @@ export default function SellerInventory({
           )}
         </div>
       )}
+      {canListNew(user) && condition !== 'used' && <CatalogImport key={region} region={region} language={language} formatPrice={formatPrice} onImported={onImported} />}
       <dl className="inventory-metrics">
         {[
           ['total', summary.total],
