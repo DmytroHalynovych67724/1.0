@@ -23,3 +23,15 @@ test('China supply is explicit, preserves legacy CN devices and respects a chang
   assert.equal(validateSupplyDetails({ origin: 'china' }).origin, 'china');
   assert.throws(() => validateSupplyDetails({ origin: 'invalid' }), { code: 'VALIDATION_ERROR' });
 });
+
+
+test('seller terms distinguish missing information and validate bounded text for all listings', async () => {
+  const { saleTermRows } = await import('../frontend/src/saleTerms.mjs');
+  const { validateSupplyDetails } = require('../backend/utils/productSupply');
+  assert.deepEqual(saleTermRows({}), [['deliveryTerms',''],['warrantyTerms',''],['returnTerms','']]);
+  assert.equal(saleTermRows({supplyDetails:{returnTerms:'  Contact seller  '}})[2][1],'Contact seller');
+  assert.equal(validateSupplyDetails({deliveryTerms:' Dispatch next day ',returnTerms:'Contact seller'}).deliveryTerms,'Dispatch next day');
+  assert.throws(()=>validateSupplyDetails({returnTerms:'x'.repeat(501)}),{code:'VALIDATION_ERROR'});
+  assert.throws(()=>validateSupplyDetails({deliveryTerms:[]}),{code:'VALIDATION_ERROR'});
+  assert.deepEqual(validateSupplyDetails({returnTerms:''}),{});
+});

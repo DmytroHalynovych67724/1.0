@@ -1,6 +1,6 @@
 import { supplyCopy, supplyOrigin } from '../supplyDetails.mjs';
 
-const generalFields = { sku: 80, batch: 80, packageContents: 300, warrantyTerms: 300 };
+const generalFields = { sku: 80, batch: 80, packageContents: 300 };
 const chinaFields = { firmware: 120, languages: 160, networkBands: 240 };
 
 export default function SupplyFields({ value = {}, onChange, language }) {

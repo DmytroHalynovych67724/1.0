@@ -1,3 +1,4 @@
+import SaleTerms from '../components/SaleTerms';
 import { specLabels as specWords } from '../specLabels.mjs';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -68,7 +69,7 @@ const words = {
 
 const detailValues = {
   warranty: {
-    none: { pl: 'Brak', uk: 'Немає', en: 'None' },
+    none: { pl: 'Nie podano', uk: 'Не вказано', en: 'Not specified' },
     seller: { pl: 'Sprzedawcy', uk: 'Від продавця', en: 'Seller warranty' },
     manufacturer: { pl: 'Producenta', uk: 'Від виробника', en: 'Manufacturer warranty' },
   },
@@ -278,6 +279,7 @@ function ProductDetails({ id }) {
           <SupplySummary product={product} language={language} />
         </aside>
       </div>
+      <SaleTerms product={product} language={language}/>
       <div className={`shell product-info-react${product.description?.trim() ? '' : ' product-info-react--specs-only'}`}>
         {product.description?.trim() && <section className="product-description-card">
           <span className="section-label">{t('description')}</span>

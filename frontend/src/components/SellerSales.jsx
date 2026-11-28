@@ -1,3 +1,4 @@
+import SaleTerms from './SaleTerms';
 import { useEffect, useState } from 'react';
 import { api, imageUrl } from '../api';
 import { useStore } from '../store';
@@ -40,7 +41,7 @@ export default function SellerSales() {
     {loading && <p role="status">{c.loading}</p>}
     {!loading && data && <><div className="sales-metrics">{metrics.map(([label,value])=><article key={label}><span>{label}</span><strong>{value}</strong></article>)}</div><p className="sales-note">{c.note}</p>
       {!data.items.length?<div className="account-empty"><p>{c.empty}</p></div>:<div className="sales-list">{data.items.map(sale=><article className="sale-card" key={sale.orderId}><header><div><b>#{sale.orderId.slice(0,8)}</b><time>{new Date(sale.createdAt).toLocaleDateString({uk:'uk-UA',pl:'pl-PL',en:'en-GB'}[language])}</time></div><span className={`sale-status is-${sale.status}`}>{c.status[sale.status] || sale.status}</span></header>
-        {sale.items.map(item=><div className="sale-item" key={item.id}><img src={imageUrl(item.image)} alt=""/><div><b>{item.title}</b><small>{item.qty} × {formatPrice(item.price,sale.currency)}</small></div><strong>{formatPrice(item.lineTotal,sale.currency)}</strong></div>)}
+        {sale.items.map(item=><div className="sale-item" key={item.id}><img src={imageUrl(item.image)} alt=""/><div><b>{item.title}</b><SaleTerms product={item} language={language} compact snapshot/><small>{item.qty} × {formatPrice(item.price,sale.currency)}</small></div><strong>{formatPrice(item.lineTotal,sale.currency)}</strong></div>)}
         <div className="sale-details"><span>{localized(deliveryNames,sale.delivery.deliveryOption,language)}</span><span>{localized(paymentNames,sale.delivery.paymentMethod,language)}</span></div>
         <details><summary>{c.recipient}</summary>{sale.recipient.name && <p>{sale.recipient.name}</p>}{sale.recipient.phone && <p>{sale.recipient.phone}</p>}{[sale.recipient.country,sale.recipient.city,sale.recipient.postalCode,sale.recipient.address,sale.recipient.deliveryPoint].filter(Boolean).length>0 && <p>{[sale.recipient.country,sale.recipient.city,sale.recipient.postalCode,sale.recipient.address,sale.recipient.deliveryPoint].filter(Boolean).join(', ')}</p>}{sale.status==='created' && <p>{c.contactHint}</p>}</details>
         {sale.status==='delivered' && <p className="sales-note">{c.waiting}</p>}

@@ -2,7 +2,7 @@ const { AppError } = require('./errors');
 
 const AVAILABILITY = ['in_stock', 'on_order', 'expected', 'unavailable'];
 const MARKET_VERSIONS = ['', 'CN', 'Global', 'EU', 'US', 'UK', 'JP', 'KR', 'Other'];
-const TEXT_LIMITS = { sku: 80, batch: 80, firmware: 120, languages: 160, networkBands: 240, packageContents: 300, warrantyTerms: 300, leadTime: 120 };
+const TEXT_LIMITS = { deliveryTerms: 500, returnTerms: 500, sku: 80, batch: 80, firmware: 120, languages: 160, networkBands: 240, packageContents: 300, warrantyTerms: 300, leadTime: 120 };
 
 function validateSupplyDetails(input) {
   const issues = [];

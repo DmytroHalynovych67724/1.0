@@ -77,7 +77,7 @@ function projectSale(row) {
     if (checkout.name) recipient.name=checkout.name;
     if (row.saleStatus !== 'created') for (const key of ['phone','address','city','postalCode','country','deliveryPoint']) if (checkout[key]) recipient[key]=checkout[key];
   }
-  return {orderId:row.id,status:row.saleStatus,createdAt:row.createdAt,updatedAt:row.saleUpdatedAt,items:items.map(item=>({id:item.productId || item.id,title:item.title,image:item.image,price:item.price,qty:item.qty,lineTotal:lineCents(item)/100,condition:item.condition})),goodsTotal:items.reduce((sum,item)=>sum+lineCents(item),0)/100,currency:currencyForRegion(row.region),region:row.region,delivery,recipient,nextStatuses:nextStatuses(row.saleStatus,checkout.deliveryMethod==='pickup').filter(status=>status!=='completed')};
+  return {orderId:row.id,status:row.saleStatus,createdAt:row.createdAt,updatedAt:row.saleUpdatedAt,items:items.map(item=>({id:item.productId || item.id,title:item.title,image:item.image,price:item.price,qty:item.qty,lineTotal:lineCents(item)/100,condition:item.condition,supplyDetails:Object.fromEntries(['deliveryTerms','warrantyTerms','returnTerms'].filter(key=>typeof item.supplyDetails?.[key]==='string').map(key=>[key,item.supplyDetails[key]]))})),goodsTotal:items.reduce((sum,item)=>sum+lineCents(item),0)/100,currency:currencyForRegion(row.region),region:row.region,delivery,recipient,nextStatuses:nextStatuses(row.saleStatus,checkout.deliveryMethod==='pickup').filter(status=>status!=='completed')};
 }
 async function listSales({sellerId,region,days,status,limit=20,offset=0}) {
   const db=getDB();

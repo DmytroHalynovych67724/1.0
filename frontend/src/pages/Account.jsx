@@ -1,3 +1,4 @@
+import SaleTerms, { SaleTermsFields } from '../components/SaleTerms';
 import { preparePhoto } from '../preparePhoto';
 import { photoCopy } from '../photoPolicy.mjs';
 import { specLabels as listingSpecLabels } from '../specLabels.mjs';
@@ -531,6 +532,7 @@ export function ListingForm({ initial, initialCondition, onClose, onSaved, regio
 </div></section>
 {allSpecKeys.length > 0 && <section className="span-2 listing-form-section"><header className="listing-form-heading"><span>4</span><div><h2>{fc.specs}</h2><p>{fc.specsHint}</p></div></header><div className="form-grid-react"><div className="span-2 listing-spec-count">{filledSpecCount} / {allSpecKeys.length} {fc.filled}</div>{primarySpecKeys.map(renderSpecField)}{extraSpecKeys.length > 0 && <details className="span-2 listing-options spec-extra"><summary>{fc.moreSpecs} ({extraSpecKeys.length})</summary><div className="form-grid-react">{extraSpecKeys.map(renderSpecField)}</div></details>}{specMetadata && <details className="span-2 listing-options spec-reference"><summary>{fc.sources}</summary><p>{sc.hint}</p><div className="spec-sources">{(specMetadata.sources || (specMetadata.sourceUrl ? [{title:specMetadata.source,url:specMetadata.sourceUrl}] : [])).filter(source => /^https?:\/\//.test(source.url || '')).map(source => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.title} ↗</a>)}</div>{specMetadata.ai?.fields?.length > 0 && <dl>{specMetadata.ai.fields.map(key => <div key={key}><dt>{listingSpecLabels[key]?.[language] || key}</dt><dd>{specMetadata.specs[key]} — <q>{specMetadata.ai.evidence[key]?.quote}</q></dd></div>)}</dl>}</details>}</div></section>}
 {form.condition === 'new' && <section className="span-2 listing-form-section"><header className="listing-form-heading"><span>5</span><div><h2>{fc.supply}</h2><p>{fc.supplyHint}</p></div></header><div className="form-grid-react"><SupplyFields value={form.supplyDetails} onChange={value=>change('supplyDetails',value)} language={language}/></div></section>}
+<SaleTermsFields value={form.supplyDetails} onChange={value => change('supplyDetails', value)} language={language}/>
 </div>
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
         <div className="modal-actions">
@@ -872,12 +874,13 @@ export default function Account() {
                   {order.items.map((item) => (
                     <div className="order-item" key={item.id}>
                       <img src={imageUrl(item.image)} alt="" />
-                      <span>
+                      <div className="order-item-copy">
                         {item.title}
+                        <SaleTerms product={item} language={language} compact snapshot/>
                         <small>
                           {item.qty} × {formatPrice(item.price, item.currency)}
                         </small>
-                      </span>
+                      </div>
                     </div>
                   ))}
                   {order.checkout?.deliveryOption && <div className="order-fulfillment">

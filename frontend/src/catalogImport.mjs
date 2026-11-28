@@ -1,6 +1,6 @@
 const categories = ['Smartfony', 'Laptopy', 'Tablety', 'Gaming', 'Audio', 'Monitory', 'Foto', 'Akcesoria'];
 const specKeys = ['screen', 'processor', 'ram', 'storage', 'gpu', 'os', 'resolution', 'refreshRate', 'displayType', 'color'];
-const supplyKeys = ['sku', 'batch', 'origin', 'availability', 'marketVersion', 'firmware', 'languages', 'networkBands', 'packageContents', 'warrantyTerms', 'leadTime'];
+const supplyKeys = ['deliveryTerms', 'returnTerms', 'sku', 'batch', 'origin', 'availability', 'marketVersion', 'firmware', 'languages', 'networkBands', 'packageContents', 'warrantyTerms', 'leadTime'];
 export const importColumns = ['title', 'brand', 'model', 'category', 'price', 'stock', 'location', 'delivery', 'sku', 'batch', 'productCode', 'ram', 'storage', 'color', 'processor', 'gpu', 'images'];
 const allowed = new Set([...importColumns, ...specKeys, ...supplyKeys, 'description', 'warranty']);
 const fail = (code, row = 0, field = '') => { const error = new Error(code); error.row = row; error.field = field; throw error; };
@@ -59,7 +59,7 @@ export function parseCatalogImport(text, filename = '') {
     const images = str('images', 4000).split('|').map(value => value.trim()).filter(Boolean);
     if (images.length > 8 || images.some(value => { try { return !['http:', 'https:'].includes(new URL(value).protocol); } catch { return true; } })) fail('value', number, 'images');
     const specs = Object.fromEntries(specKeys.map(key => [key, str(key)]).filter(([,value]) => value));
-    const supplyDetails = Object.fromEntries(supplyKeys.map(key => [key, str(key, ({ sku:80, batch:80, firmware:120, languages:160, networkBands:240, packageContents:300, warrantyTerms:300, leadTime:120 })[key] || 80)]).filter(([,value]) => value));
+    const supplyDetails = Object.fromEntries(supplyKeys.map(key => [key, str(key, ({ deliveryTerms:500, returnTerms:500, sku:80, batch:80, firmware:120, languages:160, networkBands:240, packageContents:300, warrantyTerms:300, leadTime:120 })[key] || 80)]).filter(([,value]) => value));
     for (const [key, values] of Object.entries({ origin: ['local', 'china', 'other'], availability: ['in_stock', 'on_order', 'expected', 'unavailable'], marketVersion: ['CN', 'Global', 'EU', 'US', 'UK', 'JP', 'KR', 'Other'] })) if (supplyDetails[key] && !values.includes(supplyDetails[key])) fail('value', number, key);
     const identity = JSON.stringify([supplyDetails.sku, supplyDetails.batch || ''].map(value => value.replace(/[a-z]/g, letter => letter.toUpperCase())));
     if (seen.has(identity)) fail('duplicate', number, 'sku'); seen.add(identity);

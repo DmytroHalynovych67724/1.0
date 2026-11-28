@@ -248,3 +248,19 @@ html[data-theme='dark'] .promo-trade { background: #1b3458; color: #edf3ff; }
 .catalog-import td:nth-child(2) { min-width: 190px; overflow-wrap: anywhere; }
 .catalog-import td:last-child { min-width: 180px; }
 .catalog-import td small, .catalog-import td a { display: block; margin-top: 6px; }
+
+.sale-terms { margin-top: 32px; padding-top: 24px; padding-bottom: 24px; border-top: 1px solid var(--line); }
+.sale-terms h2 { margin: 0 0 8px; font-size: 24px; }
+.sale-terms > small, .sale-terms > p { color: var(--muted); line-height: 1.6; }
+.sale-terms dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 18px 0; }
+.sale-terms dl > div { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.sale-terms dt { font-size: 13px; font-weight: 750; margin-bottom: 10px; }
+.sale-terms dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; font-size: 13px; }
+.sale-terms--compact { margin: 10px 0; padding: 0; border: 0; }
+.sale-terms--compact summary { cursor: pointer; font-size: 13px; padding: 8px 0; }
+.sale-terms--compact dl { grid-template-columns: 1fr; gap: 8px; }
+.sale-terms--compact dl > div { padding: 12px; }
+.sale-terms-fields textarea { resize: vertical; }
+@media (max-width: 700px) { .sale-terms dl { grid-template-columns: 1fr; } }
+
+.order-item-copy { min-width: 0; flex: 1; font-size: 13px; overflow-wrap: anywhere; }

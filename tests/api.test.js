@@ -1706,3 +1706,24 @@ test('public search finds manufacturer codes and SKU but does not expose private
   }
   assert.equal((await request('/api/products?q='+encodeURIComponent(batch))).body.some(item=>item.id===product.id),false);
 });
+
+
+test('sale terms remain in purchase and seller snapshots after product editing', async () => {
+  const seller=await registerAndLogin('terms-seller'),buyer=await registerAndLogin('terms-buyer');
+  const terms={deliveryTerms:'Collect by agreement',warrantyTerms:'Contact seller for service',returnTerms:'Contact seller before sending back'};
+  const created=await request('/api/products',{method:'POST',token:seller.token,body:productPayload({condition:'used',delivery:'pickup',supplyDetails:terms})});
+  assert.equal(created.response.status,201);
+  const id=created.body.id;
+  const ordered=await request('/api/orders',{method:'POST',token:buyer.token,body:{items:[{id,qty:1}],checkout:{deliveryMethod:'pickup'}}});
+  assert.equal(ordered.response.status,201);
+  assert.equal(ordered.body.items[0].supplyDetails.returnTerms,terms.returnTerms);
+  const edit=await request(`/api/products/${id}`,{method:'PATCH',token:seller.token,body:{supplyDetails:{returnTerms:'Changed later'}}});
+  assert.equal(edit.response.status,200);
+  assert.equal(edit.body.supplyDetails.deliveryTerms,terms.deliveryTerms);
+  assert.equal(edit.body.supplyDetails.returnTerms,'Changed later');
+  const purchases=await request('/api/orders?scope=mine',{token:buyer.token});
+  assert.equal(purchases.body.find(order=>order.id===ordered.body.id).items[0].supplyDetails.returnTerms,terms.returnTerms);
+  const sales=await request('/api/orders/sales?region=pl',{token:seller.token});
+  assert.deepEqual(sales.body.items.find(sale=>sale.orderId===ordered.body.id).items[0].supplyDetails,terms);
+  assert.equal((await request(`/api/products/${id}`,{method:'PATCH',token:seller.token,body:{supplyDetails:{returnTerms:'x'.repeat(501)}}})).response.status,400);
+});
